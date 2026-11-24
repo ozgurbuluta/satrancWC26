@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
-import { useT } from '../hooks';
+import { useScoresVersion, useT } from '../hooks';
 import type { Strings } from '../i18n';
-import type { EvalResult, PV } from '../lib/engine';
-import { formatEval, localizeSan, pvToSan } from '../lib/format';
+import { wdl, winningChances, type EvalResult, type MoveQuality, type PV } from '../lib/engine';
+import { formatEval, localizeSan, pvToSan, shortName } from '../lib/format';
 import type { GameData } from '../lib/pgn';
+import { judgePly, QUALITY_GLYPH } from '../lib/quality';
 import { useStore } from '../store';
 
 const verdict = (pv: PV | undefined, t: Strings): string => {
@@ -16,6 +17,11 @@ const verdict = (pv: PV | undefined, t: Strings): string => {
   if (abs < 250) return cp > 0 ? t.whiteBetter : t.blackBetter;
   return cp > 0 ? t.whiteWinning : t.blackWinning;
 };
+
+export const qualityLabel = (q: MoveQuality, t: Strings): string =>
+  ({ best: t.qBest, good: t.qGood, inaccuracy: t.qInaccuracy, mistake: t.qMistake, blunder: t.qBlunder })[q];
+
+const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 interface Props {
   game: GameData;
@@ -30,8 +36,10 @@ export function AnalysisPanel({ game, fen, shown, evaluation }: Props) {
   const engineOn = useStore(s => s.settings.engine);
   const revealed = useStore(s => s.revealed);
   const setViewPly = useStore(s => s.setViewPly);
+  const paused = useStore(s => s.paused);
   const activeRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  useScoresVersion();
 
   // Keep the current move in view without moving the page itself. Also runs
   // when the list is resized (engine lines appearing change its height).
@@ -56,6 +64,27 @@ export function AnalysisPanel({ game, fen, shown, evaluation }: Props) {
   const whiteStarts = game.initialFen.split(' ')[1] !== 'b';
   const firstMoveNo = Number(game.initialFen.split(' ')[5]) || 1;
   const plies = game.plies.slice(0, revealed);
+  const whiteToMove = fen.split(' ')[1] !== 'b';
+  const mover = whiteToMove ? game.white : game.black;
+
+  const split = wdl(best);
+  const lastJudged = shown > 0 ? judgePly(game, shown - 1) : undefined;
+  const lastPly = shown > 0 ? game.plies[shown - 1] : undefined;
+  const lastMoveNo = firstMoveNo + Math.floor((shown - 1 + (whiteStarts ? 0 : 1)) / 2);
+  const lastWasWhite = ((shown - 1) % 2 === 0) === whiteStarts;
+
+  // "Only move" when the second-best line gives away a lot for the side to move.
+  let tension: { critical: boolean; text: string } | undefined;
+  if (engineOn && evaluation && evaluation.pvs.length >= 2) {
+    const sign = whiteToMove ? 1 : -1;
+    const gap = (winningChances(evaluation.pvs[0]) - winningChances(evaluation.pvs[1])) * sign;
+    const bestSan = pvToSan(fen, evaluation.pvs[0].moves, 1)[0]?.san;
+    if (gap >= 0.2 && bestSan) {
+      tension = { critical: true, text: t.onlyMove.replace('{player}', shortName(mover)).replace('{move}', localizeSan(bestSan, notation)) };
+    } else {
+      tension = { critical: false, text: t.fewMoves.replace('{player}', shortName(mover)) };
+    }
+  }
 
   return (
     <div className="analysis">
@@ -90,9 +119,60 @@ export function AnalysisPanel({ game, fen, shown, evaluation }: Props) {
             ))}
           </ol>
         )}
+
+        {engineOn && best && (
+          <div className="wdl" title={t.wdlNote}>
+            <div className="wdl-head">
+              <span>{t.whoWins}</span>
+              <span className="muted small">{t.wdlNote}</span>
+            </div>
+            <div className="wdl-bar" role="img" aria-label={`${shortName(game.white)} ${pct(split.win)}, ${t.draw} ${pct(split.draw)}, ${shortName(game.black)} ${pct(split.loss)}`}>
+              <i className="w" style={{ flexGrow: Math.max(split.win, 0.001) }} />
+              <i className="d" style={{ flexGrow: Math.max(split.draw, 0.001) }} />
+              <i className="b" style={{ flexGrow: Math.max(split.loss, 0.001) }} />
+            </div>
+            <div className="wdl-legend">
+              <span>
+                <i className="sw w" /> {shortName(game.white)} <b>{pct(split.win)}</b>
+              </span>
+              <span>
+                <i className="sw d" /> {t.draw} <b>{pct(split.draw)}</b>
+              </span>
+              <span>
+                <i className="sw b" /> {shortName(game.black)} <b>{pct(split.loss)}</b>
+              </span>
+            </div>
+          </div>
+        )}
+
+        {engineOn && (lastPly || tension) && (
+          <div className="note">
+            {lastPly && lastJudged && (
+              <p>
+                <span className={`q q-${lastJudged.quality}`}>{qualityLabel(lastJudged.quality, t)}</span>
+                <b>
+                  {lastWasWhite ? `${lastMoveNo}.` : `${lastMoveNo}…`} {localizeSan(lastPly.san, notation)}
+                  {QUALITY_GLYPH[lastJudged.quality] && lastJudged.quality !== 'best' ? QUALITY_GLYPH[lastJudged.quality] : ''}
+                </b>
+                {lastJudged.loss >= 0.1 && (
+                  <span className="muted">
+                    {' '}
+                    · {t.evalWent.replace('{a}', formatEval(lastJudged.before)).replace('{b}', formatEval(lastJudged.after))}
+                  </span>
+                )}
+              </p>
+            )}
+            {tension && (
+              <p>
+                <span className={`q ${tension.critical ? 'q-critical' : 'q-calm'}`}>{tension.critical ? t.critical : t.calm}</span>
+                {tension.text}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
-      {game.opening && (
+      {game.opening && !paused && (
         <div className="opening">
           <span className="eco">{game.eco}</span>
           {game.opening}
@@ -105,11 +185,19 @@ export function AnalysisPanel({ game, fen, shown, evaluation }: Props) {
           const whiteMove = (i % 2 === 0) === whiteStarts;
           const moveNo = firstMoveNo + Math.floor((i + (whiteStarts ? 0 : 1)) / 2);
           const active = i + 1 === shown;
+          const judged = engineOn ? judgePly(game, i) : undefined;
+          const glyph = judged && judged.quality !== 'best' ? QUALITY_GLYPH[judged.quality] : '';
           return (
             <span className="mv" key={i}>
               {(whiteMove || i === 0) && <span className="move-num">{whiteMove ? `${moveNo}.` : `${moveNo}…`}</span>}
-              <button ref={active ? activeRef : undefined} className={`move ${active ? 'active' : ''}`} onClick={() => setViewPly(i + 1)}>
+              <button
+                ref={active ? activeRef : undefined}
+                className={`move ${active ? 'active' : ''}`}
+                onClick={() => setViewPly(i + 1)}
+                title={judged && glyph ? qualityLabel(judged.quality, t) : undefined}
+              >
                 {localizeSan(p.san, notation)}
+                {glyph && <span className={`glyph g-${judged!.quality}`}>{glyph}</span>}
               </button>
             </span>
           );
