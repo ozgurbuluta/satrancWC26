@@ -3,7 +3,10 @@
 const params = new URLSearchParams(window.location.search);
 
 /** Lichess broadcast tournament id. `?tour=` overrides it, which is handy for testing on any live broadcast. */
-export const TOUR_ID = params.get('tour') || 'qfkdt8mn';
+const DEFAULT_TOUR_ID = 'qfkdt8mn';
+export const TOUR_ID = params.get('tour') || DEFAULT_TOUR_ID;
+/** False when the page is pointed at another broadcast for testing. */
+export const IS_MATCH = TOUR_ID === DEFAULT_TOUR_ID;
 /** Optional `?round=` forces a specific round id. */
 export const FORCED_ROUND_ID = params.get('round');
 
@@ -27,61 +30,52 @@ export interface StreamPreset {
   id: string;
   label: string;
   lang: 'tr' | 'en';
-  kind: 'youtube-channel' | 'twitch' | 'kick';
-  /** YouTube channel id, Twitch channel name or Kick channel slug. */
-  ref: string;
+  /** YouTube channel id; its current live stream is embedded when no video is pinned. */
+  channelId: string;
   /** Page to open in a new tab. */
   url: string;
+  /** Exact video per game number, when known. Falls back to the channel's live stream. */
+  videos?: Record<number, string>;
 }
 
+/**
+ * Checked on 24 Nov 2026. Chess.com Türkçe streams on YouTube, Twitch and Kick,
+ * but YouTube is its main home (largest audience by far, the match stream is
+ * scheduled there, and the embed needs no per-domain setup), so only YouTube is
+ * listed. Twitch and Kick links can still be pasted.
+ */
 export const STREAM_PRESETS: StreamPreset[] = [
   {
     id: 'yt-chesscomtr',
     label: 'Chess.com Türkçe',
     lang: 'tr',
-    kind: 'youtube-channel',
-    ref: 'UCTQbZcv-4ImPg9rC9jIjzpQ',
+    channelId: 'UCTQbZcv-4ImPg9rC9jIjzpQ',
     url: 'https://www.youtube.com/@chesscomturkce/live',
+    videos: { 1: 'Q102LHSWMOg' },
   },
   {
-    id: 'tw-chesscomtr',
-    label: 'Twitch TR',
+    id: 'yt-satranchess',
+    label: 'SatranChess',
     lang: 'tr',
-    kind: 'twitch',
-    ref: 'chesscomturkce',
-    url: 'https://www.twitch.tv/chesscomturkce',
-  },
-  {
-    id: 'kick-chesscomtr',
-    label: 'Kick TR',
-    lang: 'tr',
-    kind: 'kick',
-    ref: 'chesscomtr',
-    url: 'https://kick.com/chesscomtr',
-  },
-  {
-    id: 'yt-chesscomtr-plus',
-    label: 'Türkçe +',
-    lang: 'tr',
-    kind: 'youtube-channel',
-    ref: 'UCFCX2x3umRfv-Mih8iHQb9A',
-    url: 'https://www.youtube.com/@chesscomtr/live',
-  },
-  {
-    id: 'yt-fide',
-    label: 'FIDE (EN)',
-    lang: 'en',
-    kind: 'youtube-channel',
-    ref: 'UC9B47GnzCRFHTT1BIBWvStQ',
-    url: 'https://www.youtube.com/@FIDE_chess/live',
+    channelId: 'UCwsdTtR9Lwl1TpoY2vPgjNw',
+    url: 'https://www.youtube.com/@SatranChess/live',
+    videos: { 1: '3R1Hin3lQgI' },
   },
   {
     id: 'yt-chesscom',
     label: 'Chess.com (EN)',
     lang: 'en',
-    kind: 'youtube-channel',
-    ref: 'UC5kS0l76kC0xOzMPtOmSFGw',
+    channelId: 'UC5kS0l76kC0xOzMPtOmSFGw',
     url: 'https://www.youtube.com/@chess/live',
+    videos: { 1: '2JKUu5nRN8A' },
+  },
+  {
+    id: 'yt-fide',
+    label: 'FIDE (EN)',
+    lang: 'en',
+    channelId: 'UC9B47GnzCRFHTT1BIBWvStQ',
+    url: 'https://www.youtube.com/@FIDE_chess/live',
+    videos: { 1: '7dyXiy2kWsw' },
   },
 ];
 

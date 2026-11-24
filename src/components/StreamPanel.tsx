@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { STREAM_PRESETS } from '../config';
+import { IS_MATCH, STREAM_PRESETS } from '../config';
 import { useT } from '../hooks';
-import { useStore } from '../store';
+import { selectRoundNo, useStore } from '../store';
+import { CatchUpBar } from './CatchUpBar';
 
 interface Embed {
   src: string;
@@ -11,7 +12,7 @@ interface Embed {
 const host = () => window.location.hostname || 'localhost';
 
 const youtubeChannel = (id: string): string => `https://www.youtube.com/embed/live_stream?channel=${id}`;
-const youtubeVideo = (id: string): string => `https://www.youtube.com/embed/${id}`;
+const youtubeVideo = (id: string): string => `https://www.youtube.com/embed/${id}?rel=0`;
 const twitch = (name: string): string => `https://player.twitch.tv/?channel=${name}&parent=${host()}&autoplay=false`;
 const kick = (name: string): string => `https://player.kick.com/${name}`;
 
@@ -47,17 +48,25 @@ export function StreamPanel() {
   const customStream = useStore(s => s.settings.customStream);
   const hidden = useStore(s => s.settings.streamHidden);
   const delaySec = useStore(s => s.settings.delaySec);
+  const paused = useStore(s => s.paused);
+  const roundNo = useStore(selectRoundNo);
   const setSetting = useStore(s => s.setSetting);
   const [draft, setDraft] = useState(customStream);
   const [bad, setBad] = useState(false);
   const [showPaste, setShowPaste] = useState(false);
+  const uncovered = useStore(s => s.streamUncovered);
+  const setUncovered = useStore(s => s.setStreamUncovered);
 
+  const preset = STREAM_PRESETS.find(x => x.id === streamId);
   const embed = useMemo<Embed | undefined>(() => {
     if (streamId === 'custom') return parseStreamLink(customStream);
-    const p = STREAM_PRESETS.find(x => x.id === streamId) ?? STREAM_PRESETS[0];
-    const src = p.kind === 'youtube-channel' ? youtubeChannel(p.ref) : p.kind === 'twitch' ? twitch(p.ref) : kick(p.ref);
-    return { src, url: p.url };
-  }, [streamId, customStream]);
+    const p = preset ?? STREAM_PRESETS[0];
+    // The exact video for this game when it is known, else whatever the channel is streaming live.
+    const video = IS_MATCH ? p.videos?.[roundNo] : undefined;
+    return video
+      ? { src: youtubeVideo(video), url: `https://www.youtube.com/watch?v=${video}` }
+      : { src: youtubeChannel(p.channelId), url: p.url };
+  }, [streamId, customStream, preset, roundNo]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +78,8 @@ export function StreamPanel() {
     setShowPaste(false);
   };
 
+  const covered = paused && !uncovered;
+
   return (
     <section className={`stream ${hidden ? 'is-hidden' : ''}`}>
       <div className="stream-top">
@@ -77,8 +88,8 @@ export function StreamPanel() {
             <button
               key={p.id}
               role="tab"
-              aria-selected={streamId === p.id}
-              className={`chip ${streamId === p.id ? 'active' : ''}`}
+              aria-selected={(preset?.id ?? STREAM_PRESETS[0].id) === p.id && streamId !== 'custom'}
+              className={`chip ${(preset?.id ?? STREAM_PRESETS[0].id) === p.id && streamId !== 'custom' ? 'active' : ''}`}
               onClick={() => {
                 setSetting('streamId', p.id);
                 if (hidden) setSetting('streamHidden', false);
@@ -87,11 +98,7 @@ export function StreamPanel() {
               {p.label}
             </button>
           ))}
-          <button
-            className={`chip ${streamId === 'custom' ? 'active' : ''}`}
-            aria-expanded={showPaste}
-            onClick={() => setShowPaste(v => !v)}
-          >
+          <button className={`chip ${streamId === 'custom' ? 'active' : ''}`} aria-expanded={showPaste} onClick={() => setShowPaste(v => !v)}>
             + {t.customStream}
           </button>
         </div>
@@ -128,8 +135,18 @@ export function StreamPanel() {
       )}
 
       {!hidden && (
-        <div className="player">
-          {embed ? (
+        <div className={`player ${covered ? 'covered' : ''}`}>
+          {covered ? (
+            <div className="cover">
+              <CatchUpBar embedded />
+              <p className="cover-note">
+                {t.streamCovered}{' '}
+                <button className="link" onClick={() => setUncovered(true)}>
+                  {t.showStreamAnyway}
+                </button>
+              </p>
+            </div>
+          ) : embed ? (
             <iframe
               key={embed.src}
               src={embed.src}
@@ -144,31 +161,33 @@ export function StreamPanel() {
         </div>
       )}
 
-      <div className="sync" title={t.syncHelp}>
-        <div className="sync-head">
-          <strong>{t.syncTitle}</strong>
-          <span className="muted small sync-help">{t.syncShort}</span>
-          <span className={`sync-value ${delaySec > 0 ? 'on' : ''}`}>{delaySec > 0 ? `${delaySec} ${t.seconds}` : t.syncOff}</span>
-        </div>
-        <div className="sync-row">
-          <input
-            type="range"
-            min={0}
-            max={90}
-            step={1}
-            value={delaySec}
-            onChange={e => setSetting('delaySec', Number(e.target.value))}
-            aria-label={t.syncTitle}
-          />
-          <div className="sync-steps">
-            {DELAY_STEPS.map(n => (
-              <button key={n} className={`step ${delaySec === n ? 'active' : ''}`} onClick={() => setSetting('delaySec', n)}>
-                {n}
-              </button>
-            ))}
+      {!paused && (
+        <div className="sync" title={t.syncHelp}>
+          <div className="sync-head">
+            <strong>{t.syncTitle}</strong>
+            <span className="muted small sync-help">{t.syncShort}</span>
+            <span className={`sync-value ${delaySec > 0 ? 'on' : ''}`}>{delaySec > 0 ? `${delaySec} ${t.seconds}` : t.syncOff}</span>
+          </div>
+          <div className="sync-row">
+            <input
+              type="range"
+              min={0}
+              max={90}
+              step={1}
+              value={delaySec}
+              onChange={e => setSetting('delaySec', Number(e.target.value))}
+              aria-label={t.syncTitle}
+            />
+            <div className="sync-steps">
+              {DELAY_STEPS.map(n => (
+                <button key={n} className={`step ${delaySec === n ? 'active' : ''}`} onClick={() => setSetting('delaySec', n)}>
+                  {n}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }
