@@ -146,6 +146,20 @@ const tr = {
   noClock: 'Bu parti için saat bilgisi yok.',
   approx: 'Hızlı analizle bulunur; derin analiz farklı sonuç verebilir.',
   move: 'Hamle',
+  // --- following the match ---
+  nextStarted: '{n}. parti başladı',
+  nextSoon: '{n}. parti başlamak üzere',
+  switchingIn: '{s} sn içinde açılacak',
+  goToGame: 'Partiye geç',
+  stayHere: 'Burada kal',
+  nextGameAt: 'Sonraki parti: {when}',
+  tiebreak: 'Tay-brek',
+  // --- statistics ---
+  stats: 'Anonim istatistik',
+  statsOn: 'Açık',
+  statsOff: 'Kapalı',
+  statsHelp:
+    'Hangi özelliklerin kullanıldığını görmek için çerezsiz, anonim istatistik tutulur (PostHog, AB sunucuları). Kişi profili oluşturulmaz, IP adresi saklanmaz, oturum kaydı alınmaz. Bu tarayıcı için buradan kapatabilirsin.',
 };
 
 const en: typeof tr = {
@@ -293,6 +307,20 @@ const en: typeof tr = {
   noClock: 'No clock data for this game.',
   approx: 'Found with a quick analysis; a deep analysis can differ.',
   move: 'Move',
+  // --- following the match ---
+  nextStarted: 'Game {n} has started',
+  nextSoon: 'Game {n} is about to start',
+  switchingIn: 'opening in {s} s',
+  goToGame: 'Go to the game',
+  stayHere: 'Stay here',
+  nextGameAt: 'Next game: {when}',
+  tiebreak: 'Tie-break',
+  // --- statistics ---
+  stats: 'Anonymous statistics',
+  statsOn: 'On',
+  statsOff: 'Off',
+  statsHelp:
+    'Cookieless, anonymous statistics show which features get used (PostHog, EU servers). No person profile is made, no IP address is stored and no session is recorded. You can turn it off for this browser here.',
 };
 
 export type Strings = typeof tr;

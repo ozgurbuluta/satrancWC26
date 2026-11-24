@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { CHAMPION_FIDE_ID, FORCED_ROUND_ID, TOUR_ID } from './config';
+import { CHAMPION_FIDE_ID, FORCED_ROUND_ID, GAMES_IN_MATCH, IS_MATCH, STREAM_PRESETS, TOUR_ID } from './config';
 import type { Lang } from './i18n';
+import { track } from './lib/analytics';
 import { resultPoints, type Notation } from './lib/format';
 import {
   followRound,
@@ -13,6 +14,7 @@ import {
 } from './lib/lichess';
 import { parseGame, splitGames, type GameData, type PlayerInfo } from './lib/pgn';
 import { playMove } from './lib/sound';
+import { fetchStreamFeeds, type StreamFeeds } from './lib/streams';
 
 export interface Settings {
   lang: Lang;
@@ -101,6 +103,8 @@ interface State {
   loadError: boolean;
   feds: Record<string, string>;
   matchGames: MatchGame[];
+  /** Recent live streams of each preset channel, used to find a game's video. */
+  streamFeeds: StreamFeeds;
   /** Number of plies of the selected game that are visible (after sync delay and pause). */
   revealed: number;
   resultVisible: boolean;
@@ -115,6 +119,10 @@ interface State {
   preview: Preview | null;
   /** The viewer chose to see the video even though the board is paused. */
   streamUncovered: boolean;
+  /** Follow the match: open the next game by itself when it starts. */
+  followLatest: boolean;
+  /** A newer game is live or about to start. `since` restarts the short countdown before it opens. */
+  nextUp: { roundId: string; since: number } | null;
   settings: Settings;
   init: () => void;
   selectRound: (id: string) => void;
@@ -129,6 +137,10 @@ interface State {
   setAutoplay: (ms: number) => void;
   setPreview: (p: Preview | null) => void;
   setStreamUncovered: (v: boolean) => void;
+  /** Open the game announced in `nextUp` (or any round) and keep following the match. */
+  goToRound: (id: string) => void;
+  /** Dismiss the announcement and stay on this game. */
+  stayHere: () => void;
   setSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
 }
 
@@ -145,6 +157,32 @@ const delayedCount = (g: GameData, delaySec: number): number => {
   while (n < g.plies.length && g.plies[n].seenAt <= tNow) n++;
   return n;
 };
+
+/** Seconds a "next game" announcement is shown before the page moves there by itself. */
+export const AUTO_SWITCH_SEC = 10;
+const SOON_MS = 30 * 60 * 1000;
+
+/** The game that is being played now, or starts within half an hour. */
+const liveRoundOf = (rounds: RoundInfo[]): RoundInfo | undefined => {
+  const now = Date.now();
+  return (
+    rounds.find(r => r.ongoing && !r.finished) ??
+    rounds.find(r => !r.finished && r.startsAt !== undefined && r.startsAt - now <= SOON_MS && now - r.startsAt < 12 * 3600 * 1000)
+  );
+};
+
+/** Board to open in a round with several games (tie-breaks are played one after another). */
+const pickGame = (order: string[], games: Record<string, GameData>): string | undefined => {
+  const started = order.filter(id => games[id].plies.length > 0);
+  return [...started].reverse().find(id => games[id].result === '*') ?? started[started.length - 1] ?? order[0];
+};
+
+/** A game the viewer chose not to be taken to; it is not announced again. */
+let declinedRoundId: string | undefined;
+let pauseReveals = 0;
+let feedFallbackSent = false;
+let delayTrackTimer: number | undefined;
+const browsedGames = new Set<string>();
 
 export const useStore = create<State>((set, get) => {
   const persistPause = () => {
@@ -259,12 +297,99 @@ export const useStore = create<State>((set, get) => {
     const patch: Partial<State> = { games, gameOrder: order, loadError: false };
     if (!s.gameId && order[0]) {
       // First data for this round: decide the pause state before anything is shown.
-      patch.gameId = order[0];
-      Object.assign(patch, pauseFor(order[0]));
+      const first = pickGame(order, games) ?? order[0];
+      patch.gameId = first;
+      Object.assign(patch, pauseFor(first));
     }
     set(patch);
     recomputeReveal();
     if (needThinkSync) void syncThinkTime(roundId);
+    followNextBoard();
+  };
+
+  /** Tie-break days: once a game is over and the next one has started, move on to it. */
+  const followNextBoard = () => {
+    const s = get();
+    if (!s.followLatest || s.paused || s.viewPly !== null || s.preview || s.gameOrder.length < 2 || !s.gameId) return;
+    const cur = s.games[s.gameId];
+    if (!cur || cur.result === '*') return;
+    const idx = s.gameOrder.indexOf(s.gameId);
+    const next = s.gameOrder.slice(idx + 1).find(id => s.games[id].result === '*' && s.games[id].plies.length > 0);
+    if (!next) return;
+    set({ gameId: next, viewPly: null, revealed: 0, resultVisible: false, preview: null, ...pauseFor(next) });
+    recomputeReveal();
+    track('game_select', { how: 'auto', board: s.gameOrder.indexOf(next) + 1 });
+  };
+
+  /** Opens a round's feed. `follow` says whether the page keeps moving on with the match afterwards. */
+  const openRound = (id: string, follow: boolean, how: 'initial' | 'manual' | 'auto') => {
+    stopFeed?.();
+    stopAutoplay();
+    rawById.clear();
+    window.clearTimeout(revealTimer);
+    set({
+      roundId: id,
+      games: {},
+      gameOrder: [],
+      gameId: undefined,
+      revealed: 0,
+      resultVisible: false,
+      viewPly: null,
+      paused: false,
+      pausePly: 0,
+      autoplayMs: 0,
+      preview: null,
+      nextUp: null,
+      followLatest: follow,
+      feed: 'connecting',
+    });
+    if (how !== 'initial') track('game_select', { how, game_no: get().rounds.findIndex(r => r.id === id) + 1 });
+    let firstData = true;
+    stopFeed = followRound(
+      id,
+      pgn => {
+        ingest(id, pgn);
+        if (firstData) {
+          firstData = false;
+          void syncThinkTime(id);
+        }
+      },
+      feed => {
+        set({ feed });
+        if (feed === 'polling' && !feedFallbackSent) {
+          feedFallbackSent = true;
+          track('feed_fallback');
+        }
+      },
+    );
+  };
+
+  /**
+   * Notices when a later game is live or about to start. The viewer gets a
+   * short announcement; unless they decline, are browsing earlier moves, or
+   * are still watching an unfinished game, the page then opens it by itself.
+   * Nothing is announced while paused, so a spoiler-free viewer learns nothing.
+   */
+  const checkNextUp = () => {
+    const s = get();
+    if (FORCED_ROUND_ID || !s.roundId) return;
+    const live = liveRoundOf(s.rounds);
+    const curIdx = s.rounds.findIndex(r => r.id === s.roundId);
+    const liveIdx = live ? s.rounds.findIndex(r => r.id === live.id) : -1;
+    if (!live || liveIdx <= curIdx || s.paused || live.id === declinedRoundId) {
+      if (s.nextUp) set({ nextUp: null });
+      return;
+    }
+    const cur = s.gameId ? s.games[s.gameId] : undefined;
+    const stillPlaying = !!cur && cur.result === '*' && cur.plies.length > 0;
+    const idle = s.viewPly === null && !s.preview && !stillPlaying;
+    const now = Date.now();
+    if (!s.nextUp || s.nextUp.roundId !== live.id || !idle) {
+      // (Re)start the countdown; while the viewer is busy it keeps restarting.
+      set({ nextUp: { roundId: live.id, since: now } });
+      return;
+    }
+    if (s.followLatest && now - s.nextUp.since >= AUTO_SWITCH_SEC * 1000) openRound(live.id, true, 'auto');
   };
 
   const loadMatchGames = async () => {
@@ -290,18 +415,30 @@ export const useStore = create<State>((set, get) => {
     }
   };
 
+  const loadStreamFeeds = async () => {
+    if (!IS_MATCH) return;
+    try {
+      set({ streamFeeds: await fetchStreamFeeds(STREAM_PRESETS.map(p => p.channelId)) });
+    } catch {
+      // presets fall back to pinned videos and each channel's live stream
+    }
+  };
+
   const loadTournament = async (first: boolean) => {
     try {
       const data = await getTournament(TOUR_ID);
       set({ tour: data.tour, rounds: data.rounds });
       if (first) {
+        const forced = FORCED_ROUND_ID && data.rounds.find(r => r.id === FORCED_ROUND_ID)?.id;
         const pick =
-          (FORCED_ROUND_ID && data.rounds.find(r => r.id === FORCED_ROUND_ID)?.id) ||
-          data.rounds.find(r => r.ongoing)?.id ||
+          forced ||
+          liveRoundOf(data.rounds)?.id ||
           data.defaultRoundId ||
           data.rounds.find(r => !r.finished)?.id ||
           data.rounds[data.rounds.length - 1]?.id;
-        if (pick) get().selectRound(pick);
+        if (pick) openRound(pick, !forced, 'initial');
+      } else {
+        checkNextUp();
       }
     } catch {
       if (first) {
@@ -319,6 +456,7 @@ export const useStore = create<State>((set, get) => {
     loadError: false,
     feds: {},
     matchGames: [],
+    streamFeeds: {},
     revealed: 0,
     resultVisible: false,
     viewPly: null,
@@ -328,6 +466,8 @@ export const useStore = create<State>((set, get) => {
     autoplayMs: 0,
     preview: null,
     streamUncovered: false,
+    followLatest: true,
+    nextUp: null,
     settings: { ...DEFAULTS, ...readJson<Partial<Settings>>(SETTINGS_KEY, {}) },
 
     init: () => {
@@ -335,41 +475,28 @@ export const useStore = create<State>((set, get) => {
       started = true;
       void loadTournament(true);
       void loadMatchGames();
+      void loadStreamFeeds();
+      window.setInterval(() => void loadStreamFeeds(), 10 * 60000);
       window.setInterval(() => void loadTournament(false), 60000);
       window.setInterval(() => void loadMatchGames(), 180000);
+      // Start times and the announcement countdown are checked locally, without a request.
+      window.setInterval(checkNextUp, 2000);
     },
 
     selectRound: id => {
-      stopFeed?.();
-      stopAutoplay();
-      rawById.clear();
-      window.clearTimeout(revealTimer);
-      set({
-        roundId: id,
-        games: {},
-        gameOrder: [],
-        gameId: undefined,
-        revealed: 0,
-        resultVisible: false,
-        viewPly: null,
-        paused: false,
-        pausePly: 0,
-        autoplayMs: 0,
-        preview: null,
-        feed: 'connecting',
-      });
-      let firstData = true;
-      stopFeed = followRound(
-        id,
-        pgn => {
-          ingest(id, pgn);
-          if (firstData) {
-            firstData = false;
-            void syncThinkTime(id);
-          }
-        },
-        feed => set({ feed }),
-      );
+      // Picking the game that is live (or the newest one) keeps following the match.
+      const { rounds } = get();
+      const live = liveRoundOf(rounds);
+      const newest = live?.id ?? [...rounds].reverse().find(r => r.finished || r.ongoing)?.id;
+      openRound(id, !FORCED_ROUND_ID && id === newest, 'manual');
+    },
+
+    goToRound: id => openRound(id, true, 'manual'),
+
+    stayHere: () => {
+      declinedRoundId = get().nextUp?.roundId;
+      set({ nextUp: null, followLatest: false });
+      track('next_game_dismiss');
     },
 
     selectGame: id => {
@@ -379,8 +506,12 @@ export const useStore = create<State>((set, get) => {
     },
 
     setViewPly: n => {
-      const { revealed } = get();
+      const { revealed, gameId } = get();
       set({ viewPly: n === null || n >= revealed ? null : Math.max(0, n), preview: null });
+      if (n !== null && gameId && !browsedGames.has(gameId)) {
+        browsedGames.add(gameId);
+        track('move_browse');
+      }
     },
 
     step: delta => {
@@ -396,14 +527,22 @@ export const useStore = create<State>((set, get) => {
       const cur = viewPly ?? revealed;
       const n = Math.max(0, Math.min(revealed, cur + delta));
       set({ viewPly: n >= revealed ? null : n });
+      const { gameId } = get();
+      if (gameId && !browsedGames.has(gameId)) {
+        browsedGames.add(gameId);
+        track('move_browse');
+      }
     },
 
     toggleFlip: () => set(s => ({ flipped: !s.flipped })),
 
     pause: () => {
       stopAutoplay();
-      set(s => ({ paused: true, pausePly: s.revealed, autoplayMs: 0, streamUncovered: false }));
+      set(s => ({ paused: true, pausePly: s.revealed, autoplayMs: 0, streamUncovered: false, nextUp: null }));
       persistPause();
+      pauseReveals = 0;
+      const g = selectGameData(get());
+      track('pause_start', { at_move: Math.ceil(get().revealed / 2), game_over: !!g && g.result !== '*' });
     },
 
     resume: () => {
@@ -411,6 +550,7 @@ export const useStore = create<State>((set, get) => {
       set({ paused: false, autoplayMs: 0, viewPly: null, preview: null });
       persistPause();
       recomputeReveal();
+      track('pause_end', { reason: 'go_live', moves_revealed: pauseReveals });
     },
 
     revealNext: () => {
@@ -422,23 +562,28 @@ export const useStore = create<State>((set, get) => {
         // Caught up with everything that has been played: back to live.
         stopAutoplay();
         set({ paused: false, autoplayMs: 0, viewPly: null, preview: null });
+        track('pause_end', { reason: 'caught_up', moves_revealed: pauseReveals + 1 });
       } else {
         set({ pausePly: s.pausePly + 1, viewPly: null, preview: null });
       }
+      pauseReveals++;
       persistPause();
       recomputeReveal();
     },
 
     restart: () => {
       stopAutoplay();
-      set({ paused: true, pausePly: 0, autoplayMs: 0, viewPly: null, preview: null });
+      set({ paused: true, pausePly: 0, autoplayMs: 0, viewPly: null, preview: null, nextUp: null });
       persistPause();
       recomputeReveal();
+      pauseReveals = 0;
+      track('pause_restart');
     },
 
     setAutoplay: ms => {
       stopAutoplay();
       set({ autoplayMs: ms });
+      if (ms > 0) track('pause_autoplay', { seconds: ms / 1000 });
       if (ms > 0) {
         autoplayTimer = window.setInterval(() => {
           if (!get().paused) stopAutoplay();
@@ -447,15 +592,28 @@ export const useStore = create<State>((set, get) => {
       }
     },
 
-    setPreview: p => set({ preview: p }),
+    setPreview: p => {
+      set({ preview: p });
+      if (p) track('similar_preview');
+    },
 
-    setStreamUncovered: v => set({ streamUncovered: v }),
+    setStreamUncovered: v => {
+      set({ streamUncovered: v });
+      if (v) track('stream_uncover');
+    },
 
     setSetting: (key, value) => {
       const settings = { ...get().settings, [key]: value };
       writeJson(SETTINGS_KEY, settings);
       set({ settings });
-      if (key === 'delaySec') recomputeReveal();
+      if (key === 'delaySec') {
+        recomputeReveal();
+        // the slider fires on every step; record where it comes to rest
+        window.clearTimeout(delayTrackTimer);
+        delayTrackTimer = window.setTimeout(() => track('sync_delay_set', { seconds: get().settings.delaySec }), 1500);
+      } else if (key === 'streamId') track('stream_select', { stream: String(value) });
+      else if (key === 'streamHidden') track('stream_toggle', { hidden: !!value });
+      else if (key !== 'customStream' && key !== 'sideWidth') track('setting_change', { setting: key, value: String(value) });
     },
   };
 });
@@ -529,6 +687,7 @@ export const selectScore = (s: State): MatchScore | undefined => {
   let bPoints = 0;
   let played = 0;
   for (const mg of s.matchGames) {
+    if (IS_MATCH && mg.roundNo > GAMES_IN_MATCH) continue; // tie-breaks are scored separately
     const pts = resultPoints(visibleResult(s, mg));
     if (!pts) continue;
     played++;
