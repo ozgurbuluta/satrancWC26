@@ -1,27 +1,20 @@
-import { useShallow } from 'zustand/react/shallow';
-import { POINTS_TO_WIN } from '../config';
+import { KNOWN_PLAYERS, POINTS_TO_WIN } from '../config';
 import { useT } from '../hooks';
 import { fedFlag, formatPoints, shortName } from '../lib/format';
-import { selectScore, useStore } from '../store';
-import { KNOWN_PLAYERS } from '../config';
 import type { PlayerInfo } from '../lib/pgn';
+import { selectRoundNo, selectScore, useStore, visibleResult } from '../store';
 
 const flagOf = (p: PlayerInfo, feds: Record<string, string>) =>
   fedFlag(p.fideId ? (feds[p.fideId] ?? KNOWN_PLAYERS[p.fideId]?.fed) : undefined);
 
 export function MatchPanel() {
   const t = useT();
-  const lang = useStore(s => s.settings.lang);
-  const rounds = useStore(s => s.rounds);
-  const roundId = useStore(s => s.roundId);
-  const matchGames = useStore(s => s.matchGames);
-  const tour = useStore(s => s.tour);
-  const feds = useStore(s => s.feds);
-  const resultVisible = useStore(s => s.resultVisible);
-  const revealed = useStore(s => s.revealed);
-  const liveGame = useStore(s => (s.gameId ? s.games[s.gameId] : undefined));
-  const selectRound = useStore(s => s.selectRound);
-  const score = useStore(useShallow(selectScore));
+  // This panel reads most of the state, so it simply follows all of it.
+  const state = useStore();
+  const { rounds, roundId, matchGames, tour, feds, revealed, paused, selectRound } = state;
+  const lang = state.settings.lang;
+  const score = selectScore(state);
+  const roundNo = selectRoundNo(state);
   const locale = lang === 'tr' ? 'tr-TR' : 'en-GB';
 
   const fmt = (ms: number | undefined) =>
@@ -57,11 +50,11 @@ export function MatchPanel() {
         {rounds.map((r, i) => {
           const mg = matchGames.find(g => g.roundNo === i + 1);
           const isCurrent = r.id === roundId;
-          // The game being watched honours the sync delay; others use the feed's result.
-          let result = mg?.result ?? '*';
-          if (isCurrent && liveGame) result = resultVisible ? liveGame.result : '*';
+          const result = mg ? visibleResult(state, mg) : '*';
           const done = result !== '*';
-          const live = !done && (isCurrent ? revealed > 0 : !!r.ongoing);
+          // While paused, later games are kept out of sight so the match score is not given away.
+          const concealed = paused && i + 1 > roundNo && !!mg && mg.result !== '*';
+          const live = !done && !concealed && (isCurrent ? revealed > 0 && !paused : !!r.ongoing);
           return (
             <li key={r.id}>
               <button className={`round ${isCurrent ? 'current' : ''}`} onClick={() => selectRound(r.id)}>
@@ -79,8 +72,12 @@ export function MatchPanel() {
                 <span className="round-when">
                   {done ? (
                     <b>{resultText(result)}</b>
+                  ) : concealed ? (
+                    <span className="muted">{t.hidden}</span>
                   ) : live ? (
                     <span className="live-pill">{t.live}</span>
+                  ) : isCurrent && paused ? (
+                    <span className="muted">⏸</span>
                   ) : (
                     <span className="muted">{fmt(r.startsAt)}</span>
                   )}

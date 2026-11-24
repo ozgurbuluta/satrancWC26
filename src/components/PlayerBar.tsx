@@ -23,9 +23,10 @@ export function PlayerBar({ game, color, player, shown, atLiveEdge, captured, le
   const fedFromFeed = useStore(s => (player.fideId ? s.feds[player.fideId] : undefined));
   const fed = fedFromFeed ?? (player.fideId ? KNOWN_PLAYERS[player.fideId]?.fed : undefined);
 
-  const ticking = atLiveEdge && !resultVisible && shown > 0;
+  const paused = useStore(s => s.paused);
+  const ticking = atLiveEdge && !resultVisible && !paused && shown > 0;
   useNow(250, ticking);
-  const clocks = clocksAt(game, shown, atLiveEdge, resultVisible, delaySec);
+  const clocks = clocksAt(game, shown, ticking, delaySec);
   const seconds = clocks[color];
   const running = clocks.running === color;
   const low = seconds !== undefined && seconds < 300;

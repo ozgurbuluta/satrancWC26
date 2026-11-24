@@ -48,6 +48,8 @@ export function SettingsPanel() {
       <Toggle label={t.engineSetting} value={settings.engine} onChange={v => setSetting('engine', v)} on={t.on} off={t.off} />
       <Toggle label={t.arrowSetting} value={settings.arrow} onChange={v => setSetting('arrow', v)} on={t.on} off={t.off} />
       <Toggle label={t.sound} value={settings.sound} onChange={v => setSetting('sound', v)} on={t.on} off={t.off} />
+      <Toggle label={t.spoilerShield} value={settings.spoilerShield} onChange={v => setSetting('spoilerShield', v)} on={t.on} off={t.off} />
+      <p className="muted small">{t.spoilerShieldHelp}</p>
     </div>
   );
 }

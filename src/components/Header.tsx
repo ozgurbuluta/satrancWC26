@@ -16,6 +16,7 @@ export function Header() {
   const feed = useStore(s => s.feed);
   const feds = useStore(s => s.feds);
   const delaySec = useStore(s => s.settings.delaySec);
+  const paused = useStore(s => s.paused);
   const score = useStore(useShallow(selectScore));
 
   const roundIdx = rounds.findIndex(r => r.id === roundId);
@@ -25,7 +26,8 @@ export function Header() {
   const flag = (p: PlayerInfo) => fedFlag(p.fideId ? (feds[p.fideId] ?? KNOWN_PLAYERS[p.fideId]?.fed) : undefined);
 
   let status: React.ReactNode = null;
-  if (resultVisible) status = <span className="pill done">{t.finished}</span>;
+  if (paused) status = <span className="pill paused">⏸ {t.pausedPill}</span>;
+  else if (resultVisible) status = <span className="pill done">{t.finished}</span>;
   else if (revealed > 0)
     status = (
       <span className="pill live">
@@ -71,7 +73,7 @@ export function Header() {
       )}
 
       <div className="top-right">
-        {delaySec > 0 && <span className="pill delay">{t.boardDelayed.replace('{n}', String(delaySec))}</span>}
+        {delaySec > 0 && !paused && <span className="pill delay">{t.boardDelayed.replace('{n}', String(delaySec))}</span>}
         {status}
         <span
           className={`feed-dot ${feed}`}
