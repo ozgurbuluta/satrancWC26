@@ -13,6 +13,14 @@ bağımsız bir hayran sitesi.
 - **Grafikler:** değerlendirme grafiği, kritik anlar ve hamle başına düşünme süresi.
 - **Kim kazanır?** motor değerlendirmesinden kazanma/beraberlik tahmini ve hamle kalitesi (yanlışlık, hata, büyük hata).
 
+- **Maçı kendi takip eder:** yeni parti başlayınca kısa bir duyurudan sonra o partiye geçer; her günün yayınını kanalın canlı yayın listesinden kendi bulur.
+
+## İstatistik
+
+Site, hangi özelliklerin kullanıldığını görmek için çerezsiz ve anonim istatistik tutabilir (PostHog, AB sunucuları).
+`VITE_POSTHOG_KEY` tanımlı değilse hiçbir şey yüklenmez ve gönderilmez. Kurulum, gönderilen olaylar ve gizlilik ayrıntıları:
+[docs/ANALYTICS.md](docs/ANALYTICS.md).
+
 ## Geliştirme
 
 ```bash
