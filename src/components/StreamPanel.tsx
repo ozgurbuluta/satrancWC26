@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { IS_MATCH, STREAM_PRESETS } from '../config';
 import { useT } from '../hooks';
+import { track, trackOutbound } from '../lib/analytics';
+import { pickVideo } from '../lib/streams';
 import { selectRoundNo, useStore } from '../store';
 import { CatchUpBar } from './CatchUpBar';
 
@@ -50,6 +52,8 @@ export function StreamPanel() {
   const delaySec = useStore(s => s.settings.delaySec);
   const paused = useStore(s => s.paused);
   const roundNo = useStore(selectRoundNo);
+  const round = useStore(s => s.rounds.find(r => r.id === s.roundId));
+  const feeds = useStore(s => s.streamFeeds);
   const setSetting = useStore(s => s.setSetting);
   const [draft, setDraft] = useState(customStream);
   const [bad, setBad] = useState(false);
@@ -61,12 +65,12 @@ export function StreamPanel() {
   const embed = useMemo<Embed | undefined>(() => {
     if (streamId === 'custom') return parseStreamLink(customStream);
     const p = preset ?? STREAM_PRESETS[0];
-    // The exact video for this game when it is known, else whatever the channel is streaming live.
-    const video = IS_MATCH ? p.videos?.[roundNo] : undefined;
+    // The exact video for this game when it is known or can be found, else whatever the channel is streaming live.
+    const video = IS_MATCH ? (p.videos?.[roundNo] ?? pickVideo(feeds[p.channelId], roundNo, round, p.exclude)) : undefined;
     return video
       ? { src: youtubeVideo(video), url: `https://www.youtube.com/watch?v=${video}` }
       : { src: youtubeChannel(p.channelId), url: p.url };
-  }, [streamId, customStream, preset, roundNo]);
+  }, [streamId, customStream, preset, roundNo, round, feeds]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +79,7 @@ export function StreamPanel() {
     if (!parsed) return;
     setSetting('customStream', draft.trim());
     setSetting('streamId', 'custom');
+    track('stream_link_paste', { platform: /twitch/.test(parsed.src) ? 'twitch' : /kick/.test(parsed.src) ? 'kick' : 'youtube' });
     setShowPaste(false);
   };
 
@@ -103,7 +108,15 @@ export function StreamPanel() {
           </button>
         </div>
         {embed && !hidden && (
-          <a className="icon-btn" href={embed.url} target="_blank" rel="noreferrer" title={t.openInTab} aria-label={t.openInTab}>
+          <a
+            className="icon-btn"
+            href={embed.url}
+            target="_blank"
+            rel="noreferrer"
+            title={t.openInTab}
+            aria-label={t.openInTab}
+            onClick={() => (streamId === 'custom' ? track('outbound_click', { link_domain: new URL(embed.url).hostname.replace(/^www\./, ''), outbound: true }) : trackOutbound(embed.url))}
+          >
             ↗
           </a>
         )}

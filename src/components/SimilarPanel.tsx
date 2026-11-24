@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useT } from '../hooks';
+import { track } from '../lib/analytics';
 import { findNovelty, getMasterPgn, getMasters, totalGames, type ExplorerData, type ExplorerGame } from '../lib/explorer';
 import { localizeSan } from '../lib/format';
 import { parseGame, type GameData, type Ply } from '../lib/pgn';
@@ -63,7 +64,14 @@ function MasterGame({ g, fen }: { g: ExplorerGame; fen: string }) {
 
   return (
     <li className={`mgame ${open ? 'open' : ''}`}>
-      <button className="mgame-head" onClick={() => setOpen(v => !v)} aria-expanded={open}>
+      <button
+        className="mgame-head"
+        onClick={() => {
+          if (!open) track('similar_game_open', { year: g.year });
+          setOpen(v => !v);
+        }}
+        aria-expanded={open}
+      >
         <span className="mgame-players">
           {g.white.name} <span className="muted">{g.white.rating}</span> – {g.black.name} <span className="muted">{g.black.rating}</span>
         </span>

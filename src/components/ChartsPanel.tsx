@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CHAMPION_FIDE_ID } from '../config';
 import { useScoresVersion, useT } from '../hooks';
+import { track } from '../lib/analytics';
 import { fillScores, scoreOf, stopFillScores, winningChances } from '../lib/engine';
 import { formatClock, formatEval, localizeSan, shortName } from '../lib/format';
 import type { GameData } from '../lib/pgn';
@@ -97,7 +98,11 @@ function EvalChart({ game, shown, revealed, judged }: ChartProps & { judged: (Pl
           aria-label={t.evalChartSub}
           onPointerMove={onMove}
           onPointerLeave={() => setHover(null)}
-          onClick={() => hover !== null && setViewPly(hover)}
+          onClick={() => {
+            if (hover === null) return;
+            setViewPly(hover);
+            track('chart_jump', { chart: 'eval' });
+          }}
         >
           <line className="grid" x1={pad.l} x2={pad.l + plotW} y1={y(1)} y2={y(1)} />
           <line className="grid" x1={pad.l} x2={pad.l + plotW} y1={y(-1)} y2={y(-1)} />
@@ -245,7 +250,11 @@ function TimeChart({ game, shown, revealed }: ChartProps) {
             aria-label={t.timeChart}
             onPointerMove={onMove}
             onPointerLeave={() => setHover(null)}
-            onClick={() => hover !== null && setViewPly(Math.min(revealed, hover * 2 + 1))}
+            onClick={() => {
+              if (hover === null) return;
+              setViewPly(Math.min(revealed, hover * 2 + 1));
+              track('chart_jump', { chart: 'time' });
+            }}
           >
             <line className="grid" x1={pad.l} x2={pad.l + plotW} y1={pad.t} y2={pad.t} />
             <line className="grid" x1={pad.l} x2={pad.l + plotW} y1={pad.t + 2 * half} y2={pad.t + 2 * half} />
@@ -285,7 +294,12 @@ function TimeChart({ game, shown, revealed }: ChartProps) {
           <ol className="rows">
             {longest.map(e => (
               <li key={e.i}>
-                <button onClick={() => setViewPly(e.i + 1)}>
+                <button
+                  onClick={() => {
+                    setViewPly(e.i + 1);
+                    track('chart_jump', { chart: 'longest_think' });
+                  }}
+                >
                   <span className="row-main">{moveLabel(game, e.i, localizeSan(game.plies[e.i].san, notation))}</span>
                   <span className="muted">{shortName(e.i % 2 === 0 ? game.white : game.black)}</span>
                   <b>{formatClock(e.v)}</b>
@@ -344,7 +358,12 @@ export function ChartsPanel({ game, shown }: { game: GameData; shown: number }) 
           <ol className="rows">
             {moments.map(({ j, i }) => (
               <li key={i}>
-                <button onClick={() => setViewPly(i + 1)}>
+                <button
+                  onClick={() => {
+                    setViewPly(i + 1);
+                    track('chart_jump', { chart: 'key_moment', quality: j.quality });
+                  }}
+                >
                   <span className={`glyph-box g-${j.quality}`}>{QUALITY_GLYPH[j.quality]}</span>
                   <span className="row-main">{moveLabel(game, i, localizeSan(game.plies[i].san, notation))}</span>
                   <span className="muted">{qualityLabel(j.quality, t)}</span>

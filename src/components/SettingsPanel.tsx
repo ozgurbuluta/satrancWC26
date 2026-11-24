@@ -1,4 +1,5 @@
 import { useT } from '../hooks';
+import { analyticsConfigured, isOptedOut, setOptedOut } from '../lib/analytics';
 import { useStore } from '../store';
 
 function Toggle({ label, value, onChange, on, off }: { label: string; value: boolean; onChange: (v: boolean) => void; on: string; off: string }) {
@@ -50,6 +51,12 @@ export function SettingsPanel() {
       <Toggle label={t.sound} value={settings.sound} onChange={v => setSetting('sound', v)} on={t.on} off={t.off} />
       <Toggle label={t.spoilerShield} value={settings.spoilerShield} onChange={v => setSetting('spoilerShield', v)} on={t.on} off={t.off} />
       <p className="muted small">{t.spoilerShieldHelp}</p>
+      {analyticsConfigured && (
+        <>
+          <Toggle label={t.stats} value={!isOptedOut()} onChange={v => setOptedOut(!v)} on={t.statsOn} off={t.statsOff} />
+          <p className="muted small">{t.statsHelp}</p>
+        </>
+      )}
     </div>
   );
 }
