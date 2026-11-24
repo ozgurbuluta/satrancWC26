@@ -18,6 +18,8 @@ export interface Ply {
   capture: boolean;
   /** Mover's remaining time in seconds after the move, when the feed has it. */
   clk?: number;
+  /** Evaluation from the feed (White's point of view), present once Lichess has analysed the game. */
+  ev?: { cp?: number; mate?: number; depth: number };
   /**
    * When this browser first saw the move (ms since epoch). 0 means "already
    * played when the page loaded". Used for the stream-sync delay and clocks.
@@ -99,9 +101,12 @@ export const parseGame = (pgn: string, prev: GameData | undefined, stamp: number
     const uci = makeUci(move);
     const san = makeSanAndPlay(pos, move);
     let clk: number | undefined;
+    let ev: Ply['ev'];
     for (const c of node.comments ?? []) {
       const parsedComment = parseComment(c);
       if (parsedComment.clock !== undefined) clk = parsedComment.clock;
+      const e = parsedComment.evaluation;
+      if (e) ev = 'mate' in e ? { mate: e.mate, depth: e.depth ?? 18 } : { cp: Math.round(e.pawns * 100), depth: e.depth ?? 18 };
     }
     const old = prev?.plies[i];
     plies.push({
@@ -114,6 +119,7 @@ export const parseGame = (pgn: string, prev: GameData | undefined, stamp: number
       check: pos.isCheck(),
       capture,
       clk: clk ?? (old && old.uci === uci ? old.clk : undefined),
+      ev,
       seenAt: old && old.uci === uci ? old.seenAt : stamp,
     });
     i++;

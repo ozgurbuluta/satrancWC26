@@ -16,6 +16,15 @@ export interface EvalResult {
   source: 'cloud' | 'local';
 }
 
+/** Compact evaluation kept for every position of a game (graph, move quality). */
+export interface Score {
+  cp?: number;
+  mate?: number;
+  depth: number;
+  /** Engine's preferred move in UCI. */
+  best?: string;
+}
+
 type Listener = (e: EvalResult) => void;
 
 const MULTI_PV = 3;
@@ -27,12 +36,17 @@ class LocalEngine {
   private worker?: Worker;
   private ready = false;
   private searching = false;
-  private current?: { fen: string; cb: Listener };
-  private queued?: { fen: string; cb: Listener };
+  private current?: { fen: string; cb: Listener; done?: () => void };
+  private queued?: { fen: string; cb: Listener; done?: () => void };
   private lines = new Map<number, PV>();
   private depth = 0;
   private lastEmit = 0;
   failed = false;
+
+  constructor(
+    private multiPv: number,
+    private goCommand: () => string,
+  ) {}
 
   private boot() {
     if (this.worker || this.failed) return;
@@ -44,6 +58,8 @@ class LocalEngine {
     }
     this.worker.onerror = () => {
       this.failed = true;
+      this.current?.done?.();
+      this.queued?.done?.();
     };
     this.worker.onmessage = ev => this.onLine(String(ev.data));
     this.worker.postMessage('uci');
@@ -51,7 +67,7 @@ class LocalEngine {
 
   private onLine(line: string) {
     if (line === 'uciok') {
-      this.worker!.postMessage(`setoption name MultiPV value ${MULTI_PV}`);
+      this.worker!.postMessage(`setoption name MultiPV value ${this.multiPv}`);
       this.worker!.postMessage('setoption name Hash value 32');
       this.worker!.postMessage('isready');
       return;
@@ -62,8 +78,10 @@ class LocalEngine {
       return;
     }
     if (line.startsWith('bestmove')) {
-      if (this.current && this.lines.size) this.emit(true);
+      const finished = this.current;
+      if (finished && !this.queued && this.lines.size) this.emit(true);
       this.searching = false;
+      finished?.done?.();
       this.startQueued();
       return;
     }
@@ -100,39 +118,85 @@ class LocalEngine {
     this.lines.clear();
     this.depth = 0;
     this.searching = true;
-    const small = isSmallDevice();
     this.worker.postMessage(`position fen ${this.current.fen}`);
-    this.worker.postMessage(`go depth ${small ? 18 : 24} movetime ${small ? 12000 : 30000}`);
+    this.worker.postMessage(this.goCommand());
   }
 
-  analyse(fen: string, cb: Listener) {
+  analyse(fen: string, cb: Listener, done?: () => void) {
     this.boot();
-    if (this.failed) return;
-    this.queued = { fen, cb };
+    if (this.failed) {
+      done?.();
+      return;
+    }
+    this.queued?.done?.();
+    this.queued = { fen, cb, done };
     if (this.searching) this.worker?.postMessage('stop');
     else this.startQueued();
   }
 
   stop() {
+    this.queued?.done?.();
     this.queued = undefined;
     this.current = undefined;
     if (this.searching) this.worker?.postMessage('stop');
   }
 }
 
-const local = new LocalEngine();
+/** Deep, three-line analysis of the position on the board. */
+const local = new LocalEngine(MULTI_PV, () => (isSmallDevice() ? 'go depth 18 movetime 12000' : 'go depth 24 movetime 30000'));
+/** Quick single-line scores for the whole game (graph and move quality). */
+const quick = new LocalEngine(1, () => (isSmallDevice() ? 'go depth 11' : 'go depth 13'));
+
 const cache = new Map<string, EvalResult>();
+const scores = new Map<string, Score>();
 let cloudBlockedUntil = 0;
 let active: { fen: string; ctrl: AbortController; recheck?: number } | undefined;
 
+// --- tiny subscription so charts re-render when new scores arrive ---
+let version = 0;
+let notifyQueued = false;
+const subscribers = new Set<() => void>();
+const bump = () => {
+  version++;
+  if (notifyQueued) return;
+  notifyQueued = true;
+  window.setTimeout(() => {
+    notifyQueued = false;
+    subscribers.forEach(fn => fn());
+  }, 150);
+};
+export const subscribeScores = (fn: () => void) => {
+  subscribers.add(fn);
+  return () => {
+    subscribers.delete(fn);
+  };
+};
+export const scoresVersion = () => version;
+
 export const cachedEval = (fen: string) => cache.get(fen);
+export const scoreOf = (fen: string): Score | undefined => scores.get(fen);
+
+const recordScore = (fen: string, s: Score) => {
+  const old = scores.get(fen);
+  if (old && old.depth >= s.depth) return;
+  scores.set(fen, s);
+  bump();
+};
+
+const recordFromEval = (e: EvalResult) => {
+  const pv = e.pvs[0];
+  if (pv) recordScore(e.fen, { cp: pv.cp, mate: pv.mate, depth: e.depth, best: pv.moves[0] });
+};
+
+/** Scores that came with the feed (Lichess adds them after a game is analysed). */
+export const seedScore = (fen: string, s: Score) => recordScore(fen, s);
 
 const better = (a: EvalResult, b: EvalResult | undefined) =>
   !b || a.depth > b.depth || (a.depth === b.depth && a.pvs.length >= b.pvs.length);
 
-const fetchCloud = async (fen: string, signal: AbortSignal): Promise<EvalResult | undefined> => {
+const fetchCloud = async (fen: string, multiPv: number, signal?: AbortSignal): Promise<EvalResult | undefined> => {
   if (Date.now() < cloudBlockedUntil) return undefined;
-  const res = await fetch(`${LICHESS}/api/cloud-eval?fen=${encodeURIComponent(fen)}&multiPv=${MULTI_PV}`, { signal });
+  const res = await fetch(`${LICHESS}/api/cloud-eval?fen=${encodeURIComponent(fen)}&multiPv=${multiPv}`, { signal });
   if (res.status === 429) {
     cloudBlockedUntil = Date.now() + 60000;
     return undefined;
@@ -161,6 +225,7 @@ export const requestEval = (fen: string, onUpdate: Listener, opts: { useLocal: b
   const push = (e: EvalResult) => {
     if (active !== mine) return;
     if (better(e, cache.get(fen))) cache.set(fen, e);
+    recordFromEval(cache.get(fen)!);
     onUpdate(cache.get(fen)!);
   };
 
@@ -171,7 +236,7 @@ export const requestEval = (fen: string, onUpdate: Listener, opts: { useLocal: b
   const tryCloud = async (startLocalOnMiss: boolean) => {
     let cloud: EvalResult | undefined;
     try {
-      cloud = await fetchCloud(fen, ctrl.signal);
+      cloud = await fetchCloud(fen, MULTI_PV, ctrl.signal);
     } catch {
       cloud = undefined;
     }
@@ -197,10 +262,82 @@ export const cancelEval = () => {
   local.stop();
 };
 
+let fillRun = 0;
+
+/**
+ * Fills in a quick score for every given position, one at a time: cloud first,
+ * a shallow local search otherwise. A newer call cancels the previous one.
+ */
+export const fillScores = async (fens: string[]) => {
+  const run = ++fillRun;
+  for (const fen of fens) {
+    if (run !== fillRun) return;
+    if (scores.has(fen)) continue;
+    let cloud: EvalResult | undefined;
+    try {
+      cloud = await fetchCloud(fen, 1);
+    } catch {
+      cloud = undefined;
+    }
+    if (run !== fillRun) return;
+    if (cloud) {
+      recordFromEval(cloud);
+      continue;
+    }
+    if (quick.failed) continue;
+    await new Promise<void>(resolve => {
+      quick.analyse(fen, recordFromEval, resolve);
+    });
+  }
+};
+
+export const stopFillScores = () => {
+  fillRun++;
+  quick.stop();
+};
+
 /** White's winning chances in [-1, 1], using the same curve Lichess uses. */
-export const winningChances = (pv: PV | undefined): number => {
-  if (!pv) return 0;
-  if (pv.mate !== undefined) return pv.mate > 0 ? 1 : -1;
-  const cp = Math.max(-1000, Math.min(1000, pv.cp ?? 0));
+export const winningChances = (s: { cp?: number; mate?: number } | undefined): number => {
+  if (!s) return 0;
+  if (s.mate !== undefined) return s.mate > 0 ? 1 : -1;
+  const cp = Math.max(-1000, Math.min(1000, s.cp ?? 0));
   return 2 / (1 + Math.exp(-0.00368208 * cp)) - 1;
+};
+
+/**
+ * Rough win/draw/loss split for White from an evaluation. It is an estimate
+ * shaped like engine WDL models (about +1.00 means a 50% win chance), not a
+ * statistic from real games.
+ */
+export const wdl = (s: { cp?: number; mate?: number } | undefined): { win: number; draw: number; loss: number } => {
+  if (!s) return { win: 0, draw: 1, loss: 0 };
+  if (s.mate !== undefined) return s.mate > 0 ? { win: 1, draw: 0, loss: 0 } : { win: 0, draw: 0, loss: 1 };
+  const cp = s.cp ?? 0;
+  const sig = (x: number) => 1 / (1 + Math.exp(-x));
+  const win = sig((cp - 100) / 48);
+  const loss = sig((-cp - 100) / 48);
+  return { win, loss, draw: Math.max(0, 1 - win - loss) };
+};
+
+export type MoveQuality = 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder';
+
+/**
+ * Judges a move by how much of the mover's winning chances it gave away,
+ * with the thresholds Lichess uses. Needs a score before and after the move.
+ */
+export const judgeMove = (
+  before: Score | undefined,
+  after: Score | undefined,
+  whiteMoved: boolean,
+  playedBest: boolean,
+): { quality: MoveQuality; loss: number } | undefined => {
+  if (!before || !after || before.depth < 10 || after.depth < 10) return undefined;
+  const sign = whiteMoved ? 1 : -1;
+  const loss = (winningChances(before) - winningChances(after)) * sign;
+  let quality: MoveQuality = 'good';
+  if (loss >= 0.3) quality = 'blunder';
+  else if (loss >= 0.2) quality = 'mistake';
+  else if (loss >= 0.1) quality = 'inaccuracy';
+  else if (playedBest) quality = 'best';
+  return { quality, loss };
 };

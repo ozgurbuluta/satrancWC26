@@ -3,7 +3,6 @@ import { parseFen } from 'chessops/fen';
 import { makeSanAndPlay } from 'chessops/san';
 import { parseUci } from 'chessops/util';
 import { KNOWN_PLAYERS } from '../config';
-import type { PV } from './engine';
 import type { PlayerInfo } from './pgn';
 
 export type Notation = 'tr' | 'en';
@@ -29,7 +28,7 @@ export const formatCountdown = (ms: number): string => {
 };
 
 /** "+0.35", "−1.2", "#4", "#−4" from White's point of view. */
-export const formatEval = (pv: PV | undefined): string => {
+export const formatEval = (pv: { cp?: number; mate?: number } | undefined): string => {
   if (!pv) return '';
   if (pv.mate !== undefined) return pv.mate > 0 ? `#${pv.mate}` : `#−${Math.abs(pv.mate)}`;
   const v = (pv.cp ?? 0) / 100;

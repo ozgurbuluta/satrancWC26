@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { STRINGS, type Strings } from './i18n';
-import { cachedEval, cancelEval, requestEval, type EvalResult } from './lib/engine';
+import { cachedEval, cancelEval, requestEval, scoresVersion, subscribeScores, type EvalResult } from './lib/engine';
 import { useStore } from './store';
 
 export const useT = (): Strings => STRINGS[useStore(s => s.settings.lang)];
@@ -46,3 +46,6 @@ export const useIsMobile = (): boolean => {
   }, []);
   return mobile;
 };
+
+/** Re-renders the caller whenever a new position score is stored. */
+export const useScoresVersion = (): number => useSyncExternalStore(subscribeScores, scoresVersion);
