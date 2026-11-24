@@ -34,8 +34,10 @@ export interface StreamPreset {
   channelId: string;
   /** Page to open in a new tab. */
   url: string;
-  /** Exact video per game number, when known. Falls back to the channel's live stream. */
+  /** Exact video per game number, when known. Otherwise the stream is found automatically. */
   videos?: Record<number, string>;
+  /** Stream titles to skip when choosing automatically. */
+  exclude?: RegExp;
 }
 
 /**
@@ -76,6 +78,8 @@ export const STREAM_PRESETS: StreamPreset[] = [
     channelId: 'UC9B47GnzCRFHTT1BIBWvStQ',
     url: 'https://www.youtube.com/@FIDE_chess/live',
     videos: { 1: '7dyXiy2kWsw' },
+    // FIDE also runs a stream of the board without commentary
+    exclude: /no commentary/i,
   },
 ];
 
