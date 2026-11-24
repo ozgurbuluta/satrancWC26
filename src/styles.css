@@ -1405,6 +1405,33 @@ button.move:hover {
   font-size: 13px;
 }
 
+.banner.nextup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  text-align: left;
+  color: var(--text);
+  background: #1f3a2a;
+  border: 1px solid #2f6a45;
+}
+
+.nextup-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.banner.nextup .btn {
+  height: 34px;
+  font-size: 13px;
+}
+
+.next-when {
+  font-weight: 400;
+  color: var(--muted);
+}
+
 /* ---------- analysis: win chances and move notes ---------- */
 
 .wdl {

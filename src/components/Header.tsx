@@ -1,5 +1,5 @@
 import { useShallow } from 'zustand/react/shallow';
-import { KNOWN_PLAYERS } from '../config';
+import { GAMES_IN_MATCH, IS_MATCH, KNOWN_PLAYERS } from '../config';
 import { useNow, useT } from '../hooks';
 import { fedFlag, formatCountdown, formatPoints, shortName } from '../lib/format';
 import type { PlayerInfo } from '../lib/pgn';
@@ -51,7 +51,11 @@ export function Header() {
           <h1>{t.title}</h1>
           <p>
             {t.location}
-            {round ? ` · ${t.game} ${roundIdx + 1}${rounds.length ? ` ${t.of} ${rounds.length}` : ''}` : ''}
+            {round
+              ? IS_MATCH && roundIdx + 1 > GAMES_IN_MATCH
+                ? ` · ${t.tiebreak}`
+                : ` · ${t.game} ${roundIdx + 1} ${t.of} ${IS_MATCH ? GAMES_IN_MATCH : rounds.length}`
+              : ''}
           </p>
         </div>
       </div>

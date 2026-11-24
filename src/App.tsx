@@ -1,21 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { REPO_URL } from './config';
 import { AnalysisPanel } from './components/AnalysisPanel';
 import { Board } from './components/Board';
 import { CatchUpBar } from './components/CatchUpBar';
-import { ChartsPanel } from './components/ChartsPanel';
 import { EvalBar } from './components/EvalBar';
 import { Header } from './components/Header';
 import { MatchPanel } from './components/MatchPanel';
 import { PlayerBar } from './components/PlayerBar';
 import { SettingsPanel } from './components/SettingsPanel';
-import { SimilarPanel } from './components/SimilarPanel';
 import { StreamPanel } from './components/StreamPanel';
-import { useEval, useIsMobile, useT } from './hooks';
+import { useEval, useIsMobile, useNow, useT } from './hooks';
+import { setContext, track } from './lib/analytics';
 import { displayName, firstMoveSquares, materialFromFen, shortName } from './lib/format';
 import { seedGameScores } from './lib/quality';
 import { unlockAudio } from './lib/sound';
-import { selectGameData, selectShownPly, useStore } from './store';
+import { AUTO_SWITCH_SEC, selectGameData, selectRoundNo, selectShownPly, useStore } from './store';
+
+// Loaded on first use, so the first paint only carries the board and the analysis tab.
+const SimilarPanel = lazy(() => import('./components/SimilarPanel').then(m => ({ default: m.SimilarPanel })));
+const ChartsPanel = lazy(() => import('./components/ChartsPanel').then(m => ({ default: m.ChartsPanel })));
 
 type Tab = 'analysis' | 'similar' | 'charts' | 'match' | 'settings';
 const TABS: Tab[] = ['analysis', 'similar', 'charts', 'match', 'settings'];
@@ -43,7 +46,17 @@ export default function App() {
   const setSetting = useStore(s => s.setSetting);
   const pause = useStore(s => s.pause);
   const setPreview = useStore(s => s.setPreview);
-  const [tab, setTab] = useState<Tab>('analysis');
+  const rounds = useStore(s => s.rounds);
+  const roundNo = useStore(selectRoundNo);
+  const nextUp = useStore(s => s.nextUp);
+  const followLatest = useStore(s => s.followLatest);
+  const goToRound = useStore(s => s.goToRound);
+  const stayHere = useStore(s => s.stayHere);
+  const [tab, setTabState] = useState<Tab>('analysis');
+  const setTab = (id: Tab) => {
+    setTabState(id);
+    track('tab_open', { tab: id });
+  };
   const isMobile = useIsMobile();
   const layoutRef = useRef<HTMLElement>(null);
 
@@ -52,6 +65,16 @@ export default function App() {
   useEffect(() => {
     document.documentElement.lang = settings.lang;
   }, [settings.lang]);
+
+  // Context that rides on every analytics event.
+  useEffect(() => {
+    setContext({
+      page_lang: settings.lang,
+      layout: isMobile ? 'phone' : 'desktop',
+      game_no: roundNo || undefined,
+      game_state: paused ? 'paused' : resultVisible ? 'finished' : revealed > 0 ? 'live' : 'upcoming',
+    });
+  }, [settings.lang, isMobile, roundNo, paused, resultVisible, revealed]);
 
   // Evaluations that arrive with the feed feed the charts and move quality.
   useEffect(() => {
@@ -130,12 +153,48 @@ export default function App() {
   const bottom = orientation;
   const layoutStyle = !isMobile && settings.sideWidth ? ({ '--side-w': `${settings.sideWidth}px` } as React.CSSProperties) : undefined;
 
+  const nextRound = roundNo > 0 ? rounds[roundNo] : undefined;
+  const nextUpRound = nextUp ? rounds.find(r => r.id === nextUp.roundId) : undefined;
+  useNow(1000, !!nextUp); // re-render every second while an announcement counts down
+  const locale = settings.lang === 'tr' ? 'tr-TR' : 'en-GB';
+
   const resultBanner = () => {
     if (!game || !resultVisible || !atLiveEdge || preview) return null;
     const text = game.result === '1/2-1/2' ? t.draw : `${displayName(game.result === '1-0' ? game.white : game.black)} ${t.wins}`;
+    const when =
+      nextRound?.startsAt && !nextRound.finished
+        ? new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(nextRound.startsAt)
+        : undefined;
     return (
       <div className="banner result">
         {text} <b>{game.result === '1/2-1/2' ? '½–½' : game.result.replace('-', '–')}</b>
+        {when && <span className="next-when"> · {t.nextGameAt.replace('{when}', when)}</span>}
+      </div>
+    );
+  };
+
+  // A later game is live or about to start. Unless the viewer declines, the page opens it by itself.
+  const nextUpBanner = () => {
+    if (!nextUp || !nextUpRound || preview) return null;
+    const n = rounds.indexOf(nextUpRound) + 1;
+    const now = Date.now();
+    const started = !!nextUpRound.ongoing || (nextUpRound.startsAt ?? Infinity) <= now;
+    const left = Math.min(AUTO_SWITCH_SEC, Math.max(0, AUTO_SWITCH_SEC - Math.floor((now - nextUp.since) / 1000)));
+    const counting = followLatest && atLiveEdge;
+    return (
+      <div className="banner nextup" role="status">
+        <span>
+          <b>{(started ? t.nextStarted : t.nextSoon).replace('{n}', String(n))}</b>
+          {counting && <span className="muted"> · {t.switchingIn.replace('{s}', String(left))}</span>}
+        </span>
+        <span className="nextup-actions">
+          <button className="btn" onClick={() => goToRound(nextUp.roundId)}>
+            {t.goToGame}
+          </button>
+          <button className="btn ghost" onClick={stayHere}>
+            {t.stayHere}
+          </button>
+        </span>
       </div>
     );
   };
@@ -220,7 +279,7 @@ export default function App() {
             </div>
           )}
           {paused && !preview && (settings.streamHidden || streamUncovered) && <CatchUpBar />}
-          {resultBanner()}
+          {nextUpBanner() ?? resultBanner()}
           {revealed === 0 && !resultVisible && !paused && !preview && <div className="banner">{t.notStarted}</div>}
         </>
       ) : (
@@ -241,8 +300,10 @@ export default function App() {
       </div>
       <div className="tab-body">
         {tab === 'analysis' && game && fen && <AnalysisPanel game={game} fen={fen} shown={shown} evaluation={evaluation} />}
-        {tab === 'similar' && game && gameFen && <SimilarPanel game={game} fen={gameFen} shown={shown} />}
-        {tab === 'charts' && game && <ChartsPanel game={game} shown={shown} />}
+        <Suspense fallback={<p className="muted pad">{t.loading}</p>}>
+          {tab === 'similar' && game && gameFen && <SimilarPanel game={game} fen={gameFen} shown={shown} />}
+          {tab === 'charts' && game && <ChartsPanel game={game} shown={shown} />}
+        </Suspense>
         {tab === 'match' && <MatchPanel />}
         {tab === 'settings' && <SettingsPanel />}
       </div>
@@ -259,7 +320,7 @@ export default function App() {
       </main>
       <footer className="foot">
         {t.footer}{' '}
-        <a href={REPO_URL} target="_blank" rel="noreferrer">
+        <a href={REPO_URL} target="_blank" rel="noreferrer" onClick={() => track('outbound_click', { link_url: REPO_URL, link_domain: 'github.com', outbound: true })}>
           {t.source}
         </a>
       </footer>
