@@ -15,6 +15,7 @@
   "dependencies": {
     "chessground": "^9.2.1",
     "chessops": "^0.15.1",
+    "posthog-js": "^1.454.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "stockfish": "^19.0.1",
