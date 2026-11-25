@@ -146,6 +146,15 @@ const tr = {
   noClock: 'Bu parti için saat bilgisi yok.',
   approx: 'Hızlı analizle bulunur; derin analiz farklı sonuç verebilir.',
   move: 'Hamle',
+  // --- sharing ---
+  share: 'Paylaş',
+  sharePosition: 'Bu pozisyonun bağlantısı ({g}. parti, {m}. hamle)',
+  shareGame: 'Bu partinin bağlantısı ({g}. parti, başlangıç)',
+  sharePuzzles: 'Bulmaca köşesinin bağlantısı',
+  shareCopied: 'Bağlantı kopyalandı.',
+  shareManual: 'Bağlantı kopyalanamadı. Aşağıdaki bağlantı seçili, elle kopyalayabilirsin.',
+  copyLink: 'Kopyala',
+  close: 'Kapat',
   // --- guess the move ---
   tabPredict: 'Tahmin',
   guessMode: 'Tahmin modu',
@@ -387,6 +396,15 @@ const en: typeof tr = {
   noClock: 'No clock data for this game.',
   approx: 'Found with a quick analysis; a deep analysis can differ.',
   move: 'Move',
+  // --- sharing ---
+  share: 'Share',
+  sharePosition: 'Link to this position (game {g}, move {m})',
+  shareGame: 'Link to this game (game {g}, from the start)',
+  sharePuzzles: 'Link to the puzzle corner',
+  shareCopied: 'Link copied.',
+  shareManual: 'The link could not be copied. It is selected below, so you can copy it by hand.',
+  copyLink: 'Copy',
+  close: 'Close',
   // --- guess the move ---
   tabPredict: 'Guess',
   guessMode: 'Guess mode',

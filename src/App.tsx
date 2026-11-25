@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { REPO_URL } from './config';
+import { IS_MATCH, REPO_URL } from './config';
 import { AnalysisPanel } from './components/AnalysisPanel';
 import { Board, type BoardShape } from './components/Board';
 import { CatchUpBar } from './components/CatchUpBar';
@@ -9,6 +9,7 @@ import { MatchPanel } from './components/MatchPanel';
 import { PromotionPicker, usePromotion } from './components/MoveEntry';
 import { PlayerBar } from './components/PlayerBar';
 import { SettingsPanel } from './components/SettingsPanel';
+import { ShareButton } from './components/ShareButton';
 import { StreamPanel } from './components/StreamPanel';
 import { useEval, useIsMobile, useNow, useT } from './hooks';
 import { setContext, track, trackOutbound } from './lib/analytics';
@@ -65,6 +66,7 @@ export default function App() {
   const makeGuess = useStore(s => s.makeGuess);
   const peekEngine = useStore(s => s.peekEngine);
   const [boardSync, setBoardSync] = useState(0);
+  const [shareSlot, setShareSlot] = useState<HTMLDivElement | null>(null);
   const [tab, setTabState] = useState<Tab>('analysis');
   const setTab = (id: Tab) => {
     setTabState(id);
@@ -316,6 +318,15 @@ export default function App() {
               <button onClick={toggleFlip} aria-label={t.flip} title={t.flip}>
                 ⇅
               </button>
+              {IS_MATCH && roundNo > 0 && (
+                <ShareButton
+                  compact={isMobile}
+                  panelHost={shareSlot}
+                  // the position on the board, which is never beyond what this viewer has been shown
+                  target={{ view: 'live', gameNo: roundNo, ply: shown }}
+                  describe={(shown === 0 ? t.shareGame : t.sharePosition).replace('{g}', String(roundNo)).replace('{m}', String(Math.ceil(shown / 2)))}
+                />
+              )}
               {!paused && !resultVisible && (
                 <button className="pause-btn" onClick={pause} title={t.pauseTitle}>
                   ⏸ {t.pauseBtn}
@@ -328,6 +339,7 @@ export default function App() {
               )}
             </div>
           )}
+          <div className="share-slot" ref={setShareSlot} />
           {paused && !preview && (settings.streamHidden || streamUncovered) && <CatchUpBar />}
           {nextUpBanner() ?? resultBanner() ?? guessStrip()}
           {revealed === 0 && !resultVisible && !paused && !preview && <div className="banner">{t.notStarted}</div>}
