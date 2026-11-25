@@ -25,19 +25,19 @@ const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 interface Props {
   game: GameData;
+  /** Position on the board: the game's, or the one reached in the viewer's own line. */
   fen: string;
   shown: number;
   evaluation?: EvalResult;
-  /** Guess mode: engine suggestions wait until the viewer has guessed this move. */
-  held?: boolean;
-  onShowEngine?: () => void;
+  /** Set while the board shows the viewer's own line: the half-move of the game it started from. */
+  lineFrom?: number;
 }
 
-export function AnalysisPanel({ game, fen, shown, evaluation, held = false, onShowEngine }: Props) {
+export function AnalysisPanel({ game, fen, shown, evaluation, lineFrom }: Props) {
   const t = useT();
   const notation = useStore(s => s.settings.notation);
-  const engineSetting = useStore(s => s.settings.engine);
-  const engineOn = engineSetting && !held;
+  const engineOn = useStore(s => s.settings.engine);
+  const inLine = lineFrom !== undefined;
   const revealed = useStore(s => s.revealed);
   const setViewPly = useStore(s => s.setViewPly);
   const paused = useStore(s => s.paused);
@@ -62,7 +62,7 @@ export function AnalysisPanel({ game, fen, shown, evaluation, held = false, onSh
     const ro = new ResizeObserver(reveal);
     ro.observe(box);
     return () => ro.disconnect();
-  }, [shown, revealed]);
+  }, [shown, revealed, lineFrom]);
 
   const best = evaluation?.pvs[0];
   const whiteStarts = game.initialFen.split(' ')[1] !== 'b';
@@ -72,8 +72,9 @@ export function AnalysisPanel({ game, fen, shown, evaluation, held = false, onSh
   const mover = whiteToMove ? game.white : game.black;
 
   const split = wdl(best);
-  const lastJudged = shown > 0 ? judgePly(game, shown - 1) : undefined;
-  const lastPly = shown > 0 ? game.plies[shown - 1] : undefined;
+  // The note on the last move is about the game; it has no place next to a line of the viewer's own.
+  const lastJudged = !inLine && shown > 0 ? judgePly(game, shown - 1) : undefined;
+  const lastPly = !inLine && shown > 0 ? game.plies[shown - 1] : undefined;
   const lastMoveNo = firstMoveNo + Math.floor((shown - 1 + (whiteStarts ? 0 : 1)) / 2);
   const lastWasWhite = ((shown - 1) % 2 === 0) === whiteStarts;
 
@@ -92,15 +93,7 @@ export function AnalysisPanel({ game, fen, shown, evaluation, held = false, onSh
 
   return (
     <div className="analysis">
-      {held && engineSetting && (
-        <div className="engine-card held">
-          <p>{t.engineHidden}</p>
-          <button className="link small" onClick={onShowEngine}>
-            {t.showEngine}
-          </button>
-        </div>
-      )}
-      <div className="engine-card" hidden={held && engineSetting}>
+      <div className="engine-card">
         <div className="engine-head">
           <div className={`eval-big ${best && (best.mate ?? best.cp ?? 0) < 0 ? 'black-ahead' : ''}`}>
             {engineOn ? (best ? formatEval(best) : '…') : '–'}
@@ -196,17 +189,19 @@ export function AnalysisPanel({ game, fen, shown, evaluation, held = false, onSh
         {plies.map((p, i) => {
           const whiteMove = (i % 2 === 0) === whiteStarts;
           const moveNo = firstMoveNo + Math.floor((i + (whiteStarts ? 0 : 1)) / 2);
-          const active = i + 1 === shown;
+          // While the board shows an own line, the game move it started after is marked instead of an active one.
+          const active = !inLine && i + 1 === shown;
+          const branch = inLine && i + 1 === lineFrom;
           const judged = engineOn ? judgePly(game, i) : undefined;
           const glyph = judged && judged.quality !== 'best' ? QUALITY_GLYPH[judged.quality] : '';
           return (
             <span className="mv" key={i}>
               {(whiteMove || i === 0) && <span className="move-num">{whiteMove ? `${moveNo}.` : `${moveNo}…`}</span>}
               <button
-                ref={active ? activeRef : undefined}
-                className={`move ${active ? 'active' : ''}`}
+                ref={active || branch ? activeRef : undefined}
+                className={`move ${active ? 'active' : ''} ${branch ? 'branch' : ''}`}
                 onClick={() => setViewPly(i + 1)}
-                title={judged && glyph ? qualityLabel(judged.quality, t) : undefined}
+                title={branch ? t.branchHere : judged && glyph ? qualityLabel(judged.quality, t) : undefined}
               >
                 {localizeSan(p.san, notation)}
                 {glyph && <span className={`glyph g-${judged!.quality}`}>{glyph}</span>}

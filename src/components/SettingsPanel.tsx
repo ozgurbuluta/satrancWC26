@@ -60,6 +60,10 @@ export function SettingsPanel() {
       <Toggle label={t.sound} value={settings.sound} onChange={v => setSetting('sound', v)} on={t.on} off={t.off} />
       <Toggle label={t.spoilerShield} value={settings.spoilerShield} onChange={v => setSetting('spoilerShield', v)} on={t.on} off={t.off} />
       <p className="muted small">{t.spoilerShieldHelp}</p>
+      <div className="setting">
+        <span>{t.shortcuts}</span>
+      </div>
+      <p className="muted small">{t.shortcutsHelp}</p>
       {analyticsConfigured && (
         <>
           <Toggle

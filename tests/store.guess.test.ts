@@ -30,7 +30,7 @@ const start = async (plies = 2) => {
 
 describe('guess the move', () => {
   it('clears pending guesses and engine peeks when switching zero-ply boards', async () => {
-    const { useStore, engineHeldBack, canGuess } = await start(0);
+    const { useStore, referencesHeld, canGuess } = await start(0);
     push(R1, live(0) + game({ round: 1, id: 'g2', sans: [] }));
     const s = () => useStore.getState();
     const first = s().games.g1.initialFen;
@@ -38,8 +38,8 @@ describe('guess the move', () => {
     const stale = s().guess;
     s().selectGame('g2');
     expect(s().guess).toBeNull();
-    expect(engineHeldBack(s())).toBe(true);
-    expect(engineHeldBack({ ...s(), guess: stale })).toBe(true);
+    expect(referencesHeld(s())).toBe(true);
+    expect(referencesHeld({ ...s(), guess: stale })).toBe(true);
     s().peekEngine();
     s().selectGame('g1');
     expect(s().peekedPly).toBeNull();
@@ -129,24 +129,24 @@ describe('guess the move', () => {
     expect(useStore.getState().guessLog.g1).toBeUndefined();
   });
 
-  it('says when a guess is possible, and holds the engine back only until it is made', async () => {
-    const { useStore, canGuess, engineHeldBack } = await start();
+  it('says when a guess is possible, and holds the references in its tab back only until it is made', async () => {
+    const { useStore, canGuess, referencesHeld } = await start();
     const s = () => useStore.getState();
     expect(canGuess(s())).toBe(true);
-    expect(engineHeldBack(s())).toBe(true);
+    expect(referencesHeld(s())).toBe(true);
 
     s().makeGuess(guessOf('g1f3'));
     expect(canGuess(s())).toBe(true); // it can still be changed
-    expect(engineHeldBack(s())).toBe(false); // but the engine may be compared with it now
+    expect(referencesHeld(s())).toBe(false); // the references may be compared with it now
 
     s().clearGuess();
     s().setViewPly(1);
-    expect(canGuess(s())).toBe(false); // not at the latest move
+    expect(canGuess(s())).toBe(true); // the guess is about the game, wherever the board is
     s().setViewPly(null);
 
     s().peekEngine();
-    expect(canGuess(s())).toBe(false); // looked at the engine for this move
-    expect(engineHeldBack(s())).toBe(false);
+    expect(canGuess(s())).toBe(false); // gave this move up to see the references
+    expect(referencesHeld(s())).toBe(false);
     push(R1, live(3));
     expect(canGuess(s())).toBe(true); // a new move, a new chance
 
@@ -156,7 +156,7 @@ describe('guess the move', () => {
 
     s().setSetting('guessMode', false);
     expect(canGuess(s())).toBe(false);
-    expect(engineHeldBack(s())).toBe(false);
+    expect(referencesHeld(s())).toBe(false);
     s().setSetting('guessMode', true);
 
     push(R1, live(3, '1-0'));

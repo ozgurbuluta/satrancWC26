@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import { useT } from '../hooks';
 import { localizeSan } from '../lib/format';
-import { isPromotion, legalSans, moveBySquares, moveByText, type PlayedMove, type Promotion } from '../lib/position';
+import { isPromotion, legalMoves, legalSans, moveBySquares, moveByText, type PieceRole, type PlayedMove, type Promotion } from '../lib/position';
 import { useStore } from '../store';
 
 const PIECES: { role: Promotion; glyph: string; tr: string; en: string }[] = [
@@ -44,7 +44,18 @@ export function PromotionPicker({ onChoose }: { onChoose: (role: Promotion | nul
   const t = useT();
   const lang = useStore(s => s.settings.lang);
   return (
-    <div className="promo" role="dialog" aria-modal="true" aria-label={t.promoteTo}>
+    <div
+      className="promo"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t.promoteTo}
+      onKeyDown={e => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          onChoose(null);
+        }
+      }}
+    >
       <p>{t.promoteTo}</p>
       <div className="promo-row">
         {PIECES.map((p, i) => (
@@ -130,6 +141,42 @@ export function MoveInput({ fen, label, disabled, onMove }: Props) {
           {t.notLegal}
         </p>
       )}
+    </div>
+  );
+}
+
+const ROLE_ORDER: PieceRole[] = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
+
+/**
+ * Choosing a move from the list of legal ones, grouped by piece. For picking
+ * a move without touching a board: nothing moves anywhere when one is chosen.
+ */
+export function MoveChooser({ fen, onMove }: { fen: string; onMove: (move: { uci: string; san: string }) => void }) {
+  const t = useT();
+  const notation = useStore(s => s.settings.notation);
+  const groups = useMemo(() => {
+    const all = legalMoves(fen);
+    return ROLE_ORDER.map(role => ({ role, moves: all.filter(m => m.role === role) })).filter(g => g.moves.length > 0);
+  }, [fen]);
+  const name = (role: PieceRole) =>
+    ({ pawn: t.piecePawn, knight: t.pieceKnight, bishop: t.pieceBishop, rook: t.pieceRook, queen: t.pieceQueen, king: t.pieceKing })[role];
+
+  return (
+    <div className="move-chooser" role="group" aria-label={t.chooseMove}>
+      {groups.map(g => (
+        <div className="move-group" key={g.role} role="group" aria-label={name(g.role)}>
+          <span className="move-group-name" aria-hidden="true">
+            {name(g.role)}
+          </span>
+          <span className="chips wrap">
+            {g.moves.map(m => (
+              <button type="button" key={m.uci} className="chip" onClick={() => onMove(m)}>
+                {localizeSan(m.san, notation)}
+              </button>
+            ))}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

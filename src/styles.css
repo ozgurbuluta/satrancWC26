@@ -684,24 +684,6 @@ cg-board square.check {
   margin-left: 6px;
 }
 
-.game-picker {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-left: 34px;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.game-picker select {
-  flex: 1;
-  min-width: 0;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 6px 8px;
-}
-
 /* ---------- stream ---------- */
 
 .stream {
@@ -1149,52 +1131,6 @@ button.move:hover {
   font-weight: 400;
 }
 
-.schedule {
-  list-style: none;
-  margin: 8px 0 0;
-  padding: 0;
-}
-
-.round {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 30px 1fr auto;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 8px;
-  border-radius: 8px;
-  text-align: left;
-  font-size: 13.5px;
-}
-
-.round:hover {
-  background: var(--panel-2);
-}
-
-.round.current {
-  background: var(--panel-3);
-}
-
-.round-no {
-  color: var(--muted);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-}
-
-.round-players {
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.round-when {
-  font-size: 12.5px;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
 .dot {
   display: inline-block;
   width: 9px;
@@ -1220,6 +1156,300 @@ button.move:hover {
   padding: 2px 7px;
   border-radius: 999px;
   letter-spacing: 0.04em;
+}
+
+/* ---------- game list ---------- */
+
+/* 200px of list and 12px of gap: the same 212px is in hooks.ts, which decides whether it fits. */
+.layout.with-rail {
+  grid-template-columns: 212px minmax(0, 1fr) 12px var(--side-w, clamp(360px, 36vw, 580px));
+}
+
+.games-rail {
+  position: sticky;
+  top: 12px;
+  width: 200px;
+  max-height: calc(100dvh - var(--header-h) - 24px);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius);
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.games-rail h2,
+.games-drawer-head h2 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.games-rail h2 {
+  padding: 12px 12px 6px;
+}
+
+.game-list,
+.board-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.game-list {
+  padding: 2px 6px 8px;
+}
+
+.games-rail .game-list,
+.games-drawer .game-list {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.game-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 6px;
+  padding: 7px 6px;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 13px;
+}
+
+.game-row:hover {
+  background: var(--panel-2);
+}
+
+.game-row.current {
+  background: var(--panel-3);
+}
+
+.game-no {
+  color: var(--muted);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.game-row.current .game-no {
+  color: var(--accent);
+}
+
+.game-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.game-players {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.game-players .dot {
+  flex: none;
+  align-self: center;
+}
+
+.game-players span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-players .won {
+  color: #fff;
+  font-weight: 800;
+}
+
+.game-row.ahead .game-players {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.game-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.board-list {
+  margin: 2px 0 4px 28px;
+}
+
+.board-pick {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  text-align: left;
+  font-size: 12.5px;
+}
+
+.board-pick:hover {
+  background: var(--panel-2);
+}
+
+.board-pick.current {
+  background: var(--panel-3);
+  font-weight: 700;
+}
+
+/* The match tab shows the same list at full width. */
+.match .game-list {
+  padding: 0;
+  margin-top: 8px;
+}
+
+.match .game-row {
+  grid-template-columns: 30px minmax(0, 1fr);
+  padding: 9px 8px;
+  font-size: 13.5px;
+}
+
+.match .game-main {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Where the list would take room from the board it opens from a button instead. */
+.games-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-size: 13px;
+  font-weight: 700;
+  flex: none;
+}
+
+.games-btn:hover {
+  background: var(--panel-3);
+}
+
+.games-drawer {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: min(320px, 88vw);
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--panel);
+  color: var(--text);
+}
+
+.games-drawer::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.games-drawer-body {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.games-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 10px 6px 14px;
+}
+
+.games-drawer .game-row {
+  padding: 10px 8px;
+  font-size: 14px;
+}
+
+.games-drawer .board-pick {
+  padding: 10px;
+}
+
+/* ---------- own moves on the board ---------- */
+
+.board-row.analysing .board-wrap {
+  box-shadow: 0 0 0 2px var(--amber);
+}
+
+.own-line {
+  margin-left: 34px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--panel);
+  font-size: 13.5px;
+}
+
+.own-line .tag {
+  margin: 0;
+  background: #4a3a1c;
+  color: #f3c26b;
+}
+
+.own-moves {
+  flex: 1 1 160px;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.own-moves .move {
+  font-size: 14px;
+}
+
+/* In the move list, the game move the viewer's own line was started after. */
+.move.branch {
+  box-shadow: inset 0 0 0 2px var(--amber);
+}
+
+/* ---------- choosing a move from a list ---------- */
+
+.move-chooser {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 10px;
+}
+
+.move-group {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+}
+
+.move-group-name {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.move-chooser .chip {
+  min-width: 44px;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- settings ---------- */
@@ -2211,17 +2441,6 @@ cg-board square.selected {
 
 /* ---------- guess the move ---------- */
 
-.banner.guess {
-  background: #1f3a2a;
-  color: var(--text);
-  font-weight: 600;
-}
-
-.engine-card.held p {
-  margin: 0 0 6px;
-  font-weight: 600;
-}
-
 .predict {
   padding: 4px 12px 12px;
 }
@@ -2536,9 +2755,15 @@ cg-board square.selected {
     row-gap: 6px;
   }
 
+  /* The game list button shares the second row with the view switch, so the header stays two rows tall. */
+  .games-btn {
+    order: 9;
+  }
+
   .viewnav {
     order: 10;
-    flex-basis: 100%;
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .viewnav button {
@@ -2669,8 +2894,7 @@ cg-board square.selected {
 
   .player-bar,
   .controls,
-  .banner,
-  .game-picker {
+  .banner {
     padding-left: 21px;
     margin-left: 0;
   }
@@ -2725,8 +2949,18 @@ cg-board square.selected {
     white-space: nowrap;
   }
 
-  .share-slot {
+  .share-slot,
+  .own-line {
     margin-left: 21px;
+  }
+
+  .games-btn {
+    height: 40px;
+    padding: 0 9px;
+  }
+
+  .move-chooser .chip {
+    min-height: 40px;
   }
 
   .share-row {
