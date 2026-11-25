@@ -7,15 +7,12 @@ import { pickVideo } from '../lib/streams';
 import { selectRoundNo, useStore } from '../store';
 import { CatchUpBar } from './CatchUpBar';
 
-const DELAY_STEPS = [0, 5, 10, 15, 20, 30, 45];
-
 /** `live` is false in the puzzle corner: the video stays, the controls that act on the live board go. */
 export function StreamPanel({ live = true }: { live?: boolean }) {
   const t = useT();
   const streamId = useStore(s => s.settings.streamId);
   const customStream = useStore(s => s.settings.customStream);
   const hidden = useStore(s => s.settings.streamHidden);
-  const delaySec = useStore(s => s.settings.delaySec);
   const paused = useStore(s => s.paused);
   const roundNo = useStore(selectRoundNo);
   const round = useStore(s => s.rounds.find(r => r.id === s.roundId));
@@ -156,33 +153,6 @@ export function StreamPanel({ live = true }: { live?: boolean }) {
         </div>
       )}
 
-      {!paused && live && (
-        <div className="sync" title={t.syncHelp}>
-          <div className="sync-head">
-            <strong>{t.syncTitle}</strong>
-            <span className="muted small sync-help">{t.syncShort}</span>
-            <span className={`sync-value ${delaySec > 0 ? 'on' : ''}`}>{delaySec > 0 ? `${delaySec} ${t.seconds}` : t.syncOff}</span>
-          </div>
-          <div className="sync-row">
-            <input
-              type="range"
-              min={0}
-              max={90}
-              step={1}
-              value={delaySec}
-              onChange={e => setSetting('delaySec', Number(e.target.value))}
-              aria-label={t.syncTitle}
-            />
-            <div className="sync-steps">
-              {DELAY_STEPS.map(n => (
-                <button key={n} className={`step ${delaySec === n ? 'active' : ''}`} onClick={() => setSetting('delaySec', n)}>
-                  {n}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   );
 }

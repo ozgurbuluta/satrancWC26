@@ -221,7 +221,6 @@ export function ChartsPanel({ game, shown, withTime }: { game: GameData; shown: 
             ))}
           </ol>
         )}
-        <p className="muted small">{t.approx}</p>
       </section>
 
       {withTime && <TimePanel game={game} shown={shown} />}

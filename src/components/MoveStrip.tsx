@@ -16,8 +16,6 @@ interface Props {
   backLabel: string;
   /** The board is on the newest position of the game and shows no line. */
   atNewest: boolean;
-  /** There is something live to return to. */
-  liveNow: boolean;
 }
 
 /**
@@ -26,11 +24,14 @@ interface Props {
  * while the viewer plays moves of their own, that line of theirs, so nothing
  * on the page shifts when a line is started.
  */
-export function MoveStrip({ game, shown, line, ownMoves, backLabel, atNewest, liveNow }: Props) {
+export function MoveStrip({ game, shown, line, ownMoves, backLabel, atNewest }: Props) {
   const t = useT();
   const notation = useStore(s => s.settings.notation);
   const revealed = useStore(s => s.revealed);
   const paused = useStore(s => s.paused);
+  const startsAt = useStore(s => s.rounds.find(r => r.id === s.roundId)?.startsAt);
+  const resultVisible = useStore(s => s.resultVisible);
+  const lang = useStore(s => s.settings.lang);
   const step = useStore(s => s.step);
   const setViewPly = useStore(s => s.setViewPly);
   const toggleFlip = useStore(s => s.toggleFlip);
@@ -57,6 +58,11 @@ export function MoveStrip({ game, shown, line, ownMoves, backLabel, atNewest, li
   const plies = game.plies.slice(0, revealed);
   const noBack = !line && shown === 0;
   const noForward = line ? line.cursor >= line.moves.length : atNewest && !paused;
+  const waiting = !paused && !resultVisible && revealed === 0;
+  const liveNow = !paused && !resultVisible && revealed > 0;
+  const scheduledDate = startsAt
+    ? new Intl.DateTimeFormat(lang === 'tr' ? 'tr-TR' : 'en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(startsAt)
+    : t.startingSoon;
 
   return (
     <div className="move-strip">
@@ -139,9 +145,11 @@ export function MoveStrip({ game, shown, line, ownMoves, backLabel, atNewest, li
       </div>
       {/* One control in one place: it says the board is live, or brings it back there. */}
       {atNewest ? (
-        <span className={`live-state ${liveNow ? 'on' : ''}`} role="status">
+        <span className={`live-state ${liveNow ? 'on' : ''} ${waiting ? 'scheduled' : ''}`} role="status">
           {liveNow && <i className="pulse" aria-hidden="true" />}
-          {liveNow ? t.liveShort : paused ? t.pausedPill : t.finished}
+          {liveNow ? t.liveShort : paused ? t.pausedPill : waiting ? (
+            startsAt ? <time dateTime={new Date(startsAt).toISOString()}>{scheduledDate}</time> : scheduledDate
+          ) : t.finished}
         </span>
       ) : (
         <button type="button" className="go-live" onClick={() => setViewPly(null)} title={`${backLabel} (↑)`} aria-keyshortcuts="ArrowUp End">

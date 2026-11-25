@@ -91,7 +91,7 @@ describe('time per move', () => {
     expect(text()).toContain('Bu oyun için saat bilgisi yok.');
   });
 
-  it('gives a move without a reading a hollow mark and counts it, never a bar', async () => {
+  it('gives a move without a reading a hollow mark without the removed explanation', async () => {
     await mountTime();
     // the third half-move comes without a clock reading
     const pgn = game({ round: 1, id: 'g1', sans: ITALIAN.slice(0, 6) }).replace(' { [%clk 1:59:30] }', '');
@@ -99,7 +99,7 @@ describe('time per move', () => {
     // White's second and third move are unknown: one has no reading, the next has nothing to compare with
     expect(bars()).toHaveLength(4);
     expect(host.querySelectorAll('.time-chart svg .unknown')).toHaveLength(2);
-    expect(text()).toContain('2 hamlenin süresi bilinmiyor');
+    expect(text()).not.toContain('hamlenin süresi bilinmiyor');
     for (const bar of bars()) expect(Number(bar.getAttribute('width'))).toBeGreaterThan(0);
   });
 });
@@ -165,5 +165,36 @@ describe('choosing a move from a list', () => {
     await act(async () => chips.find(c => c.textContent === 'O-O')!.click());
     expect(picked).toHaveLength(1);
     expect(picked[0]).toMatch(/^e1[gh]1$/);
+  });
+});
+
+describe('the status under the board', () => {
+  it('shows the scheduled date until moves arrive, then live, paused and finished honestly', async () => {
+    const start = T0 + 24 * HOUR;
+    world.rounds = [round(R1, 1, start)];
+    const mod = await boot();
+    const { MoveStrip } = await import('../src/components/MoveStrip');
+    const Host = () => {
+      const g = mod.useStore(mod.selectGameData);
+      const shown = mod.useStore(mod.selectShownPly);
+      return g ? <MoveStrip game={g} shown={shown} line={null} ownMoves={[]} backLabel="Oyundaki konuma dön" atNewest /> : null;
+    };
+    await act(() => root.render(<Host />));
+    await act(async () => push(R1, game({ round: 1, id: 'g1', sans: [] })));
+    const status = () => host.querySelector('[role="status"]')!;
+    expect(status().querySelector('time')?.getAttribute('dateTime')).toBe(new Date(start).toISOString());
+    expect(status().textContent).toContain('26 Kas');
+    expect(status().textContent).not.toMatch(/Canlı|Bitti/i);
+    expect(status().querySelector('.pulse')).toBeNull();
+
+    await act(async () => push(R1, game({ round: 1, id: 'g1', sans: ITALIAN })));
+    expect(status().textContent).toBe('Canlı');
+    expect(status().querySelector('.pulse')).not.toBeNull();
+    await act(async () => mod.useStore.getState().pause());
+    expect(status().textContent).toBe('Duraklatıldı');
+    await act(async () => mod.useStore.getState().resume());
+    await act(async () => push(R1, game({ round: 1, id: 'g1', sans: ITALIAN, result: '1/2-1/2' })));
+    expect(status().textContent).toBe('Bitti');
+    expect(status().querySelector('.pulse')).toBeNull();
   });
 });

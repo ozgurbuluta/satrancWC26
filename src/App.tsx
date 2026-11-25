@@ -159,7 +159,8 @@ export default function App() {
   const ownMoves = useMemo(() => (line ? pvToSan(line.rootFen, line.moves.map(m => m.uci), line.moves.length) : []), [line]);
   const newInGame = line && !paused ? Math.max(0, revealed - line.revealedAtStart) : 0;
   // "Live" only while there is something live to go back to.
-  const backLabel = !paused && !resultVisible ? t.backToLive : t.backToGamePos;
+  const liveNow = !paused && !resultVisible && revealed > 0;
+  const backLabel = liveNow ? t.backToLive : t.backToGamePos;
 
   // Tab title follows the game so a background tab still tells you something, without spoiling a paused game.
   useEffect(() => {
@@ -301,7 +302,6 @@ export default function App() {
                 ownMoves={ownMoves}
                 backLabel={backLabel}
                 atNewest={atLiveEdge && !line}
-                liveNow={!paused && !resultVisible}
               />
               <div className="board-actions">
                 {shareable && (
