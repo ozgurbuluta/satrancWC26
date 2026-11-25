@@ -315,7 +315,7 @@ export default function App() {
                     describe={(shown === 0 ? t.shareGame : t.sharePosition).replace('{g}', String(roundNo)).replace('{m}', String(Math.ceil(shown / 2)))}
                   />
                 )}
-                {!paused && !resultVisible && (
+                {view === 'live' && liveNow && (
                   <button className="pause-btn" onClick={pause} title={t.pauseTitle}>
                     ⏸ {t.pauseBtn}
                   </button>
