@@ -10,7 +10,7 @@ bağımsız bir hayran sitesi.
 - **Spoilersız izleme:** tahtayı duraklat, sonra hamle hamle ya da otomatik oynatarak yetiş; sonuç, skor ve yayın gizli kalır.
 - **Benzer oyunlar:** pozisyonun usta oyunlarında kaç kez oynandığı, yenilik hamlesi ve önceki oyunların devamını tahtada önizleme.
 - **Grafikler:** değerlendirme grafiği, kritik anlar ve hamle süreleri. Hamle süreleri yayındaki gerçek saat verisinden hesaplanır; süresi bilinmeyen hamle için çubuk çizilmez, tahmin de yürütülmez.
-- **Kim kazanır?** motor değerlendirmesinden kazanma/beraberlik tahmini ve hamle kalitesi (yanlışlık, hata, büyük hata).
+- **Kim kazanır?** kazanma, beraberlik ve kaybetme yüzdeleri bir formülden değil, gerçek oyunlardan gelir: 2600 ve üstü oyuncuların 8.754 klasik oyununda aynı değerlendirmedeki konumların nasıl bittiğine bakılır. Dört piyon öndeki taraf bu yüzden yüzde 100 değil, yüzde 93 civarında görünür ([docs/WIN-CHANCE.md](docs/WIN-CHANCE.md)). Bir taraf kazanıyorsa Stockfish kartı bunu oyuncunun adıyla söyler. Hamle kalitesi (yanlışlık, hata, büyük hata) de gösterilir.
 
 - **Tahtada kendi hamlelerin:** ana tahtada, canlı konumdan ya da önceki bir hamleden, kurallı her hamleyi deneyebilirsin. Motor senin konumunu izler, oyun arkada devam eder. "Canlı konuma dön", son hamle düğmesi ya da yukarı ok seni canlı konuma geri getirir.
 - **Hamleyi tahmin et:** tahmin yalnızca Tahmin sekmesinde yapılır: sıradaki hamleyi listeden seç ya da yaz; hamle oynanınca tuttu mu görürsün. Tahtada yaptığın hamleler analizdir, tahmin sayılmaz. Tahmin edene kadar o sekmedeki usta ve motor bilgileri gizlenir. Bu bilgiler iki ayrı şeydir: usta oyunlarında o pozisyonda neyin kaç kez oynandığı ve motorun en güçlü bulduğu hamleler. İkisi de olasılık değildir.

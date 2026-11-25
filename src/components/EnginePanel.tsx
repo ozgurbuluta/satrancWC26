@@ -1,6 +1,6 @@
 import { useScoresVersion, useT } from '../hooks';
 import type { Strings } from '../i18n';
-import { moveChoice, wdl, winningChances, type EvalResult, type PV } from '../lib/engine';
+import { moveChoice, standing, wdl, wdlPercents, WINNING_CP, winningChances, type EvalResult, type PV } from '../lib/engine';
 import { formatEval, localizeSan, pvToSan, shortName } from '../lib/format';
 import type { GameData } from '../lib/pgn';
 import { judgePly, QUALITY_GLYPH } from '../lib/quality';
@@ -15,19 +15,18 @@ export const verdictText = (pv: PV | undefined, t: Strings): string => {
   const abs = Math.abs(cp);
   if (abs < 30) return t.equal;
   if (abs < 90) return cp > 0 ? t.whiteSlightly : t.blackSlightly;
-  if (abs < 250) return cp > 0 ? t.whiteBetter : t.blackBetter;
+  if (abs < WINNING_CP) return cp > 0 ? t.whiteBetter : t.blackBetter;
   return cp > 0 ? t.whiteWinning : t.blackWinning;
 };
 
-const pct = (x: number) => `${Math.round(x * 100)}`;
-
-/** Win, draw and loss as the engine's evaluation suggests them. An estimate, and labelled as one. */
+/** Win, draw and loss as games with this evaluation have ended. An estimate, and labelled as one. */
 export function WinChance({ game, evaluation }: { game: GameData; evaluation?: EvalResult }) {
   const t = useT();
   const engineOn = useStore(s => s.settings.engine);
   const best = engineOn ? evaluation?.pvs[0] : undefined;
   const split = wdl(best);
-  const value = (x: number) => (best ? pct(x) : '–');
+  const shown = wdlPercents(split);
+  const value = (text: string) => (best ? text : '–');
   return (
     <section className="card win-chance" aria-label={t.winChance}>
       <h2 className="eyebrow">{t.winChance}</h2>
@@ -38,14 +37,14 @@ export function WinChance({ game, evaluation }: { game: GameData; evaluation?: E
             <span lang="en">{shortName(game.white)}</span>
           </span>
           <b>
-            {value(split.win)}
+            {value(shown.win)}
             {best && <small>%</small>}
           </b>
         </div>
         <div className="wc mid">
           <span className="wc-name">{t.draw}</span>
           <b>
-            {value(split.draw)}
+            {value(shown.draw)}
             {best && <small>%</small>}
           </b>
         </div>
@@ -55,7 +54,7 @@ export function WinChance({ game, evaluation }: { game: GameData; evaluation?: E
             <i className="dot black" aria-hidden="true" />
           </span>
           <b>
-            {value(split.loss)}
+            {value(shown.loss)}
             {best && <small>%</small>}
           </b>
         </div>
@@ -64,7 +63,7 @@ export function WinChance({ game, evaluation }: { game: GameData; evaluation?: E
         className={`wdl-bar ${best ? '' : 'empty'}`}
         role="img"
         // while the engine is on but has not answered yet, this says so; "off" is only said when it is off
-        aria-label={best ? `${shortName(game.white)} ${pct(split.win)}%, ${t.draw} ${pct(split.draw)}%, ${shortName(game.black)} ${pct(split.loss)}%` : engineOn ? t.thinking : t.engineOff}
+        aria-label={best ? `${shortName(game.white)} ${shown.win}%, ${t.draw} ${shown.draw}%, ${shortName(game.black)} ${shown.loss}%` : engineOn ? t.thinking : t.engineOff}
       >
         <i className="w" style={{ flexGrow: Math.max(split.win, 0.001) }} />
         <i className="d" style={{ flexGrow: Math.max(split.draw, 0.001) }} />
@@ -105,15 +104,23 @@ export function EngineCard({ game, fen, shown, evaluation, inLine }: EngineProps
   const lastMoveNo = firstMoveNo + Math.floor((shown - 1 + (whiteStarts ? 0 : 1)) / 2);
   const lastWasWhite = ((shown - 1) % 2 === 0) === whiteStarts;
 
-  // What the choice looks like when it is narrow: the good moves by name, and what the next one would be.
-  // Where every line is good there is nothing worth a sentence, and none is shown.
-  let choice: { critical: boolean; tag: string; text: string } | undefined;
-  const narrow = engineOn && evaluation ? moveChoice(evaluation.pvs, whiteToMove) : undefined;
-  if (narrow && evaluation) {
-    const sanOf = (line: number) => {
-      const san = pvToSan(fen, evaluation.pvs[line].moves, 1)[0]?.san;
-      return san ? localizeSan(san, notation) : undefined;
-    };
+  // One line under the engine's moves, and only when there is something to say.
+  // First: is one side winning? Then that is said, by the player's name, with the move that keeps it where there
+  // is only one. Otherwise: is the choice narrow? Then the good moves are named, and what the next one would be.
+  // Where the game is in the balance and every line is good, nothing is shown.
+  let note: { critical: boolean; tag?: string; lead?: string; text: string } | undefined;
+  const sanOf = (line: number) => {
+    const san = evaluation ? pvToSan(fen, evaluation.pvs[line].moves, 1)[0]?.san : undefined;
+    return san ? localizeSan(san, notation) : undefined;
+  };
+  const won = engineOn && evaluation ? standing(evaluation.pvs, whiteToMove) : undefined;
+  const narrow = engineOn && evaluation && !won ? moveChoice(evaluation.pvs, whiteToMove) : undefined;
+  if (won) {
+    const winner = shortName(won.winner === 'white' ? game.white : game.black);
+    const lead = (won.mate !== undefined ? t.winningMate.replace('{n}', String(won.mate)) : t.winningNote).replace('{player}', winner);
+    const move = won.onlyMove ? sanOf(0) : undefined;
+    note = { critical: !!move, lead, text: move ? t.winningOnly.replace('{move}', move) : '' };
+  } else if (narrow) {
     const move = sanOf(0);
     const second = sanOf(1);
     const next = sanOf(narrow.next);
@@ -121,7 +128,7 @@ export function EngineCard({ game, fen, shown, evaluation, inLine }: EngineProps
     if (move && next && (narrow.kind !== 'two' || second)) {
       const fill = (text: string) =>
         text.replace('{player}', shortName(mover)).replace('{move}', move).replace('{second}', second ?? '').replace('{next}', next).replace('{quality}', quality);
-      choice =
+      note =
         narrow.kind === 'only'
           ? { critical: true, tag: t.choiceOnlyTag, text: fill(t.choiceOnly) }
           : narrow.kind === 'best'
@@ -196,7 +203,7 @@ export function EngineCard({ game, fen, shown, evaluation, inLine }: EngineProps
         </ol>
       )}
 
-      {engineOn && ((lastPly && lastJudged) || choice) && (
+      {engineOn && ((lastPly && lastJudged) || note) && (
         <div className="note">
           {lastPly && lastJudged && (
             <p>
@@ -210,10 +217,12 @@ export function EngineCard({ game, fen, shown, evaluation, inLine }: EngineProps
               )}
             </p>
           )}
-          {choice && (
-            <p>
-              <span className={`q ${choice.critical ? 'q-critical' : 'q-calm'}`}>{choice.tag}</span>
-              {choice.text}
+          {note && (
+            <p className="standing">
+              {note.tag && <span className={`q ${note.critical ? 'q-critical' : 'q-calm'}`}>{note.tag}</span>}
+              {note.lead && <b>{note.lead}</b>}
+              {note.lead && note.text ? ' ' : ''}
+              {note.text}
             </p>
           )}
         </div>

@@ -12,3 +12,4 @@ public/engine
 
 # Reproducible source archive downloads
 .cache/
+__pycache__/

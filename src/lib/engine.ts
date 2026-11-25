@@ -1,6 +1,15 @@
 import { LICHESS } from '../config';
+import winTable from '../data/winchance.json';
 import { engineLineCount } from './engine-settings';
 import { legalSans } from './position';
+
+const WIN_TABLE = winTable as {
+  stepCentipawns: number;
+  limitCentipawns: number;
+  white: number[];
+  black: number[];
+  mate: { forWhite: { white: number; black: number }; forBlack: { white: number; black: number } };
+};
 
 export interface PV {
   /** Centipawns from White's point of view. */
@@ -321,18 +330,45 @@ export const winningChances = (s: { cp?: number; mate?: number } | undefined): n
 };
 
 /**
- * Rough win/draw/loss split for White from an evaluation. It is an estimate
- * shaped like engine WDL models (about +1.00 means a 50% win chance), not a
- * statistic from real games.
+ * Win, draw and loss for White from an evaluation: how games actually ended
+ * from positions with that evaluation, in classical games between players
+ * rated 2600 or more (src/data/winchance.json, made by
+ * scripts/fit-win-chance.py; docs/WIN-CHANCE.md). Not a formula: a table of
+ * counted shares, read off a straight line between two neighbouring entries.
+ * A winning evaluation is therefore not 100 %: games are drawn, and now and
+ * then lost, from four pawns up.
  */
 export const wdl = (s: { cp?: number; mate?: number } | undefined): { win: number; draw: number; loss: number } => {
   if (!s) return { win: 0, draw: 1, loss: 0 };
-  if (s.mate !== undefined) return s.mate > 0 ? { win: 1, draw: 0, loss: 0 } : { win: 0, draw: 0, loss: 1 };
-  const cp = s.cp ?? 0;
-  const sig = (x: number) => 1 / (1 + Math.exp(-x));
-  const win = sig((cp - 100) / 48);
-  const loss = sig((-cp - 100) / 48);
+  if (s.mate !== undefined) {
+    const m = s.mate > 0 ? WIN_TABLE.mate.forWhite : WIN_TABLE.mate.forBlack;
+    return { win: m.white, loss: m.black, draw: Math.max(0, 1 - m.white - m.black) };
+  }
+  const limit = WIN_TABLE.limitCentipawns;
+  const at = (Math.max(-limit, Math.min(limit, s.cp ?? 0)) + limit) / WIN_TABLE.stepCentipawns;
+  const lower = Math.floor(at);
+  const upper = Math.min(lower + 1, WIN_TABLE.white.length - 1);
+  const between = (list: number[]) => list[lower] + (at - lower) * (list[upper] - list[lower]);
+  const win = between(WIN_TABLE.white);
+  const loss = between(WIN_TABLE.black);
   return { win, loss, draw: Math.max(0, 1 - win - loss) };
+};
+
+/**
+ * The three shares as whole percentages that add up to 100, for showing. A
+ * share that exists but rounds to nothing reads "<1", and one that rounds to
+ * everything while another exists reads ">99": neither "0" nor "100" is said
+ * of a game that is still open.
+ */
+export const wdlPercents = (split: { win: number; draw: number; loss: number }): { win: string; draw: string; loss: string } => {
+  const shares = [split.win, split.draw, split.loss];
+  const whole = shares.map(x => Math.floor(x * 100 + 1e-9));
+  // the points lost to rounding down go to the largest remainders
+  const order = shares.map((x, i) => [x * 100 - whole[i], i]).sort((a, b) => b[0] - a[0] || a[1] - b[1]);
+  const short = Math.min(3, 100 - whole.reduce((a, b) => a + b, 0));
+  for (let k = 0; k < short; k++) whole[order[k][1]]++;
+  const text = whole.map((n, i) => (n === 0 && shares[i] > 0 ? '<1' : n === 100 && shares[i] < 1 ? '>99' : String(n)));
+  return { win: text[0], draw: text[1], loss: text[2] };
 };
 
 export type MoveQuality = 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder';
@@ -351,6 +387,31 @@ export interface MoveChoice {
   next: number;
   quality: 'inaccuracy' | 'mistake' | 'blunder';
 }
+
+/** From this many centipawns the score is read as "winning", here and in the words above the board. */
+export const WINNING_CP = 250;
+
+/**
+ * Whether one side is winning by the engine's best line, and whether the
+ * winning side, when it is to move, has only one move that keeps it so.
+ */
+export interface Standing {
+  winner: 'white' | 'black';
+  /** Moves to mate, when the best line is a forced mate. */
+  mate?: number;
+  /** The winner is to move and the second line no longer wins. */
+  onlyMove: boolean;
+}
+
+export const standing = (pvs: PV[], whiteToMove: boolean): Standing | undefined => {
+  const best = pvs[0];
+  if (!best) return undefined;
+  const wins = (pv: PV, white: boolean) => (pv.mate !== undefined ? pv.mate > 0 === white : (pv.cp ?? 0) * (white ? 1 : -1) >= WINNING_CP);
+  const winner = wins(best, true) ? 'white' : wins(best, false) ? 'black' : undefined;
+  if (!winner) return undefined;
+  const toMove = (winner === 'white') === whiteToMove;
+  return { winner, mate: best.mate !== undefined ? Math.abs(best.mate) : undefined, onlyMove: toMove && pvs.length >= 2 && !wins(pvs[1], winner === 'white') };
+};
 
 export const moveChoice = (pvs: PV[], whiteToMove: boolean): MoveChoice | undefined => {
   if (pvs.length < 2) return undefined;
