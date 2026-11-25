@@ -97,6 +97,32 @@ export interface GuessEntry {
   fenAfterGuess: string;
 }
 
+/**
+ * The viewer's own line on the main board. It carries its own starting
+ * position, so nothing that happens to the game afterwards (new moves, a
+ * correction in the feed, a longer delay) can change what it shows.
+ */
+export interface Analysis {
+  gameId: string;
+  /** Half-moves of the game that had been played in the starting position. */
+  rootPly: number;
+  rootFen: string;
+  rootLastMove?: [string, string];
+  rootCheck: boolean;
+  /** Moves of the game that were visible when the line was started, to say later that play has gone on. */
+  revealedAtStart: number;
+  /** The viewer's own moves from the starting position. */
+  moves: PlayedMove[];
+  /** How many of them are on the board. */
+  cursor: number;
+}
+
+/** What the board shows for a line: its starting position, or the position after the last own move on the board. */
+export const analysisPosition = (a: Analysis): { fen: string; lastMove?: [string, string]; check: boolean } => {
+  const m = a.cursor > 0 ? a.moves[a.cursor - 1] : undefined;
+  return m ? { fen: m.fen, lastMove: [m.from, m.to], check: m.check } : { fen: a.rootFen, lastMove: a.rootLastMove, check: a.rootCheck };
+};
+
 /** A position from another game shown on the board for comparison. */
 export interface Preview {
   fen: string;
@@ -129,6 +155,8 @@ interface State {
   /** Auto-reveal interval in ms while paused (0 = off). */
   autoplayMs: number;
   preview: Preview | null;
+  /** The viewer's own line on the board, or null while the board shows the game. */
+  analysis: Analysis | null;
   /** Prediction waiting for the next move. */
   guess: Guess | null;
   /** Past predictions per game id. */
@@ -158,7 +186,18 @@ interface State {
   restart: () => void;
   setAutoplay: (ms: number) => void;
   setPreview: (p: Preview | null) => void;
-  makeGuess: (move: PlayedMove) => void;
+  /**
+   * Plays a move of the viewer's own on the board, from whatever position it
+   * shows. Starts a line if there is none. False when the move is not legal
+   * there or the board cannot be played on (another game's position is shown).
+   */
+  analysisMove: (uci: string) => boolean;
+  /** Shows the line after its first `n` own moves. */
+  analysisGoto: (n: number) => void;
+  /** Drops the line and shows the game position it started from. */
+  closeAnalysis: () => void;
+  /** Records the viewer's prediction for the next move of the game. Only the Tahmin tab calls this. */
+  makeGuess: (move: { uci: string }) => void;
   clearGuess: () => void;
   /** Show the engine for the current move; that move can then no longer be guessed. */
   peekEngine: () => void;
@@ -368,13 +407,14 @@ export const useStore = create<State>((set, get) => {
   /** Tie-break days: once a game is over and the next one has started, move on to it. */
   const followNextBoard = () => {
     const s = get();
-    if (boardChosenByHand || !s.followLatest || s.paused || s.viewPly !== null || s.preview || s.gameOrder.length < 2 || !s.gameId) return;
+    // Never while the viewer is browsing or playing their own line: the board is theirs until they return.
+    if (boardChosenByHand || !s.followLatest || s.paused || s.viewPly !== null || s.preview || s.analysis || s.gameOrder.length < 2 || !s.gameId) return;
     const cur = s.games[s.gameId];
     if (!cur || cur.result === '*') return;
     const idx = s.gameOrder.indexOf(s.gameId);
     const next = s.gameOrder.slice(idx + 1).find(id => s.games[id].result === '*' && s.games[id].plies.length > 0);
     if (!next) return;
-    set({ gameId: next, guess: null, peekedPly: null, viewPly: null, revealed: 0, resultVisible: false, preview: null, ...pauseFor(next) });
+    set({ gameId: next, guess: null, peekedPly: null, viewPly: null, revealed: 0, resultVisible: false, preview: null, analysis: null, ...pauseFor(next) });
     recomputeReveal();
     track('game_select', { how: 'auto', board: s.gameOrder.indexOf(next) + 1 });
   };
@@ -393,6 +433,7 @@ export const useStore = create<State>((set, get) => {
       gameId: undefined,
       guess: null,
       peekedPly: null,
+      analysis: null,
       revealed: 0,
       resultVisible: false,
       viewPly: null,
@@ -443,7 +484,7 @@ export const useStore = create<State>((set, get) => {
     }
     const cur = s.gameId ? s.games[s.gameId] : undefined;
     const stillPlaying = !!cur && cur.result === '*' && cur.plies.length > 0;
-    const idle = s.viewPly === null && !s.preview && !stillPlaying;
+    const idle = s.viewPly === null && !s.preview && !s.analysis && !stillPlaying;
     const now = Date.now();
     if (!s.nextUp || s.nextUp.roundId !== live.id || !idle) {
       // (Re)start the countdown; while the viewer is busy it keeps restarting.
@@ -528,6 +569,7 @@ export const useStore = create<State>((set, get) => {
     pausePly: 0,
     autoplayMs: 0,
     preview: null,
+    analysis: null,
     guess: null,
     guessLog: readJson<Record<string, GuessEntry[]>>(GUESS_KEY, {}),
     peekedPly: null,
@@ -570,13 +612,16 @@ export const useStore = create<State>((set, get) => {
     selectGame: id => {
       stopAutoplay();
       boardChosenByHand = true;
-      set({ gameId: id, guess: null, peekedPly: null, viewPly: null, revealed: 0, resultVisible: false, preview: null, ...pauseFor(id) });
+      set({ gameId: id, guess: null, peekedPly: null, viewPly: null, revealed: 0, resultVisible: false, preview: null, analysis: null, ...pauseFor(id) });
       recomputeReveal();
     },
 
+    // Going to a move of the game always leaves the viewer's own line. `null` is the newest visible move.
     setViewPly: n => {
-      const { revealed, gameId } = get();
-      set({ viewPly: n === null || n >= revealed ? null : Math.max(0, n), preview: null });
+      const { revealed, gameId, viewPly, preview, analysis } = get();
+      const next = n === null || n >= revealed ? null : Math.max(0, n);
+      if (next === viewPly && !preview && !analysis) return; // already there
+      set({ viewPly: next, preview: null, analysis: null });
       if (n !== null && gameId && !browsedGames.has(gameId)) {
         browsedGames.add(gameId);
         track('move_browse');
@@ -584,9 +629,22 @@ export const useStore = create<State>((set, get) => {
     },
 
     step: delta => {
-      const { viewPly, revealed, paused, preview } = get();
+      const { viewPly, revealed, paused, preview, analysis } = get();
       if (preview) {
         set({ preview: null });
+        return;
+      }
+      if (analysis) {
+        // Inside the viewer's own line the arrows walk that line.
+        if (delta > 0) {
+          if (analysis.cursor < analysis.moves.length) set({ analysis: { ...analysis, cursor: analysis.cursor + 1 } });
+        } else if (analysis.cursor > 0) {
+          set({ analysis: { ...analysis, cursor: analysis.cursor - 1 } });
+        } else {
+          // Back from its starting position: the line is left behind and the game is stepped back.
+          const n = Math.max(0, Math.min(revealed, analysis.rootPly) - 1);
+          set({ analysis: null, viewPly: n >= revealed ? null : n });
+        }
         return;
       }
       if (delta > 0 && viewPly === null && paused) {
@@ -595,6 +653,8 @@ export const useStore = create<State>((set, get) => {
       }
       const cur = viewPly ?? revealed;
       const n = Math.max(0, Math.min(revealed, cur + delta));
+      // Back at the first position, or forward at the newest: nothing to do, and nothing is touched.
+      if (n === cur) return;
       set({ viewPly: n >= revealed ? null : n });
       const { gameId } = get();
       if (gameId && !browsedGames.has(gameId)) {
@@ -616,7 +676,7 @@ export const useStore = create<State>((set, get) => {
 
     resume: () => {
       stopAutoplay();
-      set({ paused: false, autoplayMs: 0, viewPly: null, preview: null });
+      set({ paused: false, autoplayMs: 0, viewPly: null, preview: null, analysis: null });
       persistPause();
       recomputeReveal();
       track('pause_end', { reason: 'go_live', moves_revealed: pauseReveals });
@@ -630,10 +690,10 @@ export const useStore = create<State>((set, get) => {
       if (s.pausePly + 1 >= available) {
         // Caught up with everything that has been played: back to live.
         stopAutoplay();
-        set({ paused: false, autoplayMs: 0, viewPly: null, preview: null });
+        set({ paused: false, autoplayMs: 0, viewPly: null, preview: null, analysis: null });
         track('pause_end', { reason: 'caught_up', moves_revealed: pauseReveals + 1 });
       } else {
-        set({ pausePly: s.pausePly + 1, viewPly: null, preview: null });
+        set({ pausePly: s.pausePly + 1, viewPly: null, preview: null, analysis: null });
       }
       pauseReveals++;
       persistPause();
@@ -642,7 +702,7 @@ export const useStore = create<State>((set, get) => {
 
     restart: () => {
       stopAutoplay();
-      set({ paused: true, pausePly: 0, autoplayMs: 0, viewPly: null, preview: null, nextUp: null });
+      set({ paused: true, pausePly: 0, autoplayMs: 0, viewPly: null, preview: null, analysis: null, nextUp: null });
       persistPause();
       recomputeReveal();
       pauseReveals = 0;
@@ -677,8 +737,53 @@ export const useStore = create<State>((set, get) => {
     peekEngine: () => set(s => ({ peekedPly: s.revealed, guess: null })),
 
     setPreview: p => {
-      set({ preview: p });
+      // Another game's position takes the board, so a line of the viewer's own ends there.
+      set(p ? { preview: p, analysis: null } : { preview: null });
       if (p) track('similar_preview');
+    },
+
+    analysisMove: uci => {
+      const s = get();
+      const g = selectGameData(s);
+      if (!g || s.view !== 'live' || s.preview) return false;
+      const current = s.analysis && s.analysis.gameId === g.id ? s.analysis : undefined;
+      const shown = selectShownPly(s);
+      const ply = shown > 0 ? g.plies[shown - 1] : undefined;
+      // The position on the board right now: the line's, or the game's.
+      const from = current ? analysisPosition(current).fen : (ply?.fen ?? g.initialFen);
+      const move = moveByUci(from, uci);
+      if (!move) return false;
+      const line: Analysis = current ?? {
+        gameId: g.id,
+        rootPly: shown,
+        rootFen: from,
+        rootLastMove: ply ? [ply.from, ply.to] : undefined,
+        rootCheck: !!ply?.check,
+        revealedAtStart: s.revealed,
+        moves: [],
+        cursor: 0,
+      };
+      // A move from the middle of the line replaces what came after it.
+      const moves = [...line.moves.slice(0, line.cursor), move];
+      // Auto-play would keep showing game moves under the line, so it stops here.
+      stopAutoplay();
+      set({ analysis: { ...line, moves, cursor: moves.length }, autoplayMs: 0 });
+      if (!current) track('analysis_start', { from: s.viewPly === null ? 'newest' : 'earlier' });
+      return true;
+    },
+
+    analysisGoto: n => {
+      const a = get().analysis;
+      if (!a) return;
+      const cursor = Math.max(0, Math.min(a.moves.length, Math.trunc(n)));
+      if (cursor !== a.cursor) set({ analysis: { ...a, cursor } });
+    },
+
+    closeAnalysis: () => {
+      const { analysis, revealed } = get();
+      if (!analysis) return;
+      // Back to where the line started, as far as that is still among the visible moves.
+      set({ analysis: null, viewPly: analysis.rootPly >= revealed ? null : analysis.rootPly });
     },
 
     setView: v => {
@@ -721,18 +826,27 @@ export const selectGameData = (s: State): GameData | undefined => (s.gameId ? s.
 
 /**
  * Whether the move after the newest visible one can be predicted now: guess
- * mode on, the viewer at the newest visible move of the live view, the game
- * not known to be over, and the engine not already consulted for this move.
+ * mode on, the game not known to be over, and this move not given up. It is
+ * about the game, not about the board: what the board shows (an earlier
+ * move, a line of the viewer's own, another game's position) plays no part.
  */
 export const canGuess = (s: State): boolean => {
   const g = selectGameData(s);
-  return (
-    !!g && s.settings.guessMode && s.view === 'live' && s.viewPly === null && !s.preview && !s.resultVisible && s.peekedPly !== s.revealed
-  );
+  return !!g && s.settings.guessMode && s.view === 'live' && !s.resultVisible && s.peekedPly !== s.revealed;
 };
 
-/** The engine is held back while a prediction is still open for the move on the board. */
-export const engineHeldBack = (s: State): boolean => canGuess(s) && !(s.guess && s.guess.gameId === s.gameId && s.guess.forPly === s.revealed + 1);
+/** The position a prediction is about: the newest visible one of the game, whatever the board shows. */
+export const selectGuessFen = (s: State): string | undefined => {
+  const g = selectGameData(s);
+  return g ? (s.revealed > 0 ? g.plies[s.revealed - 1].fen : g.initialFen) : undefined;
+};
+
+/**
+ * In the prediction tab, the references (what masters played, what the engine
+ * prefers) wait until the viewer has predicted this move. Nothing outside
+ * that tab is held back.
+ */
+export const referencesHeld = (s: State): boolean => canGuess(s) && !(s.guess && s.guess.gameId === s.gameId && s.guess.forPly === s.revealed + 1);
 
 /** Ply currently shown on the board. */
 export const selectShownPly = (s: State): number => Math.min(s.viewPly ?? s.revealed, s.revealed);
@@ -747,6 +861,8 @@ export const selectRoundNo = (s: State): number => s.rounds.findIndex(r => r.id 
  * with several boards (tie-breaks) there is no share action for the match.
  */
 export const canSharePosition = (s: State): boolean => {
+  // A line of the viewer's own cannot be put into a link, and a link to some game move would not be what is on the board.
+  if (s.analysis) return false;
   if (!IS_MATCH || selectRoundNo(s) < 1 || !s.gameId) return false;
   const known = Object.keys(s.games);
   return known.length === 1 && known[0] === s.gameId;
@@ -801,6 +917,71 @@ export const visibleResult = (s: State, mg: MatchGame): string => {
   return mg.result;
 };
 
+export const samePlayer = (x: PlayerInfo, y: PlayerInfo): boolean => (x.fideId && y.fideId ? x.fideId === y.fideId : x.name === y.name);
+
+/** How a game of the match stands, as far as this viewer may know. */
+export type GameStatus = 'done' | 'live' | 'paused' | 'hidden' | 'ahead';
+
+export interface GameRow {
+  /** 1-based number of the game in the match. */
+  n: number;
+  roundId: string;
+  /** The game that is open on the board. */
+  current: boolean;
+  /** A day with several boards: there is no single result for the round. */
+  several: boolean;
+  white?: PlayerInfo;
+  black?: PlayerInfo;
+  /** '*' unless the result may be shown. */
+  result: string;
+  status: GameStatus;
+  /** Which of the two players won, in the order of the match score. */
+  winner?: 'a' | 'b';
+  /** Full move reached in the open game while it is live. */
+  move?: number;
+  startsAt?: number;
+  tiebreak: boolean;
+}
+
+/**
+ * The games of the match in order, with what may be shown of each: the open
+ * game honours the delay and the pause, and while paused later games that
+ * have a result stay hidden, so the list never gives the score away.
+ */
+export const selectGameRows = (s: State): GameRow[] => {
+  const roundNo = selectRoundNo(s);
+  const open = selectGameData(s);
+  const score = selectScore(s);
+  return s.rounds.map((r, i) => {
+    const n = i + 1;
+    const mg = s.matchGames.find(g => g.roundNo === n);
+    const current = r.id === s.roundId;
+    const several = current && s.gameOrder.length > 1;
+    const white = current && open && !several ? open.white : mg?.white;
+    const black = current && open && !several ? open.black : mg?.black;
+    const result = several ? '*' : current && open ? (s.resultVisible ? open.result : '*') : mg ? visibleResult(s, mg) : '*';
+    const done = result !== '*';
+    const hidden = s.paused && roundNo > 0 && n > roundNo && !!mg && mg.result !== '*';
+    const live = !done && !hidden && (current ? s.revealed > 0 && !s.paused : !!r.ongoing);
+    const status: GameStatus = done ? 'done' : hidden ? 'hidden' : live ? 'live' : current && s.paused ? 'paused' : 'ahead';
+    const won = result === '1-0' ? white : result === '0-1' ? black : undefined;
+    return {
+      n,
+      roundId: r.id,
+      current,
+      several,
+      white,
+      black,
+      result,
+      status,
+      winner: won && score ? (samePlayer(won, score.a) ? 'a' : 'b') : undefined,
+      move: live && current && !several ? Math.ceil(s.revealed / 2) : undefined,
+      startsAt: r.startsAt,
+      tiebreak: IS_MATCH && n > GAMES_IN_MATCH,
+    };
+  });
+};
+
 export const selectScore = (s: State): MatchScore | undefined => {
   if (!s.matchGames.length) return undefined;
   const first = s.matchGames[0];
@@ -808,7 +989,7 @@ export const selectScore = (s: State): MatchScore | undefined => {
   const firstIsA = first.black.fideId !== CHAMPION_FIDE_ID;
   const a = firstIsA ? first.white : first.black;
   const b = firstIsA ? first.black : first.white;
-  const same = (x: PlayerInfo, y: PlayerInfo) => (x.fideId && y.fideId ? x.fideId === y.fideId : x.name === y.name);
+  const same = samePlayer;
   let aPoints = 0;
   let bPoints = 0;
   let played = 0;

@@ -131,8 +131,8 @@ const shell = http.createServer((req, res) => {
     const { ctx, errors, clipboard } = await context();
     const page = await openMatch(ctx, `parti=1&hamle=4&${NOISE}`);
     const p = panel(page);
-    const share = page.locator('.controls .share-btn');
-    check('the linked position is on the board (after 2...Nc6)', (await page.locator('.move.active').innerText()).trim() === 'Ac6', await page.locator('.move.active').innerText());
+    const share = page.locator('.board-actions .share-btn');
+    check('the linked position is on the board (after 2...Nc6)', (await page.locator('.strip-track .move.active').innerText()).trim() === 'Ac6', await page.locator('.strip-track .move.active').innerText());
     check('the button is named and starts collapsed', (await share.innerText()).trim() === 'Paylaş' && (await share.getAttribute('aria-expanded')) === 'false');
 
     await share.click();
@@ -141,23 +141,23 @@ const shell = http.createServer((req, res) => {
     check('the clipboard holds the public link to this game and move, and nothing else', first === `${PUBLIC}?parti=1&hamle=4`, first);
     check('nothing from the visitor\'s own address is in it', !LEAK.test(first), first);
     check('the outcome is said in a live region', (await p.status()) === 'Bağlantı kopyalandı.' && (await page.locator('.share-panel [role="status"]').getAttribute('aria-live')) === 'polite');
-    check('the link is also shown, in a labelled read-only field', (await p.value()) === first && (await p.label()) === 'Bu pozisyonun bağlantısı (1. parti, 2. hamle)' && (await p.selected()).readOnly, await p.label());
+    check('the link is also shown, in a labelled read-only field', (await p.value()) === first && (await p.label()) === 'Bu pozisyonun bağlantısı (1. oyun, 2. hamle)' && (await p.selected()).readOnly, await p.label());
     check('the button says it is expanded and names the panel', (await share.getAttribute('aria-expanded')) === 'true' && (await page.locator('#' + (await share.getAttribute('aria-controls')).replace(/([:«»])/g, '\\$1')).count()) === 1);
     await page.screenshot({ path: out + '/share-desktop.png' });
 
     // step forward on the board and share again
-    await page.locator('.controls button[aria-label="Sonraki hamle"]').click().catch(() => page.locator('.controls button').nth(2).click());
+    await page.locator('.move-strip button[aria-label="Sonraki hamle"]').click();
     await page.waitForTimeout(200);
     check('the open panel still shows the link that was copied', (await p.value()) === `${PUBLIC}?parti=1&hamle=4`);
     await share.click();
     await page.waitForTimeout(300);
     const second = await clipboard();
-    check('sharing after a step forward copies the new position', second === `${PUBLIC}?parti=1&hamle=5` && (await p.label()) === 'Bu pozisyonun bağlantısı (1. parti, 3. hamle)', second);
+    check('sharing after a step forward copies the new position', second === `${PUBLIC}?parti=1&hamle=5` && (await p.label()) === 'Bu pozisyonun bağlantısı (1. oyun, 3. hamle)', second);
 
     // the start of the game
     await page.locator('.share-panel button', { hasText: 'Kapat' }).click();
     check('the close button removes the panel and returns to the share button', (await page.locator('.share-panel').count()) === 0 && (await share.evaluate(el => document.activeElement === el)));
-    await page.locator('.controls button').first().click();
+    await page.locator('.move-strip button[aria-label="İlk hamle"]').click();
     await share.click();
     await page.waitForTimeout(300);
     const start = await clipboard();
@@ -165,14 +165,14 @@ const shell = http.createServer((req, res) => {
 
     // the link that was produced opens the same position (same query against the local build)
     const again = await openMatch(ctx, new URL(second).search.slice(1));
-    check('the copied link opens the same position (after 3.Bb5)', (await again.locator('.move.active').innerText()).trim() === 'Fb5', await again.locator('.move.active').innerText());
+    check('the copied link opens the same position (after 3.Bb5)', (await again.locator('.strip-track .move.active').innerText()).trim() === 'Fb5', await again.locator('.strip-track .move.active').innerText());
     await again.close();
 
     // another broadcast opened for testing must not produce links to the match
     const other = await ctx.newPage();
     await other.goto(`${APP}/?tour=zzTestzz`, { waitUntil: 'domcontentloaded' });
     await other.waitForSelector('button.move', { timeout: 25000 });
-    check('a test broadcast offers no share button', (await other.locator('.controls .share-btn').count()) === 0);
+    check('a test broadcast offers no share button', (await other.locator('.board-actions .share-btn').count()) === 0);
     await other.close();
 
     check('no page errors or CSP violations', errors.length === 0, errors.join(' | '));
@@ -186,7 +186,7 @@ const shell = http.createServer((req, res) => {
     await stamp();
     const page = await openMatch(ctx, `parti=1&hamle=4&${NOISE}`);
     const p = panel(page);
-    await page.locator('.controls .share-btn').click();
+    await page.locator('.board-actions .share-btn').click();
     await page.waitForSelector('.share-panel');
     check('a refused copy is not reported as a success', /kopyalanamadı/.test(await p.status()), await p.status());
     const sel = await p.selected();
@@ -207,14 +207,14 @@ const shell = http.createServer((req, res) => {
     // arrow keys in the field move the caret, not the game
     await page.bringToFront();
     await page.locator('.share-panel input').focus();
-    const before = await page.locator('.move.active').innerText();
+    const before = await page.locator('.strip-track .move.active').innerText();
     await page.keyboard.press('ArrowLeft');
     await page.keyboard.press('ArrowLeft');
     await page.waitForTimeout(200);
-    check('arrow keys inside the field do not step through the game', (await page.locator('.move.active').innerText()) === before);
+    check('arrow keys inside the field do not step through the game', (await page.locator('.strip-track .move.active').innerText()) === before);
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
-    check('Escape closes the panel and returns focus to the button', (await page.locator('.share-panel').count()) === 0 && (await page.locator('.controls .share-btn').evaluate(el => document.activeElement === el)));
+    check('Escape closes the panel and returns focus to the button', (await page.locator('.share-panel').count()) === 0 && (await page.locator('.board-actions .share-btn').evaluate(el => document.activeElement === el)));
     check('no page errors', errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
@@ -233,7 +233,7 @@ const shell = http.createServer((req, res) => {
     const policy = await frame.evaluate(() => navigator.clipboard.writeText('probe').then(() => 'allowed', e => 'refused: ' + e.name));
     await stamp();
     await page.bringToFront();
-    await frame.locator('.controls .share-btn').click();
+    await frame.locator('.board-actions .share-btn').click();
     await frame.waitForSelector('.share-panel');
     const status = await p.status();
     const held = await clipboard();
@@ -277,12 +277,13 @@ const shell = http.createServer((req, res) => {
   {
     const { ctx, errors } = await context({ boards: 2 });
     const page = await openMatch(ctx, 'parti=1&hamle=4');
-    const boards = await page.locator('.game-picker option').count();
-    check('a round with two boards lists both and offers no share button', boards === 2 && (await page.locator('.controls .share-btn').count()) === 0, `boards ${boards}`);
-    const before = await page.locator('.game-picker select').inputValue();
-    await page.locator('.game-picker select').selectOption({ index: before === 'game0001' ? 1 : 0 });
+    await page.locator('.games-btn').click();
+    await page.waitForSelector('dialog.games-drawer[open]');
+    const boards = await page.locator('.games-drawer .board-pick').count();
+    check('a round with two boards lists both and offers no share button', boards === 2 && (await page.locator('.board-actions .share-btn').count()) === 0, `boards ${boards}`);
+    await page.locator('.games-drawer .board-pick:not(.current)').click();
     await page.waitForTimeout(300);
-    check('still none after picking the other board by hand', (await page.locator('.controls .share-btn').count()) === 0 && (await page.locator('.share-panel').count()) === 0);
+    check('still none after picking the other board by hand', (await page.locator('.board-actions .share-btn').count()) === 0 && (await page.locator('.share-panel').count()) === 0);
     check('the puzzle corner keeps its own share button', await (async () => {
       await page.locator('.viewnav button', { hasText: 'Bulmaca' }).click();
       await page.waitForSelector('.puzzle-col cg-board', { timeout: 25000 });
@@ -328,21 +329,24 @@ const shell = http.createServer((req, res) => {
   {
     const { ctx, errors, clipboard } = await context({ device: 'iPhone 14' });
     const page = await openMatch(ctx, `parti=1&hamle=4&${NOISE}`);
-    const share = page.locator('.controls .share-btn');
+    const share = page.locator('.board-actions .share-btn');
     const box = await share.boundingBox();
     check('on a phone the button is icon-only but still named', (await share.getAttribute('aria-label')) === 'Paylaş' && (await share.innerText()).trim() === '');
-    check('it is at least 44px tall and 36px wide for touch', box.height >= 44 && box.width >= 36, `${Math.round(box.width)}x${Math.round(box.height)}`);
-    /** Every button of the row: inside the screen, big enough, and with its label not cut off. */
+    check('it is at least 44px tall and 44px wide for touch', box.height >= 44 && box.width >= 44, `${Math.round(box.width)}x${Math.round(box.height)}`);
+    /** Every control under the board: inside the screen, big enough, and with its label not cut off. */
     const row = () =>
       page.evaluate(() =>
-        [...document.querySelectorAll('.controls button')].map(b => {
-          const r = b.getBoundingClientRect();
-          return { name: (b.getAttribute('aria-label') || b.textContent).trim().slice(0, 12), w: Math.round(r.width), h: Math.round(r.height), top: Math.round(r.top), inside: r.left >= 0 && r.right <= window.innerWidth, cut: b.scrollWidth > b.clientWidth + 1 || b.scrollHeight > b.clientHeight + 1 };
-        }),
+        [...document.querySelectorAll('.move-strip > button, .move-strip-moves > button, .move-strip .go-live, .board-actions button')]
+          .filter(b => b.offsetParent)
+          .map(b => {
+            const r = b.getBoundingClientRect();
+            return { name: (b.getAttribute('aria-label') || b.textContent).trim().slice(0, 14), w: Math.round(r.width), h: Math.round(r.height), top: Math.round(r.top), inside: r.left >= 0 && r.right <= window.innerWidth, cut: b.scrollWidth > b.clientWidth + 1 || b.scrollHeight > b.clientHeight + 1 };
+          }),
       );
     const steppedBack = await row();
-    check('stepped back from live: every control is on screen, at least 36x44, and no label is cut off', steppedBack.every(b => b.inside && !b.cut && b.w >= 36 && b.h >= 44), JSON.stringify(steppedBack));
-    check('stepped back from live: the way back to live gets its own row', new Set(steppedBack.map(b => b.top)).size === 2 && steppedBack.at(-1).top > steppedBack[0].top && steppedBack.at(-1).w > 200, JSON.stringify(steppedBack.map(b => [b.name, b.top, b.w])));
+    check('stepped back from live: every control is on screen, at least 40x40, and no label is cut off', steppedBack.every(b => b.inside && !b.cut && b.w >= 40 && b.h >= 40), JSON.stringify(steppedBack));
+    const back = steppedBack.find(b => /Canlı konuma/.test(b.name));
+    check('stepped back from live: the way back to live gets its own row', !!back && back.w > 300 && steppedBack.filter(b => b.top === back.top).length === 1, JSON.stringify(steppedBack.map(b => [b.name, b.top, b.w])));
     await share.scrollIntoViewIfNeeded();
     await share.tap();
     await page.waitForSelector('.share-panel');
@@ -360,10 +364,10 @@ const shell = http.createServer((req, res) => {
     await page.screenshot({ path: out + '/share-phone.png' });
     // following live: one row
     await page.locator('.share-panel button', { hasText: 'Kapat' }).tap();
-    await page.locator('.controls .go-live').tap();
+    await page.locator('.move-strip .go-live').tap();
     await page.waitForTimeout(300);
     const live = await row();
-    check('following live: the controls and the pause button share one row, nothing cut off', new Set(live.map(b => b.top)).size === 1 && live.every(b => b.inside && !b.cut && b.w >= 36 && b.h >= 44), JSON.stringify(live.map(b => [b.name, b.w, b.cut])));
+    check('following live: no way-back row, and nothing is cut off', !live.some(b => /Canlı konuma/.test(b.name)) && live.every(b => b.inside && !b.cut && b.w >= 40 && b.h >= 40), JSON.stringify(live.map(b => [b.name, b.w, b.cut])));
     await page.screenshot({ path: out + '/share-phone-live.png' });
     check('no page errors on the phone', errors.length === 0, errors.join(' | '));
     await ctx.close();

@@ -72,6 +72,7 @@ export const EVENTS: Record<string, Schema> = {
   outbound_click: { link_domain: hostname },
   share_link: { kind: oneOf('position', 'puzzles'), copied: bool },
   feed_fallback: {},
+  analysis_start: { from: oneOf('newest', 'earlier') },
   guess_mode: { on: bool },
   guess_result: { hit: bool, quality: oneOf('best', 'good', 'inaccuracy', 'mistake', 'blunder', 'unknown') },
   puzzle_start: { source: oneOf('daily', 'lichess', 'builtin'), theme: oneOf('mix', 'mateIn1', 'mateIn2', 'short', 'endgame') },

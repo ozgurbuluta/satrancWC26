@@ -4,19 +4,21 @@ Gukesh Dommaraju – Javokhir Sindarov maçını Türkçe yayınla yan yana izle
 bağımsız bir hayran sitesi.
 
 - **Canlı tahta:** hamleler Lichess yayınının push akışından gelir (anahtar ve sunucu gerekmez).
-- **Yayın paneli:** Chess.com Türkçe, SatranChess, Chess.com (EN) ve FIDE YouTube yayınları hazır; YouTube, Twitch ya da Kick bağlantısı da yapıştırılabilir.
+- **Yayın paneli:** Chess.com Türkçe, SatranChess, Chess.com (EN) ve FIDE YouTube yayınları açılır listeden seçilir; YouTube, Twitch ya da Kick bağlantısı da yapıştırılabilir.
 - **Yayına eşitleme:** video tahtadan gerideyse tahtayı saniye saniye geciktirir, yorumculardan önce hamleyi görmezsin.
-- **Motor:** önce Lichess bulut değerlendirmesi, bulunamazsa tarayıcıda Stockfish.
+- **Motor:** önce Lichess bulut değerlendirmesi, bulunamazsa tarayıcıda Stockfish. Tahtanın solunda kazanma şansı ve motorun hatları durur; her hatta puan, motorun oynayacağı hamle ve devamı görünür.
 - **Türkçe notasyon:** Ş V K F A (İngilizce notasyona geçilebilir).
 - **Spoilersız izleme:** tahtayı duraklat, sonra hamle hamle ya da otomatik oynatarak yetiş; sonuç, skor ve yayın gizli kalır.
-- **Benzer partiler:** pozisyonun usta partilerinde kaç kez oynandığı, yenilik hamlesi ve önceki partilerin devamını tahtada önizleme.
-- **Grafikler:** değerlendirme grafiği, kritik anlar ve hamle başına düşünme süresi.
+- **Benzer oyunlar:** pozisyonun usta oyunlarında kaç kez oynandığı, yenilik hamlesi ve önceki oyunların devamını tahtada önizleme.
+- **Grafikler:** değerlendirme grafiği, kritik anlar ve hamle süreleri. Hamle süreleri yayındaki gerçek saat verisinden hesaplanır; süresi bilinmeyen hamle için çubuk çizilmez, tahmin de yürütülmez.
 - **Kim kazanır?** motor değerlendirmesinden kazanma/beraberlik tahmini ve hamle kalitesi (yanlışlık, hata, büyük hata).
 
-- **Hamleyi tahmin et:** tahmin modunda sıradaki hamleyi tahtada yap ya da yaz; hamle oynanınca tuttu mu görürsün. Tahmin edene kadar motor önerileri gizlenir. Yanında iki ayrı bilgi durur: usta partilerinde o pozisyonda neyin kaç kez oynandığı ve motorun en güçlü bulduğu hamleler. İkisi de olasılık değildir; sayfada insan hamlesi tahmin eden bir model yoktur.
+- **Tahtada kendi hamlelerin:** ana tahtada, canlı konumdan ya da önceki bir hamleden, kurallı her hamleyi deneyebilirsin. Motor senin konumunu izler, oyun arkada devam eder. "Canlı konuma dön", son hamle düğmesi ya da yukarı ok seni canlı konuma geri getirir.
+- **Hamleyi tahmin et:** tahmin yalnızca Tahmin sekmesinde yapılır: sıradaki hamleyi listeden seç ya da yaz; hamle oynanınca tuttu mu görürsün. Tahtada yaptığın hamleler analizdir, tahmin sayılmaz. Tahmin edene kadar o sekmedeki usta ve motor bilgileri gizlenir. Bu bilgiler iki ayrı şeydir: usta oyunlarında o pozisyonda neyin kaç kez oynandığı ve motorun en güçlü bulduğu hamleler. İkisi de olasılık değildir; sayfada insan hamlesi tahmin eden bir model yoktur.
 - **Bulmaca köşesi:** Lichess bulmacaları (günün bulmacası, karışık, 1 ve 2 hamlede mat, kısa, oyun sonu). Yalnızca kurallı hamleler oynanır; ipucu, çözümü göster, baştan ve skor vardır. Lichess'e ulaşılamazsa hazır bulmacalar gösterilir.
-- **Paylaş:** tahtanın altındaki düğme, ekrandaki partinin o hamlesine giden bağlantıyı kopyalar (`?parti=3&hamle=24`). Bulmaca köşesinin bağlantısı `#bulmaca` ile biter. Bağlantıda bunlardan başka hiçbir şey olmaz. Tarayıcı kopyalamaya izin vermezse bağlantı seçili olarak gösterilir, elle kopyalarsın. Aynı turda birden çok tahta olan günlerde (eşitlik bozma) bağlantı hangi tahtayı gösterdiğini söyleyemeyeceği için düğme gösterilmez.
-- **Maçı kendi takip eder:** yeni parti başlayınca kısa bir duyurudan sonra o partiye geçer; her günün yayınını kanalın canlı yayın listesinden kendi bulur.
+- **Paylaş:** tahtanın altındaki düğme, ekrandaki oyunun o hamlesine giden bağlantıyı kopyalar (`?parti=3&hamle=24`; adresteki `parti` adı eski bağlantılar çalışsın diye aynı kalır). Bulmaca köşesinin bağlantısı `#bulmaca` ile biter. Bağlantıda bunlardan başka hiçbir şey olmaz. Tarayıcı kopyalamaya izin vermezse bağlantı seçili olarak gösterilir, elle kopyalarsın. Aynı turda birden çok tahta olan günlerde (eşitlik bozma) bağlantı hangi tahtayı gösterdiğini söyleyemeyeceği için düğme gösterilmez.
+- **Maçı kendi takip eder:** yeni oyun başlayınca kısa bir duyurudan sonra o oyuna geçer (sen tahtada kendi hamlelerine bakarken geçmez); her günün yayınını kanalın canlı yayın listesinden kendi bulur. Üstteki şeritte maç skoru ve her oyun için bir kare vardır; tüm oyunların listesi bir düğme uzaklıktadır.
+- **Klavye:** ← ve → hamle hamle ilerler, ↑ ya da End canlı konuma döner, Home ilk konuma gider, F tahtayı çevirir.
 
 ## İstatistik
 
@@ -33,6 +35,7 @@ npm test
 Tarayıcıda elle çalıştırılan denemeler `tests/e2e/` altında, sonuçları [docs/TEST-EVIDENCE.md](docs/TEST-EVIDENCE.md) içinde.
 Barındırma ve `ozgurakanay.com/satranc/` sayfası: [docs/INTEGRATION.md](docs/INTEGRATION.md).
 Tahmin panelinin ne gösterip ne göstermediği ve insan hamlesi tahmini için araştırma planı: [docs/PREDICTION.md](docs/PREDICTION.md).
+Tasarım yönü: [.impeccable.md](.impeccable.md).
 Canlı akış, Lichess'in istek sınırları ve reddedilen bağlantılar için öneri: [docs/LIVE-FEED.md](docs/LIVE-FEED.md).
 
 ## Geliştirme

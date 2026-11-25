@@ -38,6 +38,26 @@ export const legalDests = (fen: string): Map<string, string[]> => {
 
 export const sideToMove = (fen: string): 'white' | 'black' => (fen.split(' ')[1] === 'b' ? 'black' : 'white');
 
+const squaresOf = (fen: string): string =>
+  fen
+    .split(' ')[0]
+    .replace(/\d/g, d => '.'.repeat(Number(d)))
+    .replace(/\//g, '');
+
+/**
+ * On how many squares two positions differ. One move changes two squares,
+ * three when taking en passant, four when castling; the board uses this to
+ * tell a move from a jump. A position that cannot be read counts as far away.
+ */
+export const squaresChanged = (a: string, b: string): number => {
+  const x = squaresOf(a);
+  const y = squaresOf(b);
+  if (x.length !== 64 || y.length !== 64) return 64;
+  let n = 0;
+  for (let i = 0; i < 64; i++) if (x[i] !== y[i]) n++;
+  return n;
+};
+
 /** True when moving from `from` to `to` is a pawn reaching the last rank, so a piece must be chosen. */
 export const isPromotion = (fen: string, from: string, to: string): boolean => {
   const pos = positionOf(fen);
@@ -124,4 +144,34 @@ export const legalSans = (fen: string): string[] => {
     }
   }
   return [...new Set(out)].sort();
+};
+
+export type PieceRole = 'pawn' | 'knight' | 'bishop' | 'rook' | 'queen' | 'king';
+
+export interface LegalMove {
+  uci: string;
+  san: string;
+  /** The piece that moves (castling counts as a king move). */
+  role: PieceRole;
+}
+
+/** Every legal move of a position with the piece that makes it, for choosing a move from a list instead of on a board. */
+export const legalMoves = (fen: string): LegalMove[] => {
+  const pos = positionOf(fen);
+  if (!pos) return [];
+  const bySan = new Map<string, LegalMove>();
+  for (const [from, squares] of pos.allDests()) {
+    const piece = pos.board.get(from);
+    if (!piece) continue;
+    for (const to of squares) {
+      const promotes = piece.role === 'pawn' && (to >= 56 || to <= 7);
+      for (const promotion of promotes ? (['queen', 'rook', 'bishop', 'knight'] as const) : [undefined]) {
+        const move = { from, to, promotion };
+        if (!pos.isLegal(move)) continue;
+        const san = makeSan(pos, move);
+        if (!bySan.has(san)) bySan.set(san, { uci: makeUci(move), san, role: piece.role });
+      }
+    }
+  }
+  return [...bySan.values()].sort((a, b) => a.san.localeCompare(b.san, 'en'));
 };
