@@ -1,5 +1,18 @@
 # Test evidence
 
+## Production integration verified — 25 November 2026
+
+The core release is live at https://ozgurakanay.com/satranc/ (puzzles: `#bulmaca`). Chess commit `d0daa5a0a84f0f6e75621cd902c7abf78641da61` was deployed as `dpl_9PZSGCBYEcpAsrB3sY9ueAh81z96`; personal-site shell PR #8 is merged at `f39a04cfcde30086291dc0d524ad5882421daaeb`.
+
+- Native Mac Safari and the in-app browser loaded the sandboxed chess frame and nested YouTube player. A real legal move guess, historical-frequency labels and puzzle interactions were checked.
+- The production Stockfish WASM responds with HTTP 200 and `application/wasm`; production security headers match the reviewed configuration. Worker execution under that CSP is covered by the browser evidence below.
+- Production-only analytics and public-URL variables are configured in Vercel, outside source control. The separate PostHog `satrancWC26` project received real framed pageviews and named feature events, marked `test` or `internal`, with cookieless mode and stripped query strings/fragments/referrer paths.
+- Statistics opt-out survived reload; changing views and loading another puzzle afterward produced no further marked test events. Internal/test traffic is excluded from default reports. IP storage, replay, autocapture, console/performance capture, exceptions, surveys and heatmaps are disabled.
+- The observed stream 429 cleared after duplicate test pages were closed. This is an observed concurrency limit, not a guarantee that a single-tab visitor cannot encounter upstream limits.
+
+Earlier unchecked integration lists below are historical, from before this production check. Real iPhone storage persistence and Twitch playback remain unverified. Post-deployment sharing verification is recorded on https://github.com/ozgurbuluta/satrancWC26/pull/6. Full integration trail: https://github.com/ozgurbuluta/satrancWC26/issues/1.
+
+
 What was run, where, and what came out. Unit and integration tests run in CI
 on every push. The browser checks below need a real browser and are run by
 hand; their scripts are in `tests/e2e/`.
