@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { CHAMPION_FIDE_ID, FORCED_ROUND_ID, GAMES_IN_MATCH, IS_MATCH, STREAM_PRESETS, TOUR_ID } from './config';
+import { CHAMPION_FIDE_ID, FORCED_ROUND_ID, GAMES_IN_MATCH, IS_MATCH, LINKED_GAME_NO, LINKED_PLY, STREAM_PRESETS, TOUR_ID } from './config';
 import type { Lang } from './i18n';
 import { track } from './lib/analytics';
 import { resultPoints, type Notation } from './lib/format';
@@ -179,6 +179,9 @@ const pickGame = (order: string[], games: Record<string, GameData>): string | un
 
 /** A game the viewer chose not to be taken to; it is not announced again. */
 let declinedRoundId: string | undefined;
+/** The viewer picked a board in this round themselves, so boards are no longer followed for them. */
+let boardChosenByHand = false;
+let linkedPlyPending = LINKED_GAME_NO !== undefined && LINKED_PLY !== undefined;
 let pauseReveals = 0;
 let feedFallbackSent = false;
 let delayTrackTimer: number | undefined;
@@ -303,6 +306,11 @@ export const useStore = create<State>((set, get) => {
     }
     set(patch);
     recomputeReveal();
+    if (!s.gameId && linkedPlyPending && LINKED_PLY !== undefined) {
+      // A shared link to one position: show it once, never beyond what this viewer may see.
+      linkedPlyPending = false;
+      get().setViewPly(LINKED_PLY);
+    }
     if (needThinkSync) void syncThinkTime(roundId);
     followNextBoard();
   };
@@ -310,7 +318,7 @@ export const useStore = create<State>((set, get) => {
   /** Tie-break days: once a game is over and the next one has started, move on to it. */
   const followNextBoard = () => {
     const s = get();
-    if (!s.followLatest || s.paused || s.viewPly !== null || s.preview || s.gameOrder.length < 2 || !s.gameId) return;
+    if (boardChosenByHand || !s.followLatest || s.paused || s.viewPly !== null || s.preview || s.gameOrder.length < 2 || !s.gameId) return;
     const cur = s.games[s.gameId];
     if (!cur || cur.result === '*') return;
     const idx = s.gameOrder.indexOf(s.gameId);
@@ -326,6 +334,7 @@ export const useStore = create<State>((set, get) => {
     stopFeed?.();
     stopAutoplay();
     rawById.clear();
+    boardChosenByHand = false;
     window.clearTimeout(revealTimer);
     set({
       roundId: id,
@@ -429,7 +438,9 @@ export const useStore = create<State>((set, get) => {
       const data = await getTournament(TOUR_ID);
       set({ tour: data.tour, rounds: data.rounds });
       if (first) {
-        const forced = FORCED_ROUND_ID && data.rounds.find(r => r.id === FORCED_ROUND_ID)?.id;
+        // A shared link (?parti=3) or a test override (?round=) opens that game and does not wander off.
+        const forced =
+          (FORCED_ROUND_ID && data.rounds.find(r => r.id === FORCED_ROUND_ID)?.id) || (LINKED_GAME_NO && data.rounds[LINKED_GAME_NO - 1]?.id);
         const pick =
           forced ||
           liveRoundOf(data.rounds)?.id ||
@@ -501,6 +512,7 @@ export const useStore = create<State>((set, get) => {
 
     selectGame: id => {
       stopAutoplay();
+      boardChosenByHand = true;
       set({ gameId: id, viewPly: null, revealed: 0, resultVisible: false, preview: null, ...pauseFor(id) });
       recomputeReveal();
     },
@@ -583,7 +595,7 @@ export const useStore = create<State>((set, get) => {
     setAutoplay: ms => {
       stopAutoplay();
       set({ autoplayMs: ms });
-      if (ms > 0) track('pause_autoplay', { seconds: ms / 1000 });
+      if (ms > 0) track('pause_autoplay', { interval_ms: ms });
       if (ms > 0) {
         autoplayTimer = window.setInterval(() => {
           if (!get().paused) stopAutoplay();
