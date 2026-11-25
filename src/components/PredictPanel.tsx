@@ -55,7 +55,7 @@ export function PredictPanel({ game, fen, evaluation }: Props) {
   const peekEngine = useStore(s => s.peekEngine);
   useScoresVersion();
 
-  const open = !!guess && guess.forPly === revealed + 1;
+  const open = !!guess && guess.gameId === game.id && guess.forPly === revealed + 1;
   const whiteToMove = fen.split(' ')[1] !== 'b';
   const mover = whiteToMove ? game.white : game.black;
   // The references would give the game away to someone still guessing.

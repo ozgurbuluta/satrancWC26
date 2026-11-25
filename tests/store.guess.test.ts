@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { moveByUci, type PlayedMove } from '../src/lib/position';
-import { boot, game, HOUR, ITALIAN, push, R1, resetWorld, round, world } from './helpers';
+import { boot, game, HOUR, ITALIAN, push, R1, R2, resetWorld, round, world } from './helpers';
 
 const T0 = Date.UTC(2026, 10, 25, 15, 0, 0);
 // Position after 1. e4 e5: the game continues 2. Nf3.
@@ -29,6 +29,32 @@ const start = async (plies = 2) => {
 };
 
 describe('guess the move', () => {
+  it('clears pending guesses and engine peeks when switching zero-ply boards', async () => {
+    const { useStore, engineHeldBack, canGuess } = await start(0);
+    push(R1, live(0) + game({ round: 1, id: 'g2', sans: [] }));
+    const s = () => useStore.getState();
+    const first = s().games.g1.initialFen;
+    s().makeGuess(moveByUci(first, 'e2e4')!);
+    const stale = s().guess;
+    s().selectGame('g2');
+    expect(s().guess).toBeNull();
+    expect(engineHeldBack(s())).toBe(true);
+    expect(engineHeldBack({ ...s(), guess: stale })).toBe(true);
+    s().peekEngine();
+    s().selectGame('g1');
+    expect(s().peekedPly).toBeNull();
+    expect(canGuess(s())).toBe(true);
+  });
+
+  it('clears pending guesses before a new round has received any moves', async () => {
+    const { useStore } = await start(0);
+    const s = () => useStore.getState();
+    s().makeGuess(moveByUci(s().games.g1.initialFen, 'e2e4')!);
+    s().selectRound(R2);
+    expect(s().guess).toBeNull();
+    expect(s().peekedPly).toBeNull();
+  });
+
   it('a right guess is recorded as a hit when the move arrives', async () => {
     const { useStore } = await start();
     useStore.getState().makeGuess(guessOf('g1f3'));

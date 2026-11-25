@@ -141,6 +141,7 @@ export default function App() {
       setBoardSync(n => n + 1);
     },
     () => setBoardSync(n => n + 1),
+    `${game?.id}:${shown}:${view}:${settings.guessMode}:${boardSync}`,
   );
   const guessOpen = !!guess && !!game && guess.gameId === game.id && guess.forPly === revealed + 1 && atLiveEdge && !preview;
   const guessShapes = useMemo<BoardShape[]>(() => (guessOpen && guess ? [{ from: guess.from, to: guess.to, brush: 'green' }] : []), [guessOpen, guess]);

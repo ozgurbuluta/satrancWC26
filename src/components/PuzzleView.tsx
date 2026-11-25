@@ -35,9 +35,9 @@ export function PuzzleBoard() {
   }, [load]);
 
   const fen = state?.fen ?? '';
-  const promo = usePromotion(fen, play, rejected);
+  const promo = usePromotion(fen, play, rejected, `${state?.puzzle.id}:${syncToken}`);
   const solving = !!state && state.status === 'solving';
-  const canMove = solving && !busy && !promo.pending;
+  const canMove = solving && !loading && !busy && !promo.pending;
 
   // Help for the current move: first the piece, then the move itself.
   const shapes = useMemo<BoardShape[]>(() => {
@@ -81,13 +81,13 @@ export function PuzzleBoard() {
         {status}
       </p>
       <div className="puzzle-actions">
-        <button className="btn ghost" onClick={hint} disabled={!solving || busy || state.hint === 2}>
+        <button className="btn ghost" onClick={hint} disabled={loading || !solving || busy || state.hint === 2}>
           {t.hintBtn}
         </button>
-        <button className="btn ghost" onClick={reveal} disabled={!solving || busy}>
+        <button className="btn ghost" onClick={reveal} disabled={loading || !solving || busy}>
           {t.revealBtn}
         </button>
-        <button className="btn ghost" onClick={reset} disabled={busy || (state.line.length === 0 && state.hint === 0)}>
+        <button className="btn ghost" onClick={reset} disabled={loading || busy || (state.line.length === 0 && state.hint === 0)}>
           {t.resetBtn}
         </button>
         <button className={`btn ${solving ? 'ghost' : ''}`} onClick={() => void load()} disabled={loading}>

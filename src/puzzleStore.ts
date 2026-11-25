@@ -105,7 +105,7 @@ export const usePuzzles = create<PuzzleStore>((set, get) => {
       if (leaving && leaving.status === 'solving' && !recorded && leaving.line.length + leaving.mistakes + leaving.hint > 0) {
         track('puzzle_end', { result: 'skipped', rating_band: ratingBand(leaving.puzzle.rating), hint_used: leaving.hintUsed });
       }
-      set({ choice: picked, loading: true, feedback: 'none', busy: false });
+      set(st => ({ choice: picked, loading: true, feedback: 'none', busy: false, syncToken: st.syncToken + 1 }));
       let puzzle: Puzzle | undefined;
       try {
         puzzle = await fetchPuzzle(picked);
@@ -129,7 +129,7 @@ export const usePuzzles = create<PuzzleStore>((set, get) => {
 
     play: move => {
       const s = get().state;
-      if (!s || get().busy || s.status !== 'solving') return;
+      if (!s || get().loading || get().busy || s.status !== 'solving') return;
       const out = tryMove(s, move);
       if (out.outcome === 'wrong') {
         set(st => ({ state: out.afterMove, feedback: 'wrong', syncToken: st.syncToken + 1 }));
@@ -157,12 +157,12 @@ export const usePuzzles = create<PuzzleStore>((set, get) => {
 
     hint: () => {
       const s = get().state;
-      if (s && !get().busy) set({ state: takeHint(s), feedback: 'none' });
+      if (s && !get().loading && !get().busy) set({ state: takeHint(s), feedback: 'none' });
     },
 
     reveal: () => {
       const s = get().state;
-      if (!s || get().busy || s.status !== 'solving') return;
+      if (!s || get().loading || get().busy || s.status !== 'solving') return;
       const frames = revealSolution(s);
       set({ busy: true, feedback: 'revealed' });
       frames.forEach((frame, i) => {
@@ -179,7 +179,7 @@ export const usePuzzles = create<PuzzleStore>((set, get) => {
 
     reset: () => {
       const s = get().state;
-      if (!s) return;
+      if (!s || get().loading) return;
       clearTimers();
       // Starting over keeps what already happened: mistakes and help still count.
       set(st => ({
