@@ -4,10 +4,10 @@ How moves reach the page, what Lichess allows, what the page does today when
 a request is refused, and a proposal to behave better. The proposal is not
 built; it is tracked in https://github.com/ozgurbuluta/satrancWC26/issues/5.
 
-The push stream is the primary feed and it works: moves arrive from it
-within about a second. The refusal described below is a cap on how many
-streams one network address may hold open at once. It is not a fault in the
-feed, and a visitor with one or two tabs never meets it.
+The production check recovered a live push connection after duplicate test
+tabs were closed. The observed 429 is consistent with a concurrent-request
+limit on the shared network address. Other users on that address, or other
+upstream limits, can affect a visitor with only one tab too.
 
 ## What an open page asks Lichess for
 
@@ -35,16 +35,16 @@ address, not to this site.
   production check, several test tabs of this site were open on one computer
   and the stream answered `429` with the text "only run 2 requests at a
   time". When the extra tabs were closed, the stream connected and the feed
-  was live again. That confirms the refusal as a cap of two simultaneous
-  streams from one address.
-- **Not known.** Whether that answer carries a `Retry-After` header. Three
+  was live again. That is evidence of a concurrency limit in this check,
+  not a guarantee of an identical limit for every visitor or request.
+- **Captured headers.** The response inspected in this production check
+  contained no `Retry-After` header; other responses may include one. Three
   simultaneous streams opened from the cloud test container the same day
-  were all accepted; that traffic leaves through a proxy, so it shows
-  nothing either way.
+  were all accepted; that traffic leaves through a proxy, so it does not
+  establish a universal cap.
 
-The cap counts connections per address, not per tab. A third tab meets it,
-and so do three people watching from one home, office or school connection,
-or behind a mobile carrier's shared address.
+An address-level concurrency limit is shared by tabs and by people behind
+the same home, office, school or mobile carrier address.
 
 ## What the page does today when it is refused
 
@@ -104,8 +104,8 @@ queue, so no two are in flight together.
 **After the cool-off.** The first request is one poll, so the board catches
 up. If that is refused, the cool-off starts again, doubled.
 
-**When it was the stream that was refused.** That is the cap on
-simultaneous streams. After the cool-off the page does not go straight back
+**When it was the stream that was refused.** A 429 can reflect concurrency
+or another upstream limit. After the cool-off the page does not go straight back
 to the stream, because another refusal would cost another silent minute. It
 polls every 6 s and tries the stream again after 5 min, then 10 min, then
 every 15 min. These are locally chosen waits with that 15 min ceiling. A
