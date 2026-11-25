@@ -1,200 +1,527 @@
-// Fits and measures the move predictor from data/player-history/games.pgn.
+// Fits, selects and measures the move predictor, second version.
 //
-//   node scripts/train-predictor.mjs
+//   node scripts/train-predictor.mjs            the selection stage
+//   node scripts/train-predictor.mjs --final    the selection stage again, then the final measurement
 //
-// Writes src/data/predictor.json (weights, tables of earlier moves, the
-// measured results) and docs/PREDICTOR-REPORT.md (the same results, to
-// read). Running it again on the same corpus gives the same files.
+// The protocol this follows was written down before any fitting:
+// docs/PREDICTOR-V2-PROTOCOL.md. In short:
 //
-// The steps, in order:
-//   1. Select classical games in standard chess, by what the clocks show.
-//   2. Split whole events by date: fitting, calibration, test.
-//   3. For every position, list the legal moves and their features.
-//   4. Fit the weights on the fitting games.
-//   5. Choose the strength of the penalties and the temperature on the
-//      calibration games.
-//   6. Measure on the test games, next to simple baselines.
+//   1. Select classical games in standard chess, by what the clocks show,
+//      from both corpora (2023 to 2025, and 2026).
+//   2. Group them into tournaments and split whole tournaments by the date
+//      they ended: fit, selection, untouched holdout, reused benchmark.
+//   3. For every position list the legal moves and their features, and what
+//      was played there in tournaments that ended before this one started.
+//   4. Fit weights on the fit games.
+//   5. Make every choice on the selection games: which family of model, its
+//      penalties, temperature and how counts of earlier moves are blended.
+//   6. Only with --final: measure once on the untouched holdout and on the
+//      reused benchmark, next to the published first version.
 //
-// Two protocols are run, and both are reported.
-//
-// The first is the one that was planned and measured first. In it, "played
-// here before" in a fitting game counts the fitting games of earlier days,
-// which includes earlier rounds of the same event.
-//
-// The second differs in that one thing: a fitting game counts only games
-// played before its own event began. That is how the tables are used in the
-// match, whose own games are never in them. This change was made after the
-// first measurement had been seen, because that measurement showed the model
-// to be overconfident where lines repeat inside one event. No number of the
-// second protocol is chosen on the test games, but its measurement is not a
-// blind one, and it is reported as an exploratory revision. The weights that
-// are shipped are the second protocol's.
+// The selection stage never scores a holdout decision, and no model of this
+// version ever scores a benchmark decision in it. The one thing it does on
+// the benchmark is to run the published first version there and stop unless
+// that gives the numbers already published: a check that games, features and
+// scoring are what they were. It writes data/predictor-v2/selection.json, which is
+// committed before the final measurement is run. --final repeats the
+// selection, stops if it does not come out identical to that file, and then
+// writes src/data/predictor.json and docs/PREDICTOR-REPORT.md.
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'vite';
 
+const FINAL = process.argv.includes('--final');
 const vite = await createServer({ configFile: false, appType: 'custom', server: { middlewareMode: true }, logLevel: 'error' });
 const { parseGame, splitGames } = await vite.ssrLoadModule('/src/lib/pgn.ts');
 const { candidates, FEATURES, positionKey } = await vite.ssrLoadModule('/src/lib/predictor/features.ts');
-const { clockPressure, softmax } = await vite.ssrLoadModule('/src/lib/predictor/model.ts');
+const { clockPressure } = await vite.ssrLoadModule('/src/lib/predictor/model.ts');
 
-const CORPUS = 'data/player-history/games.pgn';
+const EARLIER = 'data/player-history/earlier/games.pgn';
+const CORPUS_2026 = 'data/player-history/games.pgn';
+const MONTHS_2026 = 'data/player-history/archive-months.json';
+const V1 = 'data/predictor-v1/predictor.json';
+const SELECTION = 'data/predictor-v2/selection.json';
 const PLAYERS = { 46616543: 'gukesh', 14205483: 'sindarov' };
+const MOVER = { other: 0, gukesh: 1, sindarov: 2 };
 /** Classical: the larger of the first two clock readings is at least this. Tags are not trusted over the clocks. */
 const CLASSICAL_SECONDS = 45 * 60;
-/** Whole events by the month of their first game: up to July fitting, August calibration, September on test. */
-const splitOf = month => (month <= 7 ? 'fit' : month === 8 ? 'calibration' : 'test');
+/** Whole tournaments by the day they ended. */
+const SETS = [
+  ['fit', '2024-12-31'],
+  ['selection', '2025-12-31'],
+  ['holdout', '2026-08-31'],
+  ['benchmark', '9999-12-31'],
+];
+/** A broadcast name becomes a new tournament after this many months without a game. */
+const GAP_MONTHS = 3;
 /** Tables of earlier moves cover the first this many half-moves of a game. */
 const PRIOR_PLIES = 40;
 const CLOCK_FULL_SECONDS = 600;
 const STAKES_MAX = 0.35;
+/** The shipped tables are aged as of this day: the day after the corpus ends. */
+const AS_OF = '2026-11-01';
 const K = FEATURES.length;
+const REP_PLAYER = FEATURES.indexOf('repPlayer');
+const REP_ANY = FEATURES.indexOf('repAny');
+const YEAR_MS = 365.25 * 86400e3;
+const sha256 = path => createHash('sha256').update(readFileSync(path)).digest('hex');
+const round = (x, d = 4) => Math.round(x * 10 ** d) / 10 ** d;
+const log = (...a) => console.log(`[${((Date.now() - startedAt) / 1000).toFixed(0).padStart(4)} s]`, ...a);
+const startedAt = Date.now();
 
-// ---------- 1. selection
-const raw = readFileSync(CORPUS, 'utf8');
-const corpusSha256 = createHash('sha256').update(readFileSync(CORPUS)).digest('hex');
-const excluded = {};
-const drop = reason => (excluded[reason] = (excluded[reason] ?? 0) + 1);
-const seen = new Set();
+// ---------- 1. selection of games
+const tagOf = (chunk, name) => new RegExp(`^\\[${name} "(.*)"\\]$`, 'm').exec(chunk)?.[1];
+const months2026 = JSON.parse(readFileSync(MONTHS_2026, 'utf8')).months;
+const corpora = [
+  { name: 'earlier', path: EARLIER, archiveOf: chunk => tagOf(chunk, 'Archive') },
+  { name: '2026', path: CORPUS_2026, archiveOf: chunk => months2026[tagOf(chunk, 'GameURL')] },
+];
+const monthIndex = month => Number(month.slice(0, 4)) * 12 + Number(month.slice(5, 7));
+const lastDayOf = month => `${month}-${String(new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).getUTCDate()).padStart(2, '0')}`;
+/** A game's date, if it has one that can be believed: in its archive month or the two months before it. */
+const usableDate = (chunk, archive) => {
+  const text = tagOf(chunk, 'Date') ?? tagOf(chunk, 'UTCDate');
+  if (!text || !/^\d{4}[.-]\d{2}[.-]\d{2}$/.test(text)) return undefined;
+  const date = text.replaceAll('.', '-');
+  const m = monthIndex(date.slice(0, 7));
+  return m <= monthIndex(archive) && m >= monthIndex(archive) - 2 ? date : undefined;
+};
+const selectionCounts = {};
+const seenGames = new Set();
 const games = [];
-for (const chunk of splitGames(raw)) {
-  const tag = name => new RegExp(`^\\[${name} "(.*)"\\]$`, 'm').exec(chunk)?.[1];
-  const variant = tag('Variant') ?? 'Standard';
-  if (variant !== 'Standard' || tag('FEN') || tag('SetUp') === '1') {
-    drop('another variant or a set-up starting position');
-    continue;
+for (const corpus of corpora) {
+  const counts = (selectionCounts[corpus.name] = { path: corpus.path, sha256: sha256(corpus.path), games: 0, selected: 0, excluded: {} });
+  const drop = reason => (counts.excluded[reason] = (counts.excluded[reason] ?? 0) + 1);
+  for (const chunk of splitGames(readFileSync(corpus.path, 'utf8'))) {
+    counts.games++;
+    const variant = tagOf(chunk, 'Variant') ?? 'Standard';
+    if (variant !== 'Standard' || tagOf(chunk, 'FEN') || tagOf(chunk, 'SetUp') === '1') {
+      drop('another variant or a set-up starting position');
+      continue;
+    }
+    const game = parseGame(chunk, undefined, 0);
+    if (!game || game.plies.length < 2) {
+      drop('could not be read, or shorter than two half-moves');
+      continue;
+    }
+    const first = [game.plies[0].clk, game.plies[1].clk].filter(c => c !== undefined);
+    if (first.length === 0) {
+      drop('no clock readings');
+      continue;
+    }
+    if (Math.max(...first) < CLASSICAL_SECONDS) {
+      drop('faster than classical by its first clock readings');
+      continue;
+    }
+    const key = `${game.white.fideId}|${game.black.fideId}|${game.plies.map(p => p.uci).join(' ')}`;
+    if (seenGames.has(key)) {
+      drop('the same game twice');
+      continue;
+    }
+    seenGames.add(key);
+    const archive = corpus.archiveOf(chunk);
+    if (!archive || !/^\d{4}-\d{2}$/.test(archive)) throw new Error(`no archive month for a game of ${corpus.path}: ${tagOf(chunk, 'GameURL')}`);
+    counts.selected++;
+    games.push({
+      game,
+      corpus: corpus.name,
+      archive,
+      date: usableDate(chunk, archive),
+      name: (tagOf(chunk, 'BroadcastName') ?? tagOf(chunk, 'Event') ?? '?').split(' | ')[0].trim(),
+      // what the first version went by, to rebuild its tables
+      v1Event: tagOf(chunk, 'Event') ?? '?',
+      v1Date: tagOf(chunk, 'Date') ?? '',
+      white: PLAYERS[game.white.fideId],
+      black: PLAYERS[game.black.fideId],
+    });
   }
-  const game = parseGame(chunk, undefined, 0);
-  if (!game || game.plies.length < 2) {
-    drop('could not be read, or shorter than two half-moves');
-    continue;
-  }
-  const first = [game.plies[0].clk, game.plies[1].clk].filter(c => c !== undefined);
-  if (first.length === 0) {
-    drop('no clock readings');
-    continue;
-  }
-  if (Math.max(...first) < CLASSICAL_SECONDS) {
-    drop('faster than classical by its first clock readings');
-    continue;
-  }
-  const key = `${game.white.fideId}|${game.black.fideId}|${game.plies.map(p => p.uci).join(' ')}`;
-  if (seen.has(key)) {
-    drop('the same game twice');
-    continue;
-  }
-  seen.add(key);
-  games.push({ game, event: tag('Event') ?? '?', date: tag('Date') ?? '', white: PLAYERS[game.white.fideId], black: PLAYERS[game.black.fideId] });
 }
-const firstDate = {};
-for (const g of games) firstDate[g.event] = !firstDate[g.event] || g.date < firstDate[g.event] ? g.date : firstDate[g.event];
-for (const g of games) g.split = splitOf(Number(firstDate[g.event].slice(5, 7)));
-games.sort((a, b) => a.date.localeCompare(b.date) || a.event.localeCompare(b.event) || a.game.id.localeCompare(b.game.id));
-console.log(`selected ${games.length} of ${splitGames(raw).length} games;`, JSON.stringify(excluded));
 
-// ---------- 3. rows
-// "Played here before" comes from the fitting games only, and never from the
-// game a position is from. A fitting game sees the fitting games played
-// before its cut-off: its own day in the first protocol, the first day of its
-// event in the second. Calibration and test games see all the fitting games
-// and never each other.
-const count = (table, key, uci) => {
+// ---------- 2. tournaments and sets
+const tournaments = [];
+{
+  const byName = new Map();
+  for (const g of games) (byName.get(g.name) ?? byName.set(g.name, []).get(g.name)).push(g);
+  for (const [name, list] of byName) {
+    list.sort((a, b) => a.archive.localeCompare(b.archive));
+    let current = [];
+    const close = () => {
+      const dates = current.map(g => g.date).filter(Boolean).sort();
+      const months = current.map(g => g.archive).sort();
+      // a lower bound for the start, an upper bound for the end
+      const t = { name, start: dates[0] ?? `${months[0]}-01`, end: lastDayOf(months.at(-1)), games: current.length, gukesh: 0, sindarov: 0, months: [...new Set(months)] };
+      for (const g of current) {
+        g.tournament = t;
+        for (const p of [g.white, g.black]) if (p) t[p]++;
+      }
+      t.set = SETS.find(([, until]) => t.end <= until)[0];
+      tournaments.push(t);
+    };
+    for (const g of list) {
+      if (current.length && monthIndex(g.archive) - monthIndex(current.at(-1).archive) > GAP_MONTHS) {
+        close();
+        current = [];
+      }
+      current.push(g);
+    }
+    close();
+  }
+  tournaments.sort((a, b) => a.start.localeCompare(b.start) || a.name.localeCompare(b.name));
+  tournaments.forEach((t, i) => (t.index = i));
+}
+games.sort((a, b) => a.tournament.index - b.tournament.index || a.archive.localeCompare(b.archive) || a.game.id.localeCompare(b.game.id));
+games.forEach((g, i) => (g.index = i));
+/** Tournament X is over before tournament E starts. Where that cannot be shown from the data, it is not. */
+const earlier = (x, e) => x.end < e.start;
+const yearsBetween = (from, to) => (Date.parse(to) - Date.parse(from)) / YEAR_MS;
+log(`selected ${games.length} games in ${tournaments.length} tournaments:`, SETS.map(([s]) => `${s} ${games.filter(g => g.tournament.set === s).length}`).join(', '));
+
+// ---------- 3. rows: legal moves, features, and what was played before
+// The fit games keep every position (both sides fit the shared weights).
+// The other sets keep the two players' own decisions, which is all that is
+// ever scored there.
+const rows = [];
+/** Position key to the moves played there in the first PRIOR_PLIES half-moves of every selected game. */
+const history = new Map();
+/** The same for the first version's fitting games only, as it counted them. */
+const v1Tables = { gukesh: new Map(), sindarov: new Map(), any: new Map() };
+const v1FirstDate = {};
+for (const g of games) if (g.corpus === '2026') v1FirstDate[g.v1Event] = !v1FirstDate[g.v1Event] || g.v1Date < v1FirstDate[g.v1Event] ? g.v1Date : v1FirstDate[g.v1Event];
+const v1Fitting = g => g.corpus === '2026' && Number(v1FirstDate[g.v1Event].slice(5, 7)) <= 7;
+const bump = (table, key, uci) => {
   let moves = table.get(key);
   if (!moves) table.set(key, (moves = {}));
   moves[uci] = (moves[uci] ?? 0) + 1;
 };
-const addTo = (tables, { game, white, black }) => {
+for (const g of games) {
+  const { game, white, black } = g;
+  const set = g.tournament.set;
   let fen = game.initialFen;
-  for (let i = 0; i < Math.min(PRIOR_PLIES, game.plies.length); i++) {
+  for (let i = 0; i < game.plies.length; i++) {
     const whiteMoves = (i % 2 === 0) === (game.initialFen.split(' ')[1] !== 'b');
-    const mover = whiteMoves ? white : black;
+    const mover = (whiteMoves ? white : black) ?? 'other';
     const key = positionKey(fen);
-    // the same canonical move text the candidates use
-    const uci = candidates({ fen }).find(c => c.san === game.plies[i].san).uci;
-    if (mover) count(tables[mover], key, uci);
-    count(tables.any, key, uci);
+    const cands = candidates({ fen, lastMove: i > 0 ? game.plies[i - 1].uci : undefined, ownLastMove: i > 1 ? game.plies[i - 2].uci : undefined });
+    const chosen = cands.findIndex(c => c.san === game.plies[i].san);
+    if (chosen < 0) throw new Error(`move not among the legal ones: ${game.id} ply ${i + 1} ${game.plies[i].san}`);
+    if (i < PRIOR_PLIES) {
+      (history.get(key) ?? history.set(key, []).get(key)).push({ uci: cands[chosen].uci, mover: MOVER[mover], t: g.tournament });
+      if (v1Fitting(g)) {
+        if (mover !== 'other') bump(v1Tables[mover], key, cands[chosen].uci);
+        bump(v1Tables.any, key, cands[chosen].uci);
+      }
+    }
+    if (set === 'fit' || mover !== 'other') {
+      const n = cands.length;
+      const x = new Float64Array(n * K);
+      for (let j = 0; j < n; j++) x.set(cands[j].f, j * K);
+      rows.push({ g: g.index, t: g.tournament, set, mover: MOVER[mover], ply: i, key, n, x, ucis: cands.map(c => c.uci), chosen, pressure: clockPressure(i > 1 ? game.plies[i - 2].clk : undefined, CLOCK_FULL_SECONDS) });
+    }
     fen = game.plies[i].fen;
   }
-};
-const buildRows = protocol => {
-  const cutoff = g => (g.split !== 'fit' ? '9999' : protocol === 'events' ? firstDate[g.event] : g.date);
-  const order = games.map((g, index) => ({ g, index })).sort((a, b) => cutoff(a.g).localeCompare(cutoff(b.g)) || a.index - b.index);
-  const fitGames = games.filter(g => g.split === 'fit');
-  const tables = { gukesh: new Map(), sindarov: new Map(), any: new Map() };
-  let added = 0;
-  const rows = [];
-  for (const { g, index } of order) {
-    // every fitting game played before this game's cut-off is now an earlier game
-    while (added < fitGames.length && fitGames[added].date < cutoff(g)) addTo(tables, fitGames[added++]);
-    const { game, white, black, split } = g;
-    let fen = game.initialFen;
-    for (let i = 0; i < game.plies.length; i++) {
-      const whiteMoves = (i % 2 === 0) === (game.initialFen.split(' ')[1] !== 'b');
-      const mover = (whiteMoves ? white : black) ?? 'other';
-      const key = positionKey(fen);
-      const cands = candidates({
-        fen,
-        lastMove: i > 0 ? game.plies[i - 1].uci : undefined,
-        ownLastMove: i > 1 ? game.plies[i - 2].uci : undefined,
-        repPlayer: mover === 'other' ? undefined : tables[mover].get(key),
-        repAny: tables.any.get(key),
-      });
-      const chosen = cands.findIndex(c => c.san === game.plies[i].san);
-      if (chosen < 0) throw new Error(`move not among the legal ones: ${game.id} ply ${i + 1} ${game.plies[i].san}`);
-      rows.push({ g: index, split, mover, key, ply: i, cands, chosen, pressure: clockPressure(i > 1 ? game.plies[i - 2].clk : undefined, CLOCK_FULL_SECONDS) });
-      fen = game.plies[i].fen;
-    }
+}
+// What was played before, for every row: the moves of tournaments that were
+// over before the row's tournament started. Never its own tournament.
+let withHistory = 0;
+for (const r of rows) {
+  const entries = (history.get(r.key) ?? []).filter(e => earlier(e.t, r.t));
+  const at = uci => r.ucis.indexOf(uci);
+  const own = new Float64Array(r.n);
+  const any = new Float64Array(r.n);
+  r.hj = new Int32Array(entries.length);
+  r.hage = new Float64Array(entries.length);
+  r.hown = new Uint8Array(entries.length);
+  entries.forEach((e, i) => {
+    const j = at(e.uci);
+    if (j < 0) throw new Error(`an earlier move that is not legal here: ${e.uci} in ${r.key}`);
+    const mine = r.mover !== 0 && e.mover === r.mover;
+    if (mine) own[j]++;
+    any[j]++;
+    r.hj[i] = j;
+    r.hage[i] = yearsBetween(e.t.end, r.t.start);
+    r.hown[i] = mine ? 1 : 0;
+  });
+  // the first version's two features, for the family that fits its recipe again
+  for (let j = 0; j < r.n; j++) {
+    r.x[j * K + REP_PLAYER] = Math.log1p(own[j]);
+    r.x[j * K + REP_ANY] = Math.log1p(any[j]);
   }
-  return rows.sort((a, b) => a.g - b.g || a.ply - b.ply);
-};
+  r.known = r.hown.some(Boolean);
+  if (entries.length) withHistory++;
+  if (r.set === 'benchmark') {
+    // and the same two features as the published first version saw them: its 74 fitting games, nothing else
+    const mover = r.mover === 1 ? 'gukesh' : 'sindarov';
+    const p = v1Tables[mover].get(r.key) ?? {};
+    const a = v1Tables.any.get(r.key) ?? {};
+    r.v1 = { player: r.ucis.map(u => Math.log1p(p[u] ?? 0)), any: r.ucis.map(u => Math.log1p(a[u] ?? 0)) };
+  }
+}
+const bySet = Object.fromEntries(SETS.map(([s]) => [s, rows.filter(r => r.set === s)]));
+const ownOf = set => bySet[set].filter(r => r.mover !== 0);
+const sample = Object.fromEntries(
+  SETS.map(([s]) => [
+    s,
+    {
+      tournaments: tournaments.filter(t => t.set === s).length,
+      games: games.filter(g => g.tournament.set === s).length,
+      decisions: ownOf(s).length,
+      gukesh: ownOf(s).filter(r => r.mover === 1).length,
+      sindarov: ownOf(s).filter(r => r.mover === 2).length,
+      withEarlierGames: ownOf(s).filter(r => r.known).length,
+    },
+  ]),
+);
+log(`rows ${rows.length} (${withHistory} with earlier moves);`, SETS.map(([s]) => `${s} ${sample[s].decisions} decisions`).join(', '));
+// the reused benchmark has to be the very decisions the first version was measured on
+if (sample.benchmark.games !== 21 || sample.benchmark.decisions !== 963) throw new Error(`the benchmark is not the 21 games and 963 decisions of the first report: ${JSON.stringify(sample.benchmark)}`);
+if ([...games].filter(g => v1Fitting(g)).length !== 74) throw new Error('the first version\'s fitting games are not the 74 of its report');
 
 // ---------- 4. fitting
-const own = r => r.mover !== 'other';
-const OFFSET = { shared: 0, gukesh: K, sindarov: 2 * K, clock: 3 * K };
-const scoresOf = (theta, r) =>
-  r.cands.map(c => {
+const softmaxInto = (scores, n) => {
+  let max = -Infinity;
+  for (let j = 0; j < n; j++) if (scores[j] > max) max = scores[j];
+  let sum = 0;
+  for (let j = 0; j < n; j++) sum += scores[j] = Math.exp(scores[j] - max);
+  for (let j = 0; j < n; j++) scores[j] /= sum;
+  return scores;
+};
+const ALL = Int32Array.from(FEATURES.map((_, k) => k));
+const BOARD = ALL.filter(k => k !== REP_PLAYER && k !== REP_ANY);
+const MAX_N = rows.reduce((m, r) => Math.max(m, r.n), 0);
+/** The scores of a row's moves under weights theta (shared, gukesh, sindarov, clock), before any temperature. */
+const scoresOf = (theta, r, active, out = new Float64Array(r.n), x = r.x) => {
+  const own = r.mover === 0 ? -1 : r.mover * K;
+  for (let j = 0; j < r.n; j++) {
     let s = 0;
-    for (let k = 0; k < K; k++) {
-      const f = c.f[k];
-      if (f === 0) continue;
-      s += f * (theta[k] + (own(r) ? theta[OFFSET[r.mover] + k] : 0) + r.pressure * theta[OFFSET.clock + k]);
+    const base = j * K;
+    for (let a = 0; a < active.length; a++) {
+      const k = active[a];
+      const f = x[base + k];
+      if (f !== 0) s += f * (theta[k] + (own < 0 ? 0 : theta[own + k]) + r.pressure * theta[3 * K + k]);
     }
-    return s;
-  });
-const fit = (data, penaltyShared, penaltyOwn) => {
+    out[j] = s;
+  }
+  return out;
+};
+/**
+ * Maximum likelihood with penalties, by Adam, as in the first version:
+ * 500 full passes, rate 0.05. `active` are the features in use, `players`
+ * whether each player has corrections of their own.
+ */
+const fit = (data, { active, penaltyShared, penaltyPlayers, penaltyClock, players = true }) => {
   const theta = new Float64Array(4 * K);
   const m = new Float64Array(4 * K);
   const v = new Float64Array(4 * K);
+  const grad = new Float64Array(4 * K);
+  const w = new Float64Array(K);
+  const gr = new Float64Array(K);
+  const p = new Float64Array(MAX_N);
+  const fitted = new Uint8Array(4 * K);
+  for (const k of active) {
+    fitted[k] = 1;
+    if (players) fitted[K + k] = fitted[2 * K + k] = 1;
+    fitted[3 * K + k] = 1;
+  }
+  const penalty = i => (i < K ? penaltyShared : i < 3 * K ? penaltyPlayers : penaltyClock);
   const rate = 0.05;
   for (let step = 1; step <= 500; step++) {
-    const grad = new Float64Array(4 * K);
+    grad.fill(0);
     for (const r of data) {
-      const p = softmax(scoresOf(theta, r));
-      for (let j = 0; j < r.cands.length; j++) {
+      const own = players && r.mover !== 0 ? r.mover * K : -1;
+      const x = r.x;
+      for (let a = 0; a < active.length; a++) {
+        const k = active[a];
+        w[k] = theta[k] + (own < 0 ? 0 : theta[own + k]) + r.pressure * theta[3 * K + k];
+        gr[k] = 0;
+      }
+      for (let j = 0; j < r.n; j++) {
+        let s = 0;
+        const base = j * K;
+        for (let a = 0; a < active.length; a++) s += x[base + active[a]] * w[active[a]];
+        p[j] = s;
+      }
+      softmaxInto(p, r.n);
+      for (let j = 0; j < r.n; j++) {
         const err = p[j] - (j === r.chosen ? 1 : 0);
-        const f = r.cands[j].f;
-        for (let k = 0; k < K; k++) {
-          if (f[k] === 0) continue;
-          const x = err * f[k];
-          grad[k] += x;
-          if (own(r)) grad[OFFSET[r.mover] + k] += x;
-          grad[OFFSET.clock + k] += x * r.pressure;
-        }
+        const base = j * K;
+        for (let a = 0; a < active.length; a++) gr[active[a]] += err * x[base + active[a]];
+      }
+      for (let a = 0; a < active.length; a++) {
+        const k = active[a];
+        grad[k] += gr[k];
+        if (own >= 0) grad[own + k] += gr[k];
+        grad[3 * K + k] += gr[k] * r.pressure;
       }
     }
     for (let i = 0; i < 4 * K; i++) {
-      const g = grad[i] / data.length + (i < K ? penaltyShared : penaltyOwn) * theta[i];
+      if (!fitted[i]) continue;
+      const g = grad[i] / data.length + penalty(i) * theta[i];
       m[i] = 0.9 * m[i] + 0.1 * g;
       v[i] = 0.999 * v[i] + 0.001 * g * g;
       theta[i] -= (rate * (m[i] / (1 - 0.9 ** step))) / (Math.sqrt(v[i] / (1 - 0.999 ** step)) + 1e-8);
     }
   }
-  return theta;
+  // Four decimals, as the weights are shipped: every choice and every measurement below uses exactly these numbers.
+  return theta.map(x => round(x));
 };
-const logLoss = (data, probs) => -data.reduce((sum, r) => sum + Math.log(Math.max(1e-12, probs(r)[r.chosen])), 0) / data.length;
-const modelProbs = (theta, temperature) => r => softmax(scoresOf(theta, r).map(s => s / temperature));
 
-// ---------- 6. measuring
+// ---------- the models as functions from a row to probabilities
+/** Family A, the first version's recipe: everything in one weighted sum, one temperature. */
+const familyA = (theta, temperature) => r => {
+  const s = scoresOf(theta, r, ALL);
+  for (let j = 0; j < r.n; j++) s[j] /= temperature;
+  return softmaxInto(s, r.n);
+};
+/** The base model of family B: the board features only. Where no per-player corrections were fitted, they are zero in theta. */
+const baseOf = (theta, temperature) => r => {
+  const s = scoresOf(theta, r, BOARD);
+  for (let j = 0; j < r.n; j++) s[j] /= temperature;
+  return softmaxInto(s, r.n);
+};
+/**
+ * Family B: counts of earlier moves blended with the base model,
+ *   p(m) = (own(m) + w·others(m) + κ·q(m)) / (own + w·others + κ),
+ * each count aged by half-life h (years; null for no ageing), and then a
+ * small share ε spread over all legal moves.
+ */
+const familyB = ({ theta, temperature, kappa, others, halfLife, epsilon }) => {
+  const base = baseOf(theta, temperature);
+  return r => {
+    const p = base(r);
+    let total = kappa;
+    for (let j = 0; j < r.n; j++) p[j] *= kappa;
+    for (let i = 0; i < r.hj.length; i++) {
+      const weight = (r.hown[i] ? 1 : others) * (halfLife === null ? 1 : 0.5 ** (r.hage[i] / halfLife));
+      p[r.hj[i]] += weight;
+      total += weight;
+    }
+    for (let j = 0; j < r.n; j++) p[j] = (1 - epsilon) * (p[j] / total) + epsilon / r.n;
+    return p;
+  };
+};
+const uniform = r => new Float64Array(r.n).fill(1 / r.n);
+const logLoss = (data, probs) => -data.reduce((sum, r) => sum + Math.log(Math.max(1e-12, probs(r)[r.chosen])), 0) / data.length;
+/** The value between lo and hi that gives the lowest loss, to three decimals. */
+const searchTemperature = (loss, lo = 0.5, hi = 3) => {
+  for (let i = 0; i < 40; i++) {
+    const a = lo + (hi - lo) / 3;
+    const b = hi - (hi - lo) / 3;
+    if (loss(a) < loss(b)) hi = b;
+    else lo = a;
+  }
+  return Math.round(((lo + hi) / 2) * 1000) / 1000;
+};
+
+// ---------- the published first version on the reused benchmark: it must give its published numbers
+const v1 = JSON.parse(readFileSync(V1, 'utf8'));
+if (JSON.stringify(v1.features) !== JSON.stringify([...FEATURES])) throw new Error('the features are not those of the first version');
+const v1Theta = Float64Array.from([...v1.weights.shared, ...v1.weights.players.gukesh, ...v1.weights.players.sindarov, ...v1.weights.clock]);
+/** Frozen weights and temperature, with the tables its numbers were measured with: its 74 fitting games. Never the tables of the released file. */
+const publishedV1 = r => {
+  const x = Float64Array.from(r.x);
+  for (let j = 0; j < r.n; j++) {
+    x[j * K + REP_PLAYER] = r.v1.player[j];
+    x[j * K + REP_ANY] = r.v1.any[j];
+  }
+  const s = scoresOf(v1Theta, r, ALL, new Float64Array(r.n), x);
+  for (let j = 0; j < r.n; j++) s[j] /= v1.temperature;
+  return softmaxInto(s, r.n);
+};
+
+// ---------- measuring
+const BINS = 10;
+const STATS = 5 + 6 * BINS;
+/**
+ * The moves in the order the site shows them: by probability, and exactly
+ * equal ones by their UCI text, as predict() does in the browser.
+ */
+const ranked = (p, r) => Array.from(p, (x, i) => [x, i]).sort((a, b) => b[0] - a[0] || r.ucis[a[1]].localeCompare(r.ucis[b[1]]));
+/**
+ * What a model did on each game, as sums that can be added up over any set
+ * of games: decisions, log loss, Brier, first choice right, in the first
+ * three, and two reliability tables in ten bins (the first choice; and the
+ * three rows the page shows). With `expected`, ties are scored by their
+ * expected value, for a baseline that gives many moves the same probability.
+ */
+const statsByGame = (data, probs, expected = false) => {
+  const by = new Map();
+  for (const r of data) {
+    const s = by.get(r.g) ?? by.set(r.g, new Float64Array(STATS)).get(r.g);
+    const p = probs(r);
+    s[0]++;
+    s[1] -= Math.log(Math.max(1e-12, p[r.chosen]));
+    for (let j = 0; j < r.n; j++) s[2] += (p[j] - (j === r.chosen ? 1 : 0)) ** 2;
+    let top1;
+    let confidence;
+    if (expected) {
+      const mine = p[r.chosen];
+      let above = 0;
+      let tied = 0;
+      for (let j = 0; j < r.n; j++) {
+        if (p[j] > mine) above++;
+        else if (p[j] === mine) tied++;
+      }
+      top1 = above === 0 ? 1 / tied : 0;
+      s[4] += above >= 3 ? 0 : Math.min(1, (3 - above) / tied);
+      confidence = Math.max(...p);
+    } else {
+      const order = ranked(p, r);
+      top1 = order[0][1] === r.chosen ? 1 : 0;
+      confidence = order[0][0];
+      const shown = order.slice(0, 3);
+      if (shown.some(o => o[1] === r.chosen)) s[4]++;
+      for (const [x, j] of shown) {
+        const b = 5 + 3 * BINS + 3 * Math.min(BINS - 1, Math.floor(x * BINS));
+        s[b]++;
+        s[b + 1] += x;
+        s[b + 2] += j === r.chosen ? 1 : 0;
+      }
+    }
+    s[3] += top1;
+    const b = 5 + 3 * Math.min(BINS - 1, Math.floor(confidence * BINS));
+    s[b]++;
+    s[b + 1] += confidence;
+    s[b + 2] += top1;
+  }
+  return by;
+};
+const sumOf = list => {
+  const total = new Float64Array(STATS);
+  for (const s of list) for (let i = 0; i < STATS; i++) total[i] += s[i];
+  return total;
+};
+const reliability = (s, offset) => {
+  const bins = [];
+  let n = 0;
+  for (let b = 0; b < BINS; b++) {
+    const i = offset + 3 * b;
+    bins.push({ n: s[i], said: s[i] ? s[i + 1] / s[i] : 0, happened: s[i] ? s[i + 2] / s[i] : 0 });
+    n += s[i];
+  }
+  const from = lowest => {
+    const part = bins.slice(lowest);
+    const count = part.reduce((sum, b) => sum + b.n, 0);
+    return { n: count, said: count ? part.reduce((sum, b) => sum + b.n * b.said, 0) / count : 0, happened: count ? part.reduce((sum, b) => sum + b.n * b.happened, 0) / count : 0 };
+  };
+  return { bins, error: n ? bins.reduce((sum, b) => sum + (b.n / n) * Math.abs(b.happened - b.said), 0) : 0, sure70: from(7), sure90: from(9) };
+};
+/** The numbers of the report from the sums. */
+const derive = s => {
+  const n = s[0];
+  const first = reliability(s, 5);
+  const shown = reliability(s, 5 + 3 * BINS);
+  return { n, logLoss: s[1] / n, brier: s[2] / n, top1: s[3] / n, top3: s[4] / n, ece: first.error, bins: first.bins, sure70: first.sure70, sure90: first.sure90, shownEce: shown.error, shownBins: shown.bins };
+};
+const METRICS = {
+  logLoss: d => d.logLoss,
+  brier: d => d.brier,
+  top1: d => d.top1,
+  top3: d => d.top3,
+  ece: d => d.ece,
+  shownEce: d => d.shownEce,
+  gap70: d => d.sure70.said - d.sure70.happened,
+  gap90: d => d.sure90.said - d.sure90.happened,
+};
 const mulberry = seed => () => {
   seed |= 0;
   seed = (seed + 0x6d2b79f5) | 0;
@@ -203,271 +530,150 @@ const mulberry = seed => () => {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 };
 /**
- * The moves in the order the site shows them: by probability, and where two
- * are exactly equal, by their UCI text. The same rule as predict() in
- * src/lib/predictor/model.ts.
+ * A model on a set of decisions: its numbers, and 95 % intervals from
+ * drawing whole games again (2,000 draws, fixed seed). With `against`, also
+ * the interval of each difference (this model minus that one) on the same
+ * draws, which is what a comparison on identical decisions needs.
  */
-const ranked = (p, r) => p.map((x, i) => [x, i]).sort((a, b) => b[0] - a[0] || r.cands[a[1]].uci.localeCompare(r.cands[b[1]].uci));
-/**
- * Whether the played move is the first choice, and among the first three.
- * For the model this follows the site's ranking. For a baseline that gives
- * many moves exactly the same probability, any order among them would be
- * arbitrary, so the expected value over all such orders is used instead
- * (`expected`): the first choice of "every move equally likely" among n moves
- * is right 1/n of the time, and among the first three min(3, n)/n.
- */
-const hits = (p, r, expected) => {
-  if (!expected) {
-    const order = ranked(p, r);
-    return { top1: order[0][1] === r.chosen ? 1 : 0, top3: order.slice(0, 3).some(o => o[1] === r.chosen) ? 1 : 0, confidence: order[0][0] };
-  }
-  const mine = p[r.chosen];
-  const above = p.filter(x => x > mine).length;
-  const tied = p.filter(x => x === mine).length;
-  return { top1: above === 0 ? 1 / tied : 0, top3: above >= 3 ? 0 : Math.min(1, (3 - above) / tied), confidence: Math.max(...p) };
-};
-const measure = (data, probs, expected = false) => {
-  if (data.length === 0) return { n: 0 };
-  let top1 = 0;
-  let top3 = 0;
-  let loss = 0;
-  let brier = 0;
-  const bins = Array.from({ length: 10 }, () => ({ n: 0, confidence: 0, correct: 0 }));
-  for (const r of data) {
-    const p = probs(r);
-    const h = hits(p, r, expected);
-    top1 += h.top1;
-    top3 += h.top3;
-    loss -= Math.log(Math.max(1e-12, p[r.chosen]));
-    brier += p.reduce((sum, x, i) => sum + (x - (i === r.chosen ? 1 : 0)) ** 2, 0);
-    const bin = bins[Math.min(9, Math.floor(h.confidence * 10))];
-    bin.n++;
-    bin.confidence += h.confidence;
-    bin.correct += h.top1;
-  }
-  const n = data.length;
-  const ece = bins.reduce((sum, b) => sum + (b.n ? (b.n / n) * Math.abs(b.correct / b.n - b.confidence / b.n) : 0), 0);
-  return { n, top1: top1 / n, top3: top3 / n, logLoss: loss / n, brier: brier / n, ece, bins: bins.map(b => ({ n: b.n, confidence: b.n ? b.confidence / b.n : 0, correct: b.n ? b.correct / b.n : 0 })) };
-};
-/** A 95 % interval for top-1 and top-3 by drawing whole games again and again. */
-const interval = (data, probs) => {
-  const byGame = new Map();
-  for (const r of data) (byGame.get(r.g) ?? byGame.set(r.g, []).get(r.g)).push(r);
-  const groups = [...byGame.values()].map(group => {
-    let top1 = 0;
-    let top3 = 0;
-    for (const r of group) {
-      const h = hits(probs(r), r, false);
-      top1 += h.top1;
-      top3 += h.top3;
-    }
-    return { n: group.length, top1, top3 };
-  });
+const measure = (data, probs, { expected = false, against } = {}) => {
+  const mine = statsByGame(data, probs, expected);
+  const ids = [...mine.keys()];
+  const theirs = against ? statsByGame(data, against) : undefined;
+  const result = derive(sumOf(mine.values()));
   const random = mulberry(20261101);
-  const draws = [];
+  const draws = Object.fromEntries(Object.keys(METRICS).map(k => [k, []]));
+  const diffs = Object.fromEntries(Object.keys(METRICS).map(k => [k, []]));
   for (let b = 0; b < 2000; b++) {
-    let n = 0;
-    let top1 = 0;
-    let top3 = 0;
-    for (let i = 0; i < groups.length; i++) {
-      const g = groups[Math.floor(random() * groups.length)];
-      n += g.n;
-      top1 += g.top1;
-      top3 += g.top3;
+    const picked = ids.map(() => ids[Math.floor(random() * ids.length)]);
+    const a = derive(sumOf(picked.map(id => mine.get(id))));
+    const t = theirs ? derive(sumOf(picked.map(id => theirs.get(id)))) : undefined;
+    for (const [k, f] of Object.entries(METRICS)) {
+      draws[k].push(f(a));
+      if (t) diffs[k].push(f(a) - f(t));
     }
-    draws.push([top1 / n, top3 / n]);
   }
-  const range = i => {
-    const sorted = draws.map(d => d[i]).sort((a, b) => a - b);
-    return [sorted[Math.floor(0.025 * sorted.length)], sorted[Math.floor(0.975 * sorted.length)]];
+  const range = list => {
+    const sorted = list.filter(Number.isFinite).sort((x, y) => x - y);
+    return sorted.length ? [sorted[Math.floor(0.025 * sorted.length)], sorted[Math.min(sorted.length - 1, Math.floor(0.975 * sorted.length))]] : undefined;
   };
-  return { top1: range(0), top3: range(1) };
-};
-const uniform = r => r.cands.map(() => 1 / r.cands.length);
-const REP = FEATURES.indexOf('repPlayer');
-// "What this player played here before", and nothing else: counts with one extra game spread over all legal moves.
-const repertoire = r => {
-  const c = r.cands.map(x => Math.expm1(x.f[REP]) + 1 / r.cands.length);
-  const sum = c.reduce((a, b) => a + b, 0);
-  return c.map(x => x / sum);
+  result.games = ids.length;
+  result.intervals = Object.fromEntries(Object.keys(METRICS).map(k => [k, range(draws[k])]));
+  if (theirs) {
+    const other = derive(sumOf(theirs.values()));
+    result.difference = Object.fromEntries(Object.entries(METRICS).map(([k, f]) => [k, { value: f(result) - f(other), interval: range(diffs[k]) }]));
+  }
+  return result;
 };
 
-/** One protocol from start to finish: fit, choose penalties and temperature on the calibration games, measure on the test games. */
-const run = (name, rows) => {
-  const fitRows = rows.filter(r => r.split === 'fit');
-  const calRows = rows.filter(r => r.split === 'calibration');
-  const testOwn = rows.filter(r => r.split === 'test' && own(r));
-  // ---------- 5. penalties and temperature, on the calibration games only
+{
+  const again = derive(sumOf(statsByGame(ownOf('benchmark'), publishedV1).values()));
+  const published = v1.report.shown;
+  for (const k of ['top1', 'top3', 'logLoss', 'brier', 'ece']) {
+    if (round(again[k]) !== published[k]) throw new Error(`the published first version is not reproduced on the benchmark: ${k} ${round(again[k])} here, ${published[k]} published`);
+  }
+  if (again.n !== published.n) throw new Error('the benchmark is not the decisions of the first report');
+  log(`published first version reproduced on the benchmark: first ${(100 * again.top1).toFixed(1)} %, three ${(100 * again.top3).toFixed(1)} %, log loss ${again.logLoss.toFixed(3)}`);
+}
+
+// ---------- 5. every choice, on the selection games only
+const fitRows = bySet.fit;
+const selRows = ownOf('selection');
+const selection = { families: { A: { candidates: [] }, B: { candidates: [] } } };
+{
+  // Family A as the first version did it: penalties by the loss at temperature 1, then the temperature.
   let best;
   for (const penaltyShared of [0.001, 0.01]) {
     for (const penaltyOwn of [0.01, 0.05, 0.2]) {
-      const theta = fit(fitRows, penaltyShared, penaltyOwn);
-      const loss = logLoss(calRows, modelProbs(theta, 1));
+      const theta = fit(fitRows, { active: ALL, penaltyShared, penaltyPlayers: penaltyOwn, penaltyClock: penaltyOwn });
+      const loss = logLoss(selRows, familyA(theta, 1));
+      selection.families.A.candidates.push({ penaltyShared, penaltyOwn, lossAtTemperature1: loss });
+      log(`family A, penalties ${penaltyShared} / ${penaltyOwn}: selection log loss ${loss.toFixed(4)} at temperature 1`);
       if (!best || loss < best.loss) best = { theta, loss, penaltyShared, penaltyOwn };
     }
   }
-  let lo = 0.5;
-  let hi = 2.5;
-  for (let i = 0; i < 40; i++) {
-    const a = lo + (hi - lo) / 3;
-    const b = hi - (hi - lo) / 3;
-    if (logLoss(calRows, modelProbs(best.theta, a)) < logLoss(calRows, modelProbs(best.theta, b))) hi = b;
-    else lo = a;
+  const temperature = searchTemperature(t => logLoss(selRows, familyA(best.theta, t)), 0.5, 2.5);
+  Object.assign(selection.families.A, { penaltyShared: best.penaltyShared, penaltyOwn: best.penaltyOwn, temperature, theta: Array.from(best.theta), loss: logLoss(selRows, familyA(best.theta, temperature)) });
+  log(`family A chosen: penalties ${best.penaltyShared} / ${best.penaltyOwn}, temperature ${temperature}, selection log loss ${selection.families.A.loss.toFixed(4)}`);
+}
+{
+  // Family B: four fits of the base model; for each, the blend is searched one setting at a time until nothing changes.
+  const GRID = { kappa: [0.25, 0.5, 1, 2, 4, 8, 16], others: [0, 0.05, 0.1, 0.25, 0.5, 1], halfLife: [0.5, 1, 2, 4, null], epsilon: [0, 0.002, 0.005, 0.01, 0.02, 0.05] };
+  const variants = [
+    { label: 'corrections 0.01', players: true, penaltyPlayers: 0.01, penaltyClock: 0.01 },
+    { label: 'corrections 0.2', players: true, penaltyPlayers: 0.2, penaltyClock: 0.2 },
+    { label: 'no per-player corrections, clock 0.01', players: false, penaltyPlayers: 0, penaltyClock: 0.01 },
+    { label: 'no per-player corrections, clock 0.2', players: false, penaltyPlayers: 0, penaltyClock: 0.2 },
+  ];
+  let best;
+  for (const variant of variants) {
+    const theta = fit(fitRows, { active: BOARD, penaltyShared: 0.001, penaltyPlayers: variant.penaltyPlayers, penaltyClock: variant.penaltyClock, players: variant.players });
+    const cfg = { theta, players: variant.players, temperature: 1, kappa: 1, others: 0.25, halfLife: null, epsilon: 0 };
+    const lossOf = change => logLoss(selRows, familyB({ ...cfg, ...change }));
+    let loss = lossOf({});
+    for (let round = 1; round <= 10; round++) {
+      const before = JSON.stringify([cfg.temperature, cfg.kappa, cfg.others, cfg.halfLife, cfg.epsilon]);
+      cfg.temperature = searchTemperature(t => lossOf({ temperature: t }));
+      for (const name of Object.keys(GRID)) {
+        for (const value of GRID[name]) {
+          const candidate = lossOf({ [name]: value });
+          if (candidate < lossOf({})) cfg[name] = value;
+        }
+      }
+      loss = lossOf({});
+      if (JSON.stringify([cfg.temperature, cfg.kappa, cfg.others, cfg.halfLife, cfg.epsilon]) === before) break;
+    }
+    const baseAlone = logLoss(selRows, baseOf(theta, searchTemperature(t => logLoss(selRows, baseOf(theta, t)))));
+    selection.families.B.candidates.push({ label: variant.label, temperature: cfg.temperature, kappa: cfg.kappa, others: cfg.others, halfLife: cfg.halfLife, epsilon: cfg.epsilon, loss, baseModelAlone: baseAlone });
+    log(`family B, ${variant.label}: T ${cfg.temperature}, κ ${cfg.kappa}, w ${cfg.others}, half-life ${cfg.halfLife ?? 'none'}, ε ${cfg.epsilon}: selection log loss ${loss.toFixed(4)} (base model alone ${baseAlone.toFixed(4)})`);
+    if (!best || loss < best.loss) best = { ...cfg, loss, label: variant.label, penaltyPlayers: variant.penaltyPlayers, penaltyClock: variant.penaltyClock };
   }
-  const temperature = Math.round(((lo + hi) / 2) * 1000) / 1000;
-  const theta = best.theta;
-  const model = modelProbs(theta, temperature);
-  const sharedOnly = (() => {
-    const t = Float64Array.from(theta);
-    for (let i = K; i < 3 * K; i++) t[i] = 0;
-    return modelProbs(t, temperature);
-  })();
-  const fitKeys = new Set(fitRows.map(r => r.key));
-  const sets = {
-    all: testOwn,
-    gukesh: testOwn.filter(r => r.mover === 'gukesh'),
-    sindarov: testOwn.filter(r => r.mover === 'sindarov'),
-    seenInFitting: testOwn.filter(r => fitKeys.has(r.key)),
-    notSeenInFitting: testOwn.filter(r => !fitKeys.has(r.key)),
-  };
-  const results = {};
-  for (const [set, data] of Object.entries(sets)) results[set] = { ...measure(data, model), interval: data.length ? interval(data, model) : undefined };
-  // the two simple baselines tie a great deal, so they are scored by expectation over ties
-  const baselines = { uniform: measure(testOwn, uniform, true), repertoireOnly: measure(testOwn, repertoire, true), withoutPlayerCorrections: measure(testOwn, sharedOnly) };
-  console.log(`${name}: penalties ${best.penaltyShared} / ${best.penaltyOwn}, temperature ${temperature}; test first choice ${(100 * results.all.top1).toFixed(1)} %, first three ${(100 * results.all.top3).toFixed(1)} %, log loss ${results.all.logLoss.toFixed(3)}, calibration error ${(100 * results.all.ece).toFixed(1)} %`);
-  return { theta, temperature, penalties: { shared: best.penaltyShared, own: best.penaltyOwn }, results, baselines };
+  Object.assign(selection.families.B, { ...best, theta: Array.from(best.theta), grid: GRID });
+  log(`family B chosen: ${best.label}, selection log loss ${best.loss.toFixed(4)}`);
+}
+selection.chosen = selection.families.B.loss < selection.families.A.loss ? 'B' : 'A';
+log(`chosen on the selection games: family ${selection.chosen}`);
+
+const A = selection.families.A;
+const B = selection.families.B;
+const models = {
+  A: familyA(Float64Array.from(A.theta), A.temperature),
+  B: familyB({ ...B, theta: Float64Array.from(B.theta) }),
+  base: baseOf(Float64Array.from(B.theta), B.temperature),
 };
+models.v2 = models[selection.chosen];
 
-const startedAt = Date.now();
-const firstRows = buildRows('days');
-const first = run('first protocol', firstRows);
-const revised = run('revision', buildRows('events'));
-console.log(`both protocols in ${((Date.now() - startedAt) / 1000).toFixed(0)} s`);
-
-const decisions = (split, mover) => firstRows.filter(r => r.split === split && own(r) && (!mover || r.mover === mover)).length;
-const sample = Object.fromEntries(
-  ['fit', 'calibration', 'test'].map(split => [
-    split,
-    { games: games.filter(g => g.split === split).length, decisions: decisions(split), gukesh: decisions(split, 'gukesh'), sindarov: decisions(split, 'sindarov'), positions: firstRows.filter(r => r.split === split).length },
-  ]),
+// What the selection games show, which may be read: the chosen model, the other family and the base model.
+selection.onSelection = {
+  v2: measure(selRows, models.v2, { against: selection.chosen === 'B' ? models.A : models.B }),
+  A: measure(selRows, models.A),
+  B: measure(selRows, models.B),
+  base: measure(selRows, models.base),
+  uniform: measure(selRows, uniform, { expected: true }),
+};
+for (const [name, m] of Object.entries(selection.onSelection)) {
+  log(`selection games, ${name}: log loss ${m.logLoss.toFixed(4)}, Brier ${m.brier.toFixed(4)}, first ${(100 * m.top1).toFixed(1)} %, three ${(100 * m.top3).toFixed(1)} %, calibration error ${(100 * m.ece).toFixed(1)} %, at 70 % and above: ${m.sure70.n} said ${(100 * m.sure70.said).toFixed(1)} % played ${(100 * m.sure70.happened).toFixed(1)} %`);
+}
+selection.protocol = 'docs/PREDICTOR-V2-PROTOCOL.md';
+selection.corpora = selectionCounts;
+selection.sample = sample;
+selection.tournaments = tournaments.map(t => ({ name: t.name, set: t.set, start: t.start, end: t.end, months: t.months, games: t.games, gukesh: t.gukesh, sindarov: t.sindarov }));
+/** Pairs the safe end bound costs: X began before E and shares a player with it, but ends in the month E starts, so it is not counted for E. */
+selection.pairsLeftOut = tournaments.flatMap(x =>
+  tournaments.filter(e => e !== x && x.start < e.start && !earlier(x, e) && x.end.slice(0, 7) === e.start.slice(0, 7) && ((x.gukesh && e.gukesh) || (x.sindarov && e.sindarov))).map(e => ({ earlier: x.name, ends: x.end, later: e.name, starts: e.start })),
 );
-const events = {};
-for (const g of games) (events[g.event] ??= { split: g.split, first: firstDate[g.event], games: 0, gukesh: 0, sindarov: 0 }).games++;
-for (const g of games) for (const p of [g.white, g.black]) if (p) events[g.event][p]++;
 
-// ---------- the files
-// For the match itself every selected game is an earlier game, so the tables
-// that are shipped count all of them. No measurement used these larger tables.
-const shipped = { gukesh: new Map(), sindarov: new Map(), any: new Map() };
-for (const g of games) addTo(shipped, g);
-const round = (x, d = 4) => Math.round(x * 10 ** d) / 10 ** d;
-const weights = (theta, offset) => Array.from(theta.slice(offset, offset + K), x => round(x));
-const table = map => Object.fromEntries([...map.entries()].sort((a, b) => a[0].localeCompare(b[0])));
-const summary = r => (r.n ? { n: r.n, top1: round(r.top1), top3: round(r.top3), logLoss: round(r.logLoss), brier: round(r.brier), ece: round(r.ece), ...(r.interval ? { top1Interval: r.interval.top1.map(x => round(x)), top3Interval: r.interval.top3.map(x => round(x)) } : {}) } : { n: 0 });
-const protocolReport = p => ({
-  penalties: p.penalties,
-  temperature: p.temperature,
-  test: Object.fromEntries(Object.entries(p.results).map(([k, r]) => [k, summary(r)])),
-  baselines: Object.fromEntries(Object.entries(p.baselines).map(([k, r]) => [k, summary(r)])),
-  calibration: p.results.all.bins.map(b => ({ n: b.n, said: round(b.confidence, 3), happened: round(b.correct, 3) })),
-});
-/** Of the first choices given at least 70 %, how many were played: the plainest sign of overconfidence. */
-const whenSure = p => {
-  const bins = p.results.all.bins.slice(7);
-  const n = bins.reduce((sum, b) => sum + b.n, 0);
-  return { n, said: n ? bins.reduce((sum, b) => sum + b.n * b.confidence, 0) / n : 0, happened: n ? bins.reduce((sum, b) => sum + b.n * b.correct, 0) / n : 0 };
-};
-const out = {
-  version: 2,
-  features: [...FEATURES],
-  // the weights of the revised protocol
-  weights: { shared: weights(revised.theta, 0), players: { gukesh: weights(revised.theta, K), sindarov: weights(revised.theta, 2 * K) }, clock: weights(revised.theta, 3 * K) },
-  temperature: revised.temperature,
-  players: Object.fromEntries(Object.entries(PLAYERS).map(([id, key]) => [id, key])),
-  priors: { players: { gukesh: table(shipped.gukesh), sindarov: table(shipped.sindarov) }, any: table(shipped.any) },
-  stakesMax: STAKES_MAX,
-  clockFullSeconds: CLOCK_FULL_SECONDS,
-  report: {
-    corpus: { path: CORPUS, sha256: corpusSha256, source: 'Lichess official broadcasts, January to October 2026', licence: 'CC BY-SA 4.0' },
-    selection: { rule: `standard chess from the initial position; the larger of the first two clock readings at least ${CLASSICAL_SECONDS / 60} minutes`, selected: games.length, of: splitGames(raw).length, excluded },
-    split: sample,
-    // what the panel quotes: the revised protocol on the test games, which is an exploratory measurement
-    shown: { ...summary(revised.results.all), whenSure: (({ n, said, happened }) => ({ n, said: round(said, 3), happened: round(happened, 3) }))(whenSure(revised)), blind: false },
-    firstProtocol: protocolReport(first),
-    revision: protocolReport(revised),
-  },
-};
-writeFileSync('src/data/predictor.json', JSON.stringify(out) + '\n');
+// Six decimals in the file, so that it comes out the same on another machine.
+const selectionText = JSON.stringify(selection, (key, value) => (typeof value === 'number' && !Number.isInteger(value) ? round(value, 6) : value), 1) + '\n';
+if (!FINAL) {
+  mkdirSync('data/predictor-v2', { recursive: true });
+  writeFileSync(SELECTION, selectionText);
+  log(`wrote ${SELECTION}. Commit it before running --final.`);
+  await vite.close();
+  process.exit(0);
+}
 
-const pct = x => `${(100 * x).toFixed(1)} %`;
-const line = (name, r) => `| ${name} | ${r.n} | ${pct(r.top1)} | ${pct(r.top3)} | ${r.logLoss.toFixed(3)} | ${r.brier.toFixed(3)} | ${pct(r.ece)} |`;
-const NAMES = { gukesh: 'Gukesh', sindarov: 'Sindarov', seenInFitting: 'positions that also occur in the fitting games', notSeenInFitting: 'positions that do not' };
-const section = p => `Penalties ${p.penalties.shared} (shared) and ${p.penalties.own} (corrections), temperature ${p.temperature}, all chosen on the calibration games.
-
-| | Decisions | First choice right | In the first three | Log loss | Brier | Calibration error |
-|---|---|---|---|---|---|---|
-${line('**The model**', p.results.all)}
-${line('Without the per-player corrections', p.baselines.withoutPlayerCorrections)}
-${line('Only "played here before" (ties averaged)', p.baselines.repertoireOnly)}
-${line('Every legal move equally likely (ties averaged)', p.baselines.uniform)}
-
-The model's moves are ranked as the site ranks them: by probability, and exactly equal ones by their UCI text. The two simple baselines give many moves exactly the same probability, so their two accuracy columns are the average over every order of the tied moves: 1/n and min(3, n)/n for n equally likely moves.
-
-95 % intervals for the model, from drawing whole games again: first choice ${pct(p.results.all.interval.top1[0])} to ${pct(p.results.all.interval.top1[1])}, first three ${pct(p.results.all.interval.top3[0])} to ${pct(p.results.all.interval.top3[1])}.
-
-| The model on | Decisions | First choice right | In the first three | Log loss |
-|---|---|---|---|---|
-${Object.keys(NAMES).map(k => `| ${NAMES[k]} | ${p.results[k].n} | ${p.results[k].n ? pct(p.results[k].top1) : ''} | ${p.results[k].n ? pct(p.results[k].top3) : ''} | ${p.results[k].n ? p.results[k].logLoss.toFixed(3) : ''} |`).join('\n')}
-
-When the model gave its first choice a probability in the range on the left, how often that move was played:
-
-| Said | Decisions | Average said | Played |
-|---|---|---|---|
-${p.results.all.bins.map((b, i) => (b.n ? `| ${i * 10} to ${i * 10 + 10} % | ${b.n} | ${pct(b.confidence)} | ${pct(b.correct)} |` : '')).filter(Boolean).join('\n')}
-`;
-const report = `# Move predictor: what was measured
-
-Written by \`scripts/train-predictor.mjs\`. Do not edit by hand; run the script.
-
-Corpus: \`${CORPUS}\` (SHA-256 \`${corpusSha256}\`), from the Lichess broadcast database, CC BY-SA 4.0.
-
-## Games
-
-Selected ${games.length} of ${splitGames(raw).length} games: standard chess from the initial position, with the larger of the first two clock readings at least ${CLASSICAL_SECONDS / 60} minutes. Tags were not trusted over the clocks.
-
-| Left out | Games |
-|---|---|
-${Object.entries(excluded).map(([k, n]) => `| ${k} | ${n} |`).join('\n')}
-
-| Event | First game | Set | Games | Gukesh | Sindarov |
-|---|---|---|---|---|---|
-${Object.entries(events).sort((a, b) => a[1].first.localeCompare(b[1].first)).map(([e, v]) => `| ${e.replaceAll('|', '\\|')} | ${v.first} | ${v.split} | ${v.games} | ${v.gukesh} | ${v.sindarov} |`).join('\n')}
-
-| Set | Games | Decisions by the two players | Gukesh | Sindarov | All positions (both sides) |
-|---|---|---|---|---|---|
-${['fit', 'calibration', 'test'].map(s => `| ${s} | ${sample[s].games} | ${sample[s].decisions} | ${sample[s].gukesh} | ${sample[s].sindarov} | ${sample[s].positions} |`).join('\n')}
-
-The weights are fitted on the fitting games (both sides' moves; the two players' corrections on their own moves). The calibration games are games of one player only. "Played here before" never includes the game a position is from, and the calibration and test games count the fitting games only. The tables shipped with the site count all selected games, since for the match all of them are earlier games; no measurement here used those.
-
-All results below are for the two players' own moves in the test games.
-
-## First protocol: as planned, measured first
-
-In a fitting game, "played here before" counts the fitting games of earlier days, which includes earlier rounds of the same event.
-
-${section(first)}
-## Revision: exploratory, made after the first measurement
-
-In a fitting game, "played here before" counts only games played before that game's event began. This is how the tables are used in the match, whose own games are never in them. Nothing else differs.
-
-**This is not a blind measurement.** The change was made because the first measurement showed the model to be overconfident where lines repeat inside one event. No number of the revision was chosen on the test games, but the decision to revise was informed by them, so these results are likely to flatter the model somewhat. The probabilities are not claimed to be calibrated: the table below shows where they are not. The weights shipped with the site are the revision's.
-
-${section(revised)}
-## Weights of the revision
-
-| Feature | Shared | Gukesh | Sindarov | Under clock pressure |
-|---|---|---|---|---|
-${FEATURES.map((f, k) => `| ${f} | ${revised.theta[k].toFixed(2)} | ${revised.theta[K + k].toFixed(2)} | ${revised.theta[2 * K + k].toFixed(2)} | ${revised.theta[3 * K + k].toFixed(2)} |`).join('\n')}
-`;
-writeFileSync('docs/PREDICTOR-REPORT.md', report);
+// ---------- 6. the final measurement, once
+if (!existsSync(SELECTION) || readFileSync(SELECTION, 'utf8') !== selectionText) throw new Error(`${SELECTION} is missing or is not what this selection stage gives. Run the selection stage, commit it, then run --final.`);
+const { writeFinal } = await import('./predictor-final.mjs');
+await writeFinal({ publishedV1, v1, round, FEATURES, K, REP_PLAYER, REP_ANY, ALL, PLAYERS, V1, SELECTION, AS_OF, PRIOR_PLIES, CLOCK_FULL_SECONDS, STAKES_MAX, CLASSICAL_SECONDS, selection, models, measure, uniform, scoresOf, softmaxInto, ownOf, games, tournaments, history, sample, selectionCounts, yearsBetween, log, sha256 });
 await vite.close();
