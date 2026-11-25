@@ -257,6 +257,12 @@ No model had been fitted or measured on any game when these were made.
    three months, so that a yearly broadcast name without a year stays one
    tournament per edition.
 
+4. **Family B without per-player corrections** still needs a penalty for the
+   clock correction, which the table above left open. Both grid values are
+   fitted (0.01 and 0.2), so family B has four fits and nothing is picked
+   by hand. In the other two candidates the clock correction shares the
+   penalty of the per-player corrections, as in v1.
+
 The split by end date comes out the same under the amended rule: 233, 118,
 83 and 21 games.
 
