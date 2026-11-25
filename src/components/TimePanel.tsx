@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useState } from 'react';
 import { KNOWN_PLAYERS } from '../config';
 import { useT } from '../hooks';
 import { track } from '../lib/analytics';
@@ -8,18 +8,26 @@ import type { GameData, PlayerInfo } from '../lib/pgn';
 import { samePlayer, selectScore, useStore } from '../store';
 import { useShallow } from 'zustand/react/shallow';
 
-const useWidth = (): [React.RefObject<HTMLDivElement | null>, number] => {
-  const ref = useRef<HTMLDivElement>(null);
+/**
+ * The width of an element that may not be on the page yet. The chart is only
+ * drawn once there is something to draw, so the element is followed from the
+ * moment it appears, not from the moment the panel does.
+ */
+const useWidth = (): [(el: HTMLDivElement | null) => void, number] => {
+  const [el, setEl] = useState<HTMLDivElement | null>(null);
   const [w, setW] = useState(0);
   useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    if (!el) {
+      setW(0);
+      return;
+    }
+    setW(el.clientWidth);
+    if (typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(() => setW(el.clientWidth));
     ro.observe(el);
-    setW(el.clientWidth);
     return () => ro.disconnect();
-  }, []);
-  return [ref, w];
+  }, [el]);
+  return [setEl, w];
 };
 
 const GUTTER = 30;
