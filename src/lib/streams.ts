@@ -11,7 +11,7 @@ export interface StreamEntry {
 export type StreamFeeds = Record<string, StreamEntry[]>;
 
 export const fetchStreamFeeds = async (channelIds: string[]): Promise<StreamFeeds> => {
-  const res = await fetch(`/api/streams?channels=${channelIds.join(',')}`);
+  const res = await fetch(`${import.meta.env.BASE_URL}api/streams?channels=${channelIds.join(',')}`);
   // A static host without the function answers with the page itself; treat that as "no data".
   if (!res.ok || !(res.headers.get('content-type') ?? '').includes('json')) throw new Error('no stream feed');
   return ((await res.json()) as { channels: StreamFeeds }).channels;
