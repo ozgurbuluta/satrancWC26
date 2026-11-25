@@ -30,11 +30,11 @@ const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? '  (' + detail + ')' : ''}`);
 };
 
-const pgn = plies => {
+const pgn = (plies, board = 1) => {
   const body = LINE.slice(0, plies)
     .map((san, i) => `${i % 2 === 0 ? `${i / 2 + 1}.` : `${(i - 1) / 2 + 1}...`} ${san} { [%clk 1:5${9 - (i % 9)}:00] }`)
     .join(' ');
-  return `[Event "Test"]\n[Round "1.1"]\n[White "Sindarov, Javokhir"]\n[Black "Gukesh D"]\n[Result "*"]\n[WhiteFideId "14205483"]\n[BlackFideId "46616543"]\n[TimeControl "40/7200:20/3600:900+30"]\n[Variant "Standard"]\n[GameURL "https://lichess.org/broadcast/t/r/${R1}/game0001"]\n\n${body} *\n\n\n`;
+  return `[Event "Test"]\n[Round "1.${board}"]\n[White "Sindarov, Javokhir"]\n[Black "Gukesh D"]\n[Result "*"]\n[WhiteFideId "14205483"]\n[BlackFideId "46616543"]\n[TimeControl "40/7200:20/3600:900+30"]\n[Variant "Standard"]\n[GameURL "https://lichess.org/broadcast/t/r/${R1}/game000${board}"]\n\n${body} *\n\n\n`;
 };
 
 // The proposed /satranc/ page, plus an empty page of the same origin to read the clipboard from.
@@ -67,8 +67,11 @@ const shell = http.createServer((req, res) => {
     if (opts.refuse) {
       await ctx.addInitScript(mode => {
         if (location.origin !== 'http://127.0.0.1:4173') return; // only the chess site is refused, not the page the clipboard is read from
-        if (mode === 'all' && navigator.clipboard) navigator.clipboard.writeText = () => Promise.reject(new DOMException('Write permission denied.', 'NotAllowedError'));
-        document.execCommand = () => false;
+        if (mode !== 'fallback' && navigator.clipboard) navigator.clipboard.writeText = () => Promise.reject(new DOMException('Write permission denied.', 'NotAllowedError'));
+        document.execCommand = () => {
+          if (mode === 'throw') throw new DOMException('The operation is insecure.', 'SecurityError');
+          return false;
+        };
       }, opts.refuse);
     }
     const errors = [];
@@ -83,7 +86,8 @@ const shell = http.createServer((req, res) => {
       if (u.pathname.startsWith('/api/puzzle/')) return json({ game: { pgn: '' }, puzzle: MATE2 });
       if (u.pathname.startsWith('/api/broadcast/') && !u.pathname.startsWith('/api/broadcast/-/') && !u.pathname.endsWith('.pgn'))
         return json({ tour: { id: TOUR, name: 'Test', slug: 't', url: '', info: {} }, rounds: [{ id: R1, name: 'Game 1', slug: 'g1', url: '', startsAt: Date.now() - 3600e3, ongoing: true }], defaultRoundId: R1 });
-      if (u.pathname.endsWith('.pgn')) return route.fulfill({ status: 200, contentType: 'application/x-chess-pgn', headers: cors, body: pgn(LINE.length) });
+      // `boards: 2` makes the round a tie-break day: two games in one round
+      if (u.pathname.endsWith('.pgn')) return route.fulfill({ status: 200, contentType: 'application/x-chess-pgn', headers: cors, body: pgn(LINE.length) + (opts.boards === 2 ? pgn(4, 2) : '') });
       if (u.pathname.startsWith('/api/broadcast/-/-/')) return json({ round: {}, games: [{ id: 'game0001', thinkTime: 30, players: [] }] });
       return route.fulfill({ status: 404, headers: cors, body: '{}' });
     });
@@ -175,9 +179,10 @@ const shell = http.createServer((req, res) => {
     await ctx.close();
   }
 
-  // ---- 2. on the site itself, copying refused both ways
-  {
-    const { ctx, errors, clipboard, stamp } = await context({ refuse: 'all' });
+  // ---- 2. on the site itself, copying refused both ways: the copy command says no, or throws
+  for (const refuse of ['all', 'throw']) {
+    console.log(`     copy command ${refuse === 'throw' ? 'throws' : 'returns false'}:`);
+    const { ctx, errors, clipboard, stamp } = await context({ refuse });
     await stamp();
     const page = await openMatch(ctx, `parti=1&hamle=4&${NOISE}`);
     const p = panel(page);
@@ -186,9 +191,10 @@ const shell = http.createServer((req, res) => {
     check('a refused copy is not reported as a success', /kopyalanamadı/.test(await p.status()), await p.status());
     const sel = await p.selected();
     check('the link is focused with all of it selected', sel.focused && sel.from === 0 && sel.to === sel.length && sel.length > 0, JSON.stringify(sel));
+    check('no helper field is left in the page', (await page.locator('textarea').count()) === 0);
     check('the shown link is the public one, with no leak', (await p.value()) === `${PUBLIC}?parti=1&hamle=4` && !LEAK.test(await p.value()));
     check('the clipboard was left alone', (await clipboard()) === 'nothing copied yet', await clipboard());
-    await page.screenshot({ path: out + '/share-refused.png' });
+    if (refuse === 'all') await page.screenshot({ path: out + '/share-refused.png' });
 
     // the visitor copies by hand: the browser's own copy command on the selection
     await page.bringToFront();
@@ -264,6 +270,25 @@ const shell = http.createServer((req, res) => {
     check('the puzzle corner is shared as the public address and its fragment only', held === `${PUBLIC}#bulmaca`, held);
     check('its field is labelled as the puzzle corner', (await panel(page).label()) === 'Bulmaca köşesinin bağlantısı');
     check('no page errors in the puzzle corner', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+
+  // ---- 4b. a round with several boards: the link could not say which one
+  {
+    const { ctx, errors } = await context({ boards: 2 });
+    const page = await openMatch(ctx, 'parti=1&hamle=4');
+    const boards = await page.locator('.game-picker option').count();
+    check('a round with two boards lists both and offers no share button', boards === 2 && (await page.locator('.controls .share-btn').count()) === 0, `boards ${boards}`);
+    const before = await page.locator('.game-picker select').inputValue();
+    await page.locator('.game-picker select').selectOption({ index: before === 'game0001' ? 1 : 0 });
+    await page.waitForTimeout(300);
+    check('still none after picking the other board by hand', (await page.locator('.controls .share-btn').count()) === 0 && (await page.locator('.share-panel').count()) === 0);
+    check('the puzzle corner keeps its own share button', await (async () => {
+      await page.locator('.viewnav button', { hasText: 'Bulmaca' }).click();
+      await page.waitForSelector('.puzzle-col cg-board', { timeout: 25000 });
+      return (await page.locator('.puzzle-top .share-btn').count()) === 1;
+    })());
+    check('no page errors with two boards', errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
 

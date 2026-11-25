@@ -105,7 +105,10 @@ under the same policy:
   and adds only `parti` and `hamle`, or the fragment `#bulmaca`. It never
   reads the frame's own address, so `internal`, `posthog`, `ref`, a test
   broadcast or the deployment's hostname cannot end up in a link. Without
-  `VITE_PUBLIC_URL` the links point at the deployment itself.
+  `VITE_PUBLIC_URL` the links point at the deployment itself. A link says
+  which round and which half-move, not which board, so the button is shown
+  only when the round has exactly one game. The address contract is not
+  widened for tie-break days.
 - **Height.** The frame is fixed to the viewport and scrolls inside. Safe-area
   padding keeps the notch and home bar clear.
 - **Title.** Static. The tab title does not follow the game, because that

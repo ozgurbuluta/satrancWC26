@@ -10,7 +10,7 @@ hand; their scripts are in `tests/e2e/`.
 tie-break days, the analytics privacy contract, storage refusal, the
 statistics switch (delayed start and page-leave included), nested Twitch
 parents, legal-move entry, puzzle rules, guess-the-move logic, the stream
-finder and share links: 131 tests.
+finder, share links and the copy helper: 143 tests.
 Also in CI: the secret check over the whole history, the type check, and
 builds for `/` and `/satranc/`.
 
@@ -103,21 +103,32 @@ replaced; the masters database is the real one). 32 of 32 checks passed on
 
 ## Share links
 
-Unit tests (`tests/share.test.ts`, `tests/share.button.test.tsx`, 17 cases):
-the link is the public address plus `parti` and `hamle`, or `#bulmaca` with
-no query; a public address configured with a user name, password, query or
-fragment loses all of them; missing or out-of-range numbers are left out; a
-link that was built reads back as the same game and move; the address in
-the browser never reaches the link; a refused copy shows the link focused
-and selected; Escape closes the panel; a press after the board has moved on
-shares the new position. One more case in `tests/analytics.test.ts`: the
-event carries the kind and whether copying worked, never the link.
+Unit tests, 30 cases:
+
+- `tests/share.test.ts` (9): the link is the public address plus `parti` and
+  `hamle`, or `#bulmaca` with no query; a public address configured with a
+  user name, password, query or fragment loses all of them; missing or
+  out-of-range numbers are left out; a link that was built reads back as the
+  same game and move.
+- `tests/share.button.test.tsx` (10): the address in the browser never
+  reaches the link; a refused copy shows the link focused and selected, also
+  when the copy command throws; Escape closes the panel; a press after the
+  board has moved on shares the new position; when the share action goes
+  away or the game changes, its open panel goes with it.
+- `tests/clipboard.test.ts` (6): the copy helper removes its hidden field
+  and returns focus whether the copy command succeeds, says no, throws or
+  does not exist.
+- `tests/store.share.test.ts` (4): a round with one game can be shared; a
+  round with several boards cannot, also after picking a board by hand; the
+  action goes the moment a second board appears.
+- `tests/analytics.test.ts` (1): the event carries the kind and whether
+  copying worked, never the link.
 
 Script: `tests/e2e/share.cjs`. Run on 25 November 2026 in headless Chromium
 against the preview build made with
 `VITE_PUBLIC_URL=https://ozgurakanay.com/satranc/` and the production
 headers, with a simulated live game. The clipboard was read back from a
-separate page after every copy. 47 of 47 checks passed.
+separate page after every copy. 61 of 61 checks passed.
 
 Opened: `/?parti=1&hamle=4&internal=1&posthog=test&ref=x.com&utm_source=tw&utm_campaign=wc&secret=abc`
 
@@ -130,12 +141,14 @@ Opened: `/?parti=1&hamle=4&internal=1&posthog=test&ref=x.com&utm_source=tw&utm_c
 | Opening the copied link's query on the build | the same position is on the board |
 | Puzzle corner | `https://ozgurakanay.com/satranc/#bulmaca` |
 | A test broadcast (`?tour=…`) | no share button |
+| A round with two boards (a tie-break day) | no share button, also after picking the other board; the puzzle corner keeps its own |
 | Outcome announced | "Bağlantı kopyalandı." in a polite live region |
 | Link also shown | in a labelled, read-only field, with Kopyala and Kapat |
 
 | Copying refused | Result |
 |---|---|
-| Both ways of copying refused | "Bağlantı kopyalanamadı…", the clipboard left untouched |
+| Both ways of copying refused (the copy command says no) | "Bağlantı kopyalanamadı…", the clipboard left untouched |
+| The same with a copy command that throws | the same; no hidden field is left in the page |
 | The link | focused, all of it selected |
 | Ctrl+C on that selection | the clipboard holds the public link |
 | Arrow keys inside the field | move the caret; the game does not step |
