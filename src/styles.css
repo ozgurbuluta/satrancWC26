@@ -1913,6 +1913,298 @@ button.move:hover {
   margin: -4px 0 10px;
 }
 
+/* ---------- view switch ---------- */
+
+.viewnav {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--panel-2);
+  flex: none;
+}
+
+.viewnav button {
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.viewnav button.active {
+  background: var(--accent);
+  color: #10200a;
+}
+
+/* ---------- interactive board, promotion, typed moves ---------- */
+
+.board-wrap.is-interactive cg-board {
+  cursor: pointer;
+}
+
+cg-board square.move-dest {
+  background: radial-gradient(rgba(20, 30, 10, 0.35) 19%, rgba(0, 0, 0, 0) 20%);
+  pointer-events: auto;
+}
+
+cg-board square.oc.move-dest {
+  background: radial-gradient(transparent 0%, transparent 79%, rgba(20, 30, 10, 0.4) 80%);
+}
+
+cg-board square.selected {
+  background-color: rgba(246, 235, 80, 0.55);
+}
+
+.board-row {
+  position: relative;
+}
+
+.promo {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(20, 19, 17, 0.86);
+  border-radius: 4px;
+  padding: 12px;
+  text-align: center;
+}
+
+.promo p {
+  margin: 0;
+  font-weight: 700;
+}
+
+.promo-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.promo-row button {
+  min-width: 76px;
+  min-height: 64px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--panel-3);
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.promo-row button span {
+  font-size: 26px;
+  line-height: 1;
+  font-family: 'Segoe UI Symbol', 'Noto Sans Symbols2', 'DejaVu Sans', sans-serif;
+}
+
+.promo-row button:hover {
+  background: var(--accent);
+  color: #10200a;
+}
+
+.move-input label {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.move-input-row {
+  display: flex;
+  gap: 6px;
+}
+
+.move-input input {
+  flex: 1;
+  min-width: 0;
+  max-width: 180px;
+  height: 40px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 16px; /* keeps iOS from zooming the page on focus */
+  font-weight: 600;
+}
+
+.move-input input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.move-input .btn {
+  height: 40px;
+}
+
+.move-input .error {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: #ff8d8f;
+}
+
+/* ---------- puzzles ---------- */
+
+/* No evaluation bar here, so the board would grow; leave room for the status line, buttons and the move box. */
+.puzzle-col {
+  width: min(100%, max(320px, calc(100dvh - 318px)));
+}
+
+.puzzle-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 15px;
+}
+
+.puzzle-head .muted {
+  margin-left: auto;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.turn-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f4f3ef;
+}
+
+.turn-dot.black {
+  background: #11100f;
+  box-shadow: 0 0 0 1px #77736c;
+}
+
+.feedback {
+  min-height: 42px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.fb-wrong {
+  background: #55231f;
+  color: #ffc9c4;
+}
+
+.fb-correct,
+.fb-solved,
+.fb-solved_first {
+  background: #2c4a1c;
+  color: #d3f0b3;
+}
+
+.fb-revealed {
+  background: #2a2440;
+  color: #d9d2ff;
+}
+
+.puzzle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.puzzle-actions .btn {
+  height: 40px;
+  padding: 0 14px;
+  font-size: 13.5px;
+}
+
+.puzzle-actions .btn:last-child {
+  margin-left: auto;
+}
+
+.puzzle-actions .btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.puzzle-panel {
+  padding: 12px;
+}
+
+.puzzle-panel section {
+  margin-bottom: 16px;
+}
+
+.puzzle-panel h3 {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.back-to-match {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+.back-to-match:hover {
+  background: var(--panel-3);
+}
+
+.chips.wrap {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+.chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 0;
+}
+
+.stats div {
+  padding: 8px 6px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  text-align: center;
+}
+
+.stats dt {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.stats dd {
+  margin: 2px 0 0;
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.pz-line {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.7;
+}
+
 /* ---------- footer ---------- */
 
 .foot {
@@ -1938,6 +2230,33 @@ button.move:hover {
   .scoreline .flag,
   .pill.soon .lbl {
     display: none;
+  }
+
+  /* Two rows on a phone: score and status, then the view switch across the width. */
+  .top {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 6px 12px;
+    row-gap: 6px;
+  }
+
+  .viewnav {
+    order: 10;
+    flex-basis: 100%;
+  }
+
+  .viewnav button {
+    flex: 1;
+    min-height: 40px;
+    padding: 7px 8px;
+  }
+
+  .puzzle-col {
+    padding-top: 4px;
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .top-right {

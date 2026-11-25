@@ -9,7 +9,8 @@ import { CatchUpBar } from './CatchUpBar';
 
 const DELAY_STEPS = [0, 5, 10, 15, 20, 30, 45];
 
-export function StreamPanel() {
+/** `live` is false in the puzzle corner: the video stays, the controls that act on the live board go. */
+export function StreamPanel({ live = true }: { live?: boolean }) {
   const t = useT();
   const streamId = useStore(s => s.settings.streamId);
   const customStream = useStore(s => s.settings.customStream);
@@ -125,7 +126,7 @@ export function StreamPanel() {
         <div className={`player ${covered ? 'covered' : ''}`}>
           {covered ? (
             <div className="cover">
-              <CatchUpBar embedded />
+              {live && <CatchUpBar embedded />}
               <p className="cover-note">
                 {t.streamCovered}{' '}
                 <button className="link" onClick={() => setUncovered(true)}>
@@ -148,7 +149,7 @@ export function StreamPanel() {
         </div>
       )}
 
-      {!paused && (
+      {!paused && live && (
         <div className="sync" title={t.syncHelp}>
           <div className="sync-head">
             <strong>{t.syncTitle}</strong>

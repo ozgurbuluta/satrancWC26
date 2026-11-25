@@ -19,6 +19,8 @@ import { AUTO_SWITCH_SEC, selectGameData, selectRoundNo, selectShownPly, useStor
 // Loaded on first use, so the first paint only carries the board and the analysis tab.
 const SimilarPanel = lazy(() => import('./components/SimilarPanel').then(m => ({ default: m.SimilarPanel })));
 const ChartsPanel = lazy(() => import('./components/ChartsPanel').then(m => ({ default: m.ChartsPanel })));
+const PuzzleBoard = lazy(() => import('./components/PuzzleView').then(m => ({ default: m.PuzzleBoard })));
+const PuzzlePanel = lazy(() => import('./components/PuzzleView').then(m => ({ default: m.PuzzlePanel })));
 
 type Tab = 'analysis' | 'similar' | 'charts' | 'match' | 'settings';
 const TABS: Tab[] = ['analysis', 'similar', 'charts', 'match', 'settings'];
@@ -52,6 +54,9 @@ export default function App() {
   const followLatest = useStore(s => s.followLatest);
   const goToRound = useStore(s => s.goToRound);
   const stayHere = useStore(s => s.stayHere);
+  const view = useStore(s => s.view);
+  const setView = useStore(s => s.setView);
+  const movesWhenLeft = useStore(s => s.movesWhenLeft);
   const [tab, setTabState] = useState<Tab>('analysis');
   const setTab = (id: Tab) => {
     setTabState(id);
@@ -71,10 +76,11 @@ export default function App() {
     setContext({
       page_lang: settings.lang,
       layout: isMobile ? 'phone' : 'desktop',
+      view,
       game_no: roundNo || undefined,
       game_state: paused ? 'paused' : resultVisible ? 'finished' : revealed > 0 ? 'live' : 'upcoming',
     });
-  }, [settings.lang, isMobile, roundNo, paused, resultVisible, revealed]);
+  }, [settings.lang, isMobile, view, roundNo, paused, resultVisible, revealed]);
 
   // Evaluations that arrive with the feed feed the charts and move quality.
   useEffect(() => {
@@ -87,6 +93,8 @@ export default function App() {
       const el = e.target as HTMLElement | null;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // the shortcuts drive the live game; the puzzle corner has its own buttons
+      if (useStore.getState().view !== 'live') return;
       if (e.key === 'ArrowLeft') step(-1);
       else if (e.key === 'ArrowRight') step(1);
       else if (e.key === 'Home' || e.key === 'ArrowUp') setViewPly(0);
@@ -110,7 +118,7 @@ export default function App() {
   // A position from another game temporarily replaces the board.
   const fen = preview?.fen ?? gameFen;
   const atLiveEdge = viewPly === null;
-  const evaluation = useEval(fen, settings.engine && !!game);
+  const evaluation = useEval(fen, settings.engine && !!game && view === 'live');
   const material = useMemo(() => (fen ? materialFromFen(fen) : undefined), [fen]);
   const arrow = useMemo(
     () => (settings.arrow && fen && evaluation ? firstMoveSquares(fen, evaluation.pvs[0]?.moves[0]) : undefined),
@@ -290,7 +298,16 @@ export default function App() {
 
   const sideColumn = (
     <section className="side-col">
-      <StreamPanel />
+      <StreamPanel live={view === 'live'} />
+      {view === 'puzzles' ? (
+        <div className="tab-body">
+          <Suspense fallback={<p className="muted pad">{t.loading}</p>}>
+            {/* While paused nothing about the game is hinted at, not even that a move was played. */}
+            <PuzzlePanel onBack={() => setView('live')} newMove={!paused && !resultVisible && movesWhenLeft >= 0 && revealed > movesWhenLeft} />
+          </Suspense>
+        </div>
+      ) : (
+        <>
       <div className="tabs" role="tablist">
         {TABS.map(id => (
           <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>
@@ -307,6 +324,8 @@ export default function App() {
         {tab === 'match' && <MatchPanel />}
         {tab === 'settings' && <SettingsPanel />}
       </div>
+        </>
+      )}
     </section>
   );
 
@@ -314,7 +333,13 @@ export default function App() {
     <div className="app">
       <Header />
       <main className="layout" ref={layoutRef} style={layoutStyle}>
-        {boardColumn}
+        {view === 'puzzles' ? (
+          <Suspense fallback={<section className="board-col" />}>
+            <PuzzleBoard />
+          </Suspense>
+        ) : (
+          boardColumn
+        )}
         {!isMobile && <div className="divider" onPointerDown={startDrag} role="separator" aria-orientation="vertical" />}
         {sideColumn}
       </main>

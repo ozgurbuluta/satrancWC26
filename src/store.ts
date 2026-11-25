@@ -102,6 +102,10 @@ interface State {
   preview: Preview | null;
   /** The viewer chose to see the video even though the board is paused. */
   streamUncovered: boolean;
+  /** The live match, or the puzzle corner. The match keeps running underneath either way. */
+  view: 'live' | 'puzzles';
+  /** Moves visible when the viewer left for the puzzles, to tell them later that something happened. */
+  movesWhenLeft: number;
   /** Follow the match: open the next game by itself when it starts. */
   followLatest: boolean;
   /** A newer game is live or about to start. `since` restarts the short countdown before it opens. */
@@ -120,6 +124,7 @@ interface State {
   setAutoplay: (ms: number) => void;
   setPreview: (p: Preview | null) => void;
   setStreamUncovered: (v: boolean) => void;
+  setView: (v: 'live' | 'puzzles') => void;
   /** Open the game announced in `nextUp` (or any round) and keep following the match. */
   goToRound: (id: string) => void;
   /** Dismiss the announcement and stay on this game. */
@@ -460,6 +465,8 @@ export const useStore = create<State>((set, get) => {
     autoplayMs: 0,
     preview: null,
     streamUncovered: false,
+    view: window.location.hash === '#bulmaca' ? 'puzzles' : 'live',
+    movesWhenLeft: -1, // unknown until the viewer switches views themselves
     followLatest: true,
     nextUp: null,
     settings: { ...DEFAULTS, ...readJson<Partial<Settings>>(SETTINGS_KEY, {}) },
@@ -590,6 +597,18 @@ export const useStore = create<State>((set, get) => {
     setPreview: p => {
       set({ preview: p });
       if (p) track('similar_preview');
+    },
+
+    setView: v => {
+      if (get().view === v) return;
+      set({ view: v, movesWhenLeft: get().revealed, preview: null });
+      track('view_open', { view: v });
+      try {
+        // keeps the address shareable and the back button out of it
+        window.history.replaceState(null, '', v === 'puzzles' ? '#bulmaca' : window.location.pathname + window.location.search);
+      } catch {
+        // a sandboxed or odd environment: the view still switches
+      }
     },
 
     setStreamUncovered: v => {
