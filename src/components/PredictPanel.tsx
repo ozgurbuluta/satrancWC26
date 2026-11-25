@@ -222,10 +222,8 @@ export function PredictPanel({ game, fen, evaluation, boardElsewhere }: Props) {
             ) : (
               <p className="muted">{boardElsewhere ? t.engineElsewhere : t.thinking}</p>
             )}
-            <p className="muted small">{t.engineNote}</p>
           </section>
 
-          <p className="muted small honest">{t.predictHonest}</p>
         </>
       ) : (
         <p className="muted small">{t.referencesAfter}</p>

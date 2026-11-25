@@ -1,6 +1,6 @@
 import { useScoresVersion, useT } from '../hooks';
 import type { Strings } from '../i18n';
-import { wdl, winningChances, type EvalResult, type PV } from '../lib/engine';
+import { moveChoice, wdl, winningChances, type EvalResult, type PV } from '../lib/engine';
 import { formatEval, localizeSan, pvToSan, shortName } from '../lib/format';
 import type { GameData } from '../lib/pgn';
 import { judgePly, QUALITY_GLYPH } from '../lib/quality';
@@ -90,6 +90,7 @@ export function EngineCard({ game, fen, shown, evaluation, inLine }: EngineProps
   const t = useT();
   const notation = useStore(s => s.settings.notation);
   const lines = useStore(s => s.settings.engineLines);
+  const lang = useStore(s => s.settings.lang);
   const engineOn = useStore(s => s.settings.engine);
   const setSetting = useStore(s => s.setSetting);
   useScoresVersion();
@@ -104,23 +105,38 @@ export function EngineCard({ game, fen, shown, evaluation, inLine }: EngineProps
   const lastMoveNo = firstMoveNo + Math.floor((shown - 1 + (whiteStarts ? 0 : 1)) / 2);
   const lastWasWhite = ((shown - 1) % 2 === 0) === whiteStarts;
 
-  // "Only move" when the second-best line gives away a lot for the side to move.
-  let tension: { critical: boolean; text: string } | undefined;
-  if (engineOn && evaluation && evaluation.pvs.length >= 2) {
-    const sign = whiteToMove ? 1 : -1;
-    const gap = (winningChances(evaluation.pvs[0]) - winningChances(evaluation.pvs[1])) * sign;
-    const bestSan = pvToSan(fen, evaluation.pvs[0].moves, 1)[0]?.san;
-    if (gap >= 0.2 && bestSan) {
-      tension = { critical: true, text: t.onlyMove.replace('{player}', shortName(mover)).replace('{move}', localizeSan(bestSan, notation)) };
-    } else {
-      tension = { critical: false, text: t.fewMoves.replace('{player}', shortName(mover)) };
+  // What the choice looks like when it is narrow: the good moves by name, and what the next one would be.
+  // Where every line is good there is nothing worth a sentence, and none is shown.
+  let choice: { critical: boolean; tag: string; text: string } | undefined;
+  const narrow = engineOn && evaluation ? moveChoice(evaluation.pvs, whiteToMove) : undefined;
+  if (narrow && evaluation) {
+    const sanOf = (line: number) => {
+      const san = pvToSan(fen, evaluation.pvs[line].moves, 1)[0]?.san;
+      return san ? localizeSan(san, notation) : undefined;
+    };
+    const move = sanOf(0);
+    const second = sanOf(1);
+    const next = sanOf(narrow.next);
+    const quality = qualityLabel(narrow.quality, t).toLocaleLowerCase(lang === 'tr' ? 'tr-TR' : 'en-GB');
+    if (move && next && (narrow.kind !== 'two' || second)) {
+      const fill = (text: string) =>
+        text.replace('{player}', shortName(mover)).replace('{move}', move).replace('{second}', second ?? '').replace('{next}', next).replace('{quality}', quality);
+      choice =
+        narrow.kind === 'only'
+          ? { critical: true, tag: t.choiceOnlyTag, text: fill(t.choiceOnly) }
+          : narrow.kind === 'best'
+            ? { critical: false, tag: t.choiceBestTag, text: fill(t.choiceBest) }
+            : { critical: false, tag: t.choiceTwoTag, text: fill(t.choiceTwo) };
     }
   }
 
   return (
     <section className="card engine-card" aria-label={t.engine}>
       <div className="engine-head">
-        <h2 className="eyebrow">{t.engine}</h2>
+        {/* a name, not a Turkish word: without this the capitals would turn its "i" into "İ" */}
+        <h2 className="eyebrow" lang="en">
+          {t.engine}
+        </h2>
         {engineOn && evaluation && (
           <span className="engine-src">
             {evaluation.source === 'cloud' ? t.cloud : t.local}, {t.depth} {evaluation.depth}
@@ -180,7 +196,7 @@ export function EngineCard({ game, fen, shown, evaluation, inLine }: EngineProps
         </ol>
       )}
 
-      {engineOn && ((lastPly && lastJudged) || tension) && (
+      {engineOn && ((lastPly && lastJudged) || choice) && (
         <div className="note">
           {lastPly && lastJudged && (
             <p>
@@ -194,10 +210,10 @@ export function EngineCard({ game, fen, shown, evaluation, inLine }: EngineProps
               )}
             </p>
           )}
-          {tension && (
+          {choice && (
             <p>
-              <span className={`q ${tension.critical ? 'q-critical' : 'q-calm'}`}>{tension.critical ? t.critical : t.calm}</span>
-              {tension.text}
+              <span className={`q ${choice.critical ? 'q-critical' : 'q-calm'}`}>{choice.tag}</span>
+              {choice.text}
             </p>
           )}
         </div>

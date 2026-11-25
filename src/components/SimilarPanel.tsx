@@ -203,13 +203,8 @@ export function SimilarPanel({ game, fen, shown }: Props) {
               </button>
               <span>
                 {' '}
-                {t.noveltyText.replace('{move}', localizeSan(noveltyMove.san, notation))}
-                {before && totalGames(before) > 0 && (
-                  <span className="muted">
-                    {' '}
-                    ({nf(totalGames(before), lang)} {t.gamesWord})
-                  </span>
-                )}
+                {t.noveltyText}
+                {before && totalGames(before) > 0 && <span className="muted"> {t.noveltyBefore.replace('{n}', nf(totalGames(before), lang))}</span>}
               </span>
             </>
           ) : (

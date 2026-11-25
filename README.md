@@ -5,7 +5,7 @@ bağımsız bir hayran sitesi.
 
 - **Canlı tahta:** hamleler Lichess yayınının push akışından gelir (anahtar ve sunucu gerekmez).
 - **Yayın paneli:** Chess.com Türkçe, SatranChess, Chess.com (EN) ve FIDE YouTube yayınları açılır listeden seçilir; YouTube, Twitch ya da Kick bağlantısı da yapıştırılabilir.
-- **Motor:** önce Lichess bulut değerlendirmesi, bulunamazsa tarayıcıda Stockfish. Tahtanın solunda kazanma şansı ve motorun hatları durur; her hatta puan, motorun oynayacağı hamle ve devamı görünür.
+- **Stockfish:** önce Lichess bulut değerlendirmesi, bulunamazsa tarayıcıda çalışan Stockfish. Tahtanın solunda kazanma şansı ve Stockfish'in hatları durur; her hatta puan, oynayacağı hamle ve devamı görünür. İyi hamle sayısı bire ya da ikiye indiğinde hangileri olduğunu ve sıradaki seçeneğin neye mal olacağını söyler.
 - **Türkçe notasyon:** Ş V K F A (İngilizce notasyona geçilebilir).
 - **Spoilersız izleme:** tahtayı duraklat, sonra hamle hamle ya da otomatik oynatarak yetiş; sonuç, skor ve yayın gizli kalır.
 - **Benzer oyunlar:** pozisyonun usta oyunlarında kaç kez oynandığı, yenilik hamlesi ve önceki oyunların devamını tahtada önizleme.

@@ -86,6 +86,69 @@ const parseWritten = (tc: string): Period[] | undefined => {
   return periods;
 };
 
+/**
+ * The form a broadcast's description uses, in English words:
+ * "120 min / 40 moves + 30 min / rest + 30 sec / move starting 41",
+ * "90 min + 30 sec / move". Anything not fully understood: undefined.
+ */
+export const parseInfoTimeControl = (text: string | undefined): Period[] | undefined => {
+  const parts = text?.trim().toLowerCase().split('+').map(part => part.trim().replace(/\s+/g, ' '));
+  if (!parts || !parts[0]) return undefined;
+  const periods: Period[] = [];
+  let added: { seconds: number; from: number } | undefined;
+  for (const part of parts) {
+    const withMoves = /^(\d{1,3}) min(?:utes?)? ?\/ ?(\d{1,3}) moves?$/.exec(part);
+    const open = /^(\d{1,3}) min(?:utes?)?(?: ?\/ ?(?:rest|end|game))?$/.exec(part);
+    const perMove = /^(\d{1,3}) sec(?:onds?)? ?\/ ?move(?: (?:starting|from)(?: move)? (\d{1,3}))?$/.exec(part);
+    if (withMoves) periods.push({ moves: whole(withMoves[2]), seconds: whole(withMoves[1]) * 60, increment: 0 });
+    else if (open) periods.push({ seconds: whole(open[1]) * 60, increment: 0 });
+    else if (perMove && !added) added = { seconds: whole(perMove[1]), from: perMove[2] ? whole(perMove[2]) : 1 };
+    else return undefined;
+  }
+  // every period but the last has a number of moves, and the last has none
+  if (!periods.length || periods.some((p, i) => (p.moves === undefined) !== (i === periods.length - 1))) return undefined;
+  if (added) {
+    // the increment has to begin with a period, as in the written form
+    let start = 1;
+    let matched = false;
+    for (const p of periods) {
+      if (start === added.from) matched = true;
+      if (matched) p.increment = added.seconds;
+      start += p.moves ?? 0;
+    }
+    if (!matched) return undefined;
+  }
+  return periods.every(p => p.seconds > 0 && (p.moves === undefined || p.moves > 0)) ? periods : undefined;
+};
+
+/** The words a time control is described with, in the viewer's language. */
+export interface TimeControlWords {
+  tcMoves: string;
+  tcRest: string;
+  tcAll: string;
+  tcIncrement: string;
+  tcIncrementFrom: string;
+  minutesWord: string;
+  secondsWord: string;
+}
+
+/** A time control as a sentence: "40 hamle için 120 dakika, kalan hamleler için 30 dakika, 41. hamleden itibaren her hamlede 30 saniye eklenir". */
+export const describeTimeControl = (periods: Period[], t: TimeControlWords): string => {
+  const span = (seconds: number) => (seconds % 60 === 0 ? `${seconds / 60} ${t.minutesWord}` : `${seconds} ${t.secondsWord}`);
+  const parts = periods.map((p, i) =>
+    (p.moves !== undefined ? t.tcMoves.replace('{moves}', String(p.moves)) : i === 0 ? t.tcAll : t.tcRest).replace('{time}', span(p.seconds)),
+  );
+  // the increment is named where it begins or changes
+  let start = 1;
+  periods.forEach((p, i) => {
+    if (p.increment > 0 && p.increment !== (i > 0 ? periods[i - 1].increment : 0)) {
+      parts.push((start === 1 ? t.tcIncrement : t.tcIncrementFrom.replace('{move}', String(start))).replace('{time}', span(p.increment)));
+    }
+    start += p.moves ?? 0;
+  });
+  return parts.join(', ');
+};
+
 /** Reads a TimeControl tag in either form. Unknown, missing or unclear: undefined. */
 export const parseTimeControl = (tc: string | undefined): Period[] | undefined => {
   const text = tc?.trim();

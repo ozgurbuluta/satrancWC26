@@ -29,7 +29,9 @@ Turkish wording, time controls and move times, the workspace panels, the
 engine's lines and decimals, the move predictor (features, the blend of
 earlier moves with the base model worked out by hand, rounding, the shipped
 model's tables, counts and measurements) and its panel (the score it may
-use, every hidden and refused state): 272 tests.
+use, every hidden and refused state), the wording of the page, the time
+control said in the viewer's language, and what the engine card says about
+the choice of move: 289 tests.
 Also in CI: the secret check over the whole history, the type check, and
 builds for `/` and `/satranc/`.
 

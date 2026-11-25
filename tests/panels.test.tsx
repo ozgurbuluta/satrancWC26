@@ -199,6 +199,50 @@ describe('the status under the board', () => {
   });
 });
 
+describe('what the engine card says about the choice of move', () => {
+  const card = async (cps: number[]) => {
+    const mod = await boot();
+    await act(async () => push(R1, game({ round: 1, id: 'g1', sans: [] })));
+    const { EngineCard } = await import('../src/components/EnginePanel');
+    const g = mod.selectGameData(mod.useStore.getState())!;
+    const evaluation = { fen: g.initialFen, depth: 20, source: 'cloud' as const, pvs: ['e2e4', 'd2d4', 'g1f3'].slice(0, cps.length).map((move, i) => ({ cp: cps[i], moves: [move] })) };
+    await act(() => root.render(<EngineCard game={g} fen={g.initialFen} shown={0} evaluation={evaluation} inLine={false} />));
+    return host.querySelector('.engine-card .note')?.textContent ?? '';
+  };
+
+  it('is called Stockfish, marked as a name so that capitals do not change its letters', async () => {
+    await card([20, 18, 15]);
+    const title = host.querySelector('.engine-card h2')!;
+    expect(title.textContent).toBe('Stockfish');
+    expect(title.getAttribute('lang')).toBe('en');
+    expect(host.querySelector('.engine-card')!.getAttribute('aria-label')).toBe('Stockfish');
+  });
+
+  it('says nothing where every line is good', async () => {
+    expect(await card([20, 18, 15])).toBe('');
+    expect(host.textContent).not.toContain('Sakin');
+    expect(host.textContent).not.toContain('birkaç iyi hamle');
+  });
+
+  it('names the only good move and what the next one would be', async () => {
+    // the second line gives away more than a fifth of the winning chances: a mistake
+    expect(await card([150, 20, 10])).toBe('Tek hamleSindarov için e4. d4 hata olur.');
+    expect(host.querySelector('.engine-card .note .q')!.className).toContain('q-critical');
+  });
+
+  it('says so when the best move is ahead by an inaccuracy only', async () => {
+    expect(await card([90, 30, 20])).toBe('En iyisie4. d4 yanlışlık olur.');
+  });
+
+  it('names both when two moves are good and the third is not', async () => {
+    expect(await card([200, 195, 20])).toBe('İki hamlee4 ve d4 aynı değerde. Af3 büyük hata olur.');
+  });
+
+  it('has nothing to compare with a single line', async () => {
+    expect(await card([150])).toBe('');
+  });
+});
+
 describe('engine line preference', () => {
   it('offers one to five lines, remembers the choice and displays two-decimal scores', async () => {
     const mod = await boot();

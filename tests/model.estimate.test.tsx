@@ -170,7 +170,7 @@ describe('the estimate in the prediction tab', () => {
     await mount(game({ round: 1, id: 'g1', sans: ITALIAN.slice(0, 4) }));
     const details = host.querySelector('.model-details')!.textContent!;
     expect(details).toContain('455 klasik oyunundan');
-    expect(details).toContain('Motor kullanmaz');
+    expect(details).toContain('Stockfish kullanmaz');
     // the untouched holdout, with the numbers of the shipped file and nothing rounder
     const report = (shipped as unknown as { report: { shown: { top1: number; top3: number; whenSure: { said: number; happened: number } }; benchmark: { v2: { sure70: { said: number; happened: number } } } } }).report;
     const shown = report.shown;
