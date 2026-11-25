@@ -15,6 +15,7 @@ bağımsız bir hayran sitesi.
 
 - **Hamleyi tahmin et:** tahmin modunda sıradaki hamleyi tahtada yap ya da yaz; hamle oynanınca tuttu mu görürsün. Tahmin edene kadar motor önerileri gizlenir. Yanında iki ayrı bilgi durur: usta partilerinde o pozisyonda neyin kaç kez oynandığı ve motorun en güçlü bulduğu hamleler. İkisi de olasılık değildir; sayfada insan hamlesi tahmin eden bir model yoktur.
 - **Bulmaca köşesi:** Lichess bulmacaları (günün bulmacası, karışık, 1 ve 2 hamlede mat, kısa, oyun sonu). Yalnızca kurallı hamleler oynanır; ipucu, çözümü göster, baştan ve skor vardır. Lichess'e ulaşılamazsa hazır bulmacalar gösterilir.
+- **Paylaş:** tahtanın altındaki düğme, ekrandaki partinin o hamlesine giden bağlantıyı kopyalar (`?parti=3&hamle=24`). Bulmaca köşesinin bağlantısı `#bulmaca` ile biter. Bağlantıda bunlardan başka hiçbir şey olmaz. Tarayıcı kopyalamaya izin vermezse bağlantı seçili olarak gösterilir, elle kopyalarsın. Aynı turda birden çok tahta olan günlerde (eşitlik bozma) bağlantı hangi tahtayı gösterdiğini söyleyemeyeceği için düğme gösterilmez.
 - **Maçı kendi takip eder:** yeni parti başlayınca kısa bir duyurudan sonra o partiye geçer; her günün yayınını kanalın canlı yayın listesinden kendi bulur.
 
 ## İstatistik
@@ -31,7 +32,8 @@ npm test
 
 Tarayıcıda elle çalıştırılan denemeler `tests/e2e/` altında, sonuçları [docs/TEST-EVIDENCE.md](docs/TEST-EVIDENCE.md) içinde.
 Barındırma ve `ozgurakanay.com/satranc/` sayfası: [docs/INTEGRATION.md](docs/INTEGRATION.md).
-Tahmin panelinin ne gösterip ne göstermediği: [docs/PREDICTION.md](docs/PREDICTION.md).
+Tahmin panelinin ne gösterip ne göstermediği ve insan hamlesi tahmini için araştırma planı: [docs/PREDICTION.md](docs/PREDICTION.md).
+Canlı akış, Lichess'in istek sınırları ve reddedilen bağlantılar için öneri: [docs/LIVE-FEED.md](docs/LIVE-FEED.md).
 
 ## Geliştirme
 

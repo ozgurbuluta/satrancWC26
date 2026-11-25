@@ -1,5 +1,18 @@
 # Test evidence
 
+## Production integration verified — 25 November 2026
+
+The core release is live at https://ozgurakanay.com/satranc/ (puzzles: `#bulmaca`). Chess commit `d0daa5a0a84f0f6e75621cd902c7abf78641da61` was deployed as `dpl_9PZSGCBYEcpAsrB3sY9ueAh81z96`; personal-site shell PR #8 is merged at `f39a04cfcde30086291dc0d524ad5882421daaeb`.
+
+- Native Mac Safari and the in-app browser loaded the sandboxed chess frame and nested YouTube player. A real legal move guess, historical-frequency labels and puzzle interactions were checked.
+- The production Stockfish WASM responds with HTTP 200 and `application/wasm`; production security headers match the reviewed configuration. Worker execution under that CSP is covered by the browser evidence below.
+- Production-only analytics and public-URL variables are configured in Vercel, outside source control. The separate PostHog `satrancWC26` project received real framed pageviews and named feature events, marked `test` or `internal`, with cookieless mode and stripped query strings/fragments/referrer paths.
+- Statistics opt-out survived reload; changing views and loading another puzzle afterward produced no further marked test events. Internal/test traffic is excluded from default reports. IP storage, replay, autocapture, console/performance capture, exceptions, surveys and heatmaps are disabled.
+- The observed stream 429 cleared after duplicate test pages were closed. This is an observed concurrency limit, not a guarantee that a single-tab visitor cannot encounter upstream limits.
+
+Earlier unchecked integration lists below are historical, from before this production check. Real iPhone storage persistence and Twitch playback remain unverified. Post-deployment sharing verification is recorded on https://github.com/ozgurbuluta/satrancWC26/pull/6. Full integration trail: https://github.com/ozgurbuluta/satrancWC26/issues/1.
+
+
 What was run, where, and what came out. Unit and integration tests run in CI
 on every push. The browser checks below need a real browser and are run by
 hand; their scripts are in `tests/e2e/`.
@@ -9,7 +22,8 @@ hand; their scripts are in `tests/e2e/`.
 `npm test`: pause and catch-up, board sync delay, following the match,
 tie-break days, the analytics privacy contract, storage refusal, the
 statistics switch (delayed start and page-leave included), nested Twitch
-parents, legal-move entry, puzzle rules and guess-the-move logic and the stream finder: 108 tests.
+parents, legal-move entry, puzzle rules, guess-the-move logic, the stream
+finder, share links and the copy helper: 143 tests.
 Also in CI: the secret check over the whole history, the type check, and
 builds for `/` and `/satranc/`.
 
@@ -99,6 +113,88 @@ replaced; the masters database is the real one). 32 of 32 checks passed on
 | While paused, with later moves already played | nothing announced; a guess is settled only by the move revealed next |
 | Phone size | video and whole board fit together; a guess by tapping works; no sideways scroll |
 | Content security policy violations, page errors | none |
+
+## Share links
+
+Unit tests, 30 cases:
+
+- `tests/share.test.ts` (9): the link is the public address plus `parti` and
+  `hamle`, or `#bulmaca` with no query; a public address configured with a
+  user name, password, query or fragment loses all of them; missing or
+  out-of-range numbers are left out; a link that was built reads back as the
+  same game and move.
+- `tests/share.button.test.tsx` (10): the address in the browser never
+  reaches the link; a refused copy shows the link focused and selected, also
+  when the copy command throws; Escape closes the panel; a press after the
+  board has moved on shares the new position; when the share action goes
+  away or the game changes, its open panel goes with it.
+- `tests/clipboard.test.ts` (6): the copy helper removes its hidden field
+  and returns focus whether the copy command succeeds, says no, throws or
+  does not exist.
+- `tests/store.share.test.ts` (4): a round with one game can be shared; a
+  round with several boards cannot, also after picking a board by hand; the
+  action goes the moment a second board appears.
+- `tests/analytics.test.ts` (1): the event carries the kind and whether
+  copying worked, never the link.
+
+Script: `tests/e2e/share.cjs`. Run on 25 November 2026 in headless Chromium
+against the preview build made with
+`VITE_PUBLIC_URL=https://ozgurakanay.com/satranc/` and the production
+headers, with a simulated live game. The clipboard was read back from a
+separate page after every copy. 61 of 61 checks passed.
+
+Opened: `/?parti=1&hamle=4&internal=1&posthog=test&ref=x.com&utm_source=tw&utm_campaign=wc&secret=abc`
+
+| Check | Result |
+|---|---|
+| Clipboard after pressing Paylaş | `https://ozgurakanay.com/satranc/?parti=1&hamle=4` |
+| Anything else from the visitor's address, or the deployment's hostname, in the link | nothing |
+| After one step forward on the board | `…?parti=1&hamle=5`; the open panel kept showing the first link until the next press |
+| Start of the game | `…?parti=1&hamle=0` |
+| Opening the copied link's query on the build | the same position is on the board |
+| Puzzle corner | `https://ozgurakanay.com/satranc/#bulmaca` |
+| A test broadcast (`?tour=…`) | no share button |
+| A round with two boards (a tie-break day) | no share button, also after picking the other board; the puzzle corner keeps its own |
+| Outcome announced | "Bağlantı kopyalandı." in a polite live region |
+| Link also shown | in a labelled, read-only field, with Kopyala and Kapat |
+
+| Copying refused | Result |
+|---|---|
+| Both ways of copying refused (the copy command says no) | "Bağlantı kopyalanamadı…", the clipboard left untouched |
+| The same with a copy command that throws | the same; no hidden field is left in the page |
+| The link | focused, all of it selected |
+| Ctrl+C on that selection | the clipboard holds the public link |
+| Arrow keys inside the field | move the caret; the game does not step |
+| Escape | closes the panel, focus back on the button |
+
+| Inside the sandboxed frame on another origin (`docs/embed-shell/`) | Result |
+|---|---|
+| Clipboard interface | refused by the browser (`NotAllowedError`): the frame has no clipboard permission |
+| What the visitor gets | the older copy command did the copy; "Bağlantı kopyalandı." and the clipboard holds the public link |
+| Older copy command refused too | says not copied, clipboard untouched, link focused and selected; Ctrl+C gives the link |
+| Link shown | the public one in both cases |
+
+| Keyboard only | Result |
+|---|---|
+| Tab reaches the button; focus indicator | yes |
+| Enter | shares |
+| Tab order in the panel | link, Kopyala, Kapat |
+| Escape from inside the panel | closes it, focus back on the button |
+
+| Phone size (390 px wide) | Result |
+|---|---|
+| Share button | icon only, named "Paylaş" for screen readers, 39×44 px |
+| Following live | six controls and Duraklat on one row, no label cut off |
+| Stepped back from live | "Canlıya dön" on a row of its own, no label cut off (before this change it was squeezed and ran off the edge) |
+| Panel | fits the screen, no sideways scroll, 16 px text in the field, 40 px buttons |
+
+After the change to the phone controls the other scripts were run again:
+`puzzles.cjs` 33 of 33, `guess.cjs` 32 of 32, `embed.cjs` at phone size as
+before.
+
+Not covered by this run: real Safari, on a Mac and on an iPhone, inside the
+real `/satranc/` page. Safari has its own rules for copying from a frame;
+whichever way it goes, the page either copies or shows the selected link.
 
 ## Earlier browser checks (24 November 2026, before this branch)
 

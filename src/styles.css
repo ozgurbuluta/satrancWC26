@@ -2393,6 +2393,110 @@ cg-board square.selected {
   padding-right: 8px;
 }
 
+/* ---------- share ---------- */
+
+.share {
+  display: contents;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  min-width: 48px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.share-btn:hover {
+  background: var(--panel-3);
+}
+
+.share-btn[aria-expanded='true'] {
+  background: var(--panel-3);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.share-slot:empty {
+  display: none;
+}
+
+.share-slot {
+  margin-left: 34px;
+}
+
+.share-panel {
+  padding: 10px 12px 12px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.share-panel p {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.share-panel p.ok {
+  color: #b9e08e;
+}
+
+.share-panel p.manual {
+  color: #f3dfb0;
+}
+
+.share-panel label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.share-row {
+  display: flex;
+  gap: 6px;
+}
+
+.share-row input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  font-size: 16px; /* keeps iOS from zooming the page on focus */
+  user-select: all;
+}
+
+.share-row .btn {
+  height: 40px;
+  padding: 0 12px;
+  font-size: 13.5px;
+}
+
+.puzzle-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.puzzle-top .back-to-match {
+  margin-bottom: 0;
+}
+
+.puzzle-top .share-panel {
+  flex-basis: 100%;
+}
+
 /* ---------- footer ---------- */
 
 .foot {
@@ -2588,19 +2692,49 @@ cg-board square.selected {
     padding: 5px 8px;
   }
 
+  /* Six icon buttons and the pause button share one row on a 390px phone;
+     whatever does not fit (the way back to live, or pause on a narrower
+     phone) moves to a second row instead of being squeezed or cut off. */
+  .controls {
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
   .controls button {
-    flex: 1;
+    flex: 1 0 38px;
     min-width: 0;
     height: 44px;
+    padding: 0;
   }
 
   .controls .go-live {
-    flex: 2;
+    flex: 2 0 112px;
+    margin-left: 0;
+    padding: 0 8px;
+    justify-content: center;
   }
 
   .controls .pause-btn {
-    flex: 2;
+    flex: 2 0 90px;
     margin-left: 0;
+    padding: 0 6px;
+    white-space: nowrap;
+  }
+
+  .share-slot {
+    margin-left: 21px;
+  }
+
+  .share-row {
+    flex-wrap: wrap;
+  }
+
+  .share-row input {
+    flex-basis: 100%;
+  }
+
+  .share-row .btn {
+    flex: 1;
   }
 
   .catchup {

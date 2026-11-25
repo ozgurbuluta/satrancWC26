@@ -70,6 +70,7 @@ export const EVENTS: Record<string, Schema> = {
     value: oneOf('tr', 'en', 'true', 'false'),
   },
   outbound_click: { link_domain: hostname },
+  share_link: { kind: oneOf('position', 'puzzles'), copied: bool },
   feed_fallback: {},
   guess_mode: { on: bool },
   guess_result: { hit: bool, quality: oneOf('best', 'good', 'inaccuracy', 'mistake', 'blunder', 'unknown') },

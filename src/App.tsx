@@ -9,13 +9,14 @@ import { MatchPanel } from './components/MatchPanel';
 import { PromotionPicker, usePromotion } from './components/MoveEntry';
 import { PlayerBar } from './components/PlayerBar';
 import { SettingsPanel } from './components/SettingsPanel';
+import { ShareButton } from './components/ShareButton';
 import { StreamPanel } from './components/StreamPanel';
 import { useEval, useIsMobile, useNow, useT } from './hooks';
 import { setContext, track, trackOutbound } from './lib/analytics';
 import { displayName, firstMoveSquares, localizeSan, materialFromFen, shortName } from './lib/format';
 import { seedGameScores } from './lib/quality';
 import { unlockAudio } from './lib/sound';
-import { AUTO_SWITCH_SEC, canGuess, engineHeldBack, selectGameData, selectRoundNo, selectShownPly, useStore } from './store';
+import { AUTO_SWITCH_SEC, canGuess, canSharePosition, engineHeldBack, selectGameData, selectRoundNo, selectShownPly, useStore } from './store';
 
 // Loaded on first use, so the first paint only carries the board and the analysis tab.
 const SimilarPanel = lazy(() => import('./components/SimilarPanel').then(m => ({ default: m.SimilarPanel })));
@@ -52,6 +53,7 @@ export default function App() {
   const setPreview = useStore(s => s.setPreview);
   const rounds = useStore(s => s.rounds);
   const roundNo = useStore(selectRoundNo);
+  const shareable = useStore(canSharePosition);
   const nextUp = useStore(s => s.nextUp);
   const followLatest = useStore(s => s.followLatest);
   const goToRound = useStore(s => s.goToRound);
@@ -65,6 +67,7 @@ export default function App() {
   const makeGuess = useStore(s => s.makeGuess);
   const peekEngine = useStore(s => s.peekEngine);
   const [boardSync, setBoardSync] = useState(0);
+  const [shareSlot, setShareSlot] = useState<HTMLDivElement | null>(null);
   const [tab, setTabState] = useState<Tab>('analysis');
   const setTab = (id: Tab) => {
     setTabState(id);
@@ -316,6 +319,17 @@ export default function App() {
               <button onClick={toggleFlip} aria-label={t.flip} title={t.flip}>
                 ⇅
               </button>
+              {shareable && game && (
+                <ShareButton
+                  // a new game starts with no panel: a link copied for another game is not left on screen
+                  key={game.id}
+                  compact={isMobile}
+                  panelHost={shareSlot}
+                  // the position on the board, which is never beyond what this viewer has been shown
+                  target={{ view: 'live', gameNo: roundNo, ply: shown }}
+                  describe={(shown === 0 ? t.shareGame : t.sharePosition).replace('{g}', String(roundNo)).replace('{m}', String(Math.ceil(shown / 2)))}
+                />
+              )}
               {!paused && !resultVisible && (
                 <button className="pause-btn" onClick={pause} title={t.pauseTitle}>
                   ⏸ {t.pauseBtn}
@@ -328,6 +342,7 @@ export default function App() {
               )}
             </div>
           )}
+          <div className="share-slot" ref={setShareSlot} />
           {paused && !preview && (settings.streamHidden || streamUncovered) && <CatchUpBar />}
           {nextUpBanner() ?? resultBanner() ?? guessStrip()}
           {revealed === 0 && !resultVisible && !paused && !preview && <div className="banner">{t.notStarted}</div>}

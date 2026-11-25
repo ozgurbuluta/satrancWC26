@@ -185,3 +185,15 @@ describe("privacy contract: PostHog's own properties", () => {
     }
   });
 });
+
+describe('privacy contract: sharing', () => {
+  it('a shared link is recorded as its kind and whether copying worked, never as the link', () => {
+    const out = gate(
+      { event: 'share_link', properties: { kind: 'position', copied: true, url: 'https://ozgurakanay.com/satranc/?parti=3&hamle=24', parti: 3, hamle: 24 } },
+      page,
+    );
+    expect(out?.properties).toMatchObject({ kind: 'position', copied: true });
+    for (const leaked of ['url', 'parti', 'hamle']) expect(out?.properties).not.toHaveProperty(leaked);
+    expect(wire(out)).not.toContain('hamle');
+  });
+});

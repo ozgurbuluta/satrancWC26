@@ -8,6 +8,7 @@ import { PUZZLE_CHOICES, usePuzzles, type Feedback, type PuzzleChoice } from '..
 import { useStore } from '../store';
 import { Board, type BoardShape } from './Board';
 import { MoveInput, PromotionPicker, usePromotion } from './MoveEntry';
+import { ShareButton } from './ShareButton';
 
 const choiceLabel = (c: PuzzleChoice, t: Strings): string =>
   ({ daily: t.pzDaily, mix: t.pzMix, mateIn1: t.pzMate1, mateIn2: t.pzMate2, short: t.pzShort, endgame: t.pzEndgame })[c];
@@ -114,10 +115,13 @@ export function PuzzlePanel({ onBack, newMove }: { onBack: () => void; newMove: 
 
   return (
     <div className="puzzle-panel">
-      <button className="back-to-match" onClick={onBack}>
-        ← {t.backToMatch}
-        {newMove && <span className="live-pill">{t.newMoveBadge}</span>}
-      </button>
+      <div className="puzzle-top">
+        <button className="back-to-match" onClick={onBack}>
+          ← {t.backToMatch}
+          {newMove && <span className="live-pill">{t.newMoveBadge}</span>}
+        </button>
+        <ShareButton target={{ view: 'puzzles' }} describe={t.sharePuzzles} />
+      </div>
 
       <section>
         <h3 id="pz-kind">{t.pzKind}</h3>
