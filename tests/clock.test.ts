@@ -172,9 +172,47 @@ describe('time spent on each move', () => {
   it('keeps the two players apart, also when Black moves first', () => {
     const game = gameWith(MATCH_TAG, [7150, 7000, 7100, 6900]);
     expect(moveTimes(game, 4)).toEqual([50, 200, 50, 100]);
+    // A game that begins with Black to move was set up from a position: the clocks before it are not known.
     const blackFirst = { ...game, initialFen: START.replace(' w ', ' b ') } as GameData;
-    expect(moveTimes(blackFirst, 4)).toEqual([50, 200, 50, 100]);
+    expect(moveTimes(blackFirst, 4)).toEqual([undefined, undefined, 50, 100]);
     expect(moveTimes(game, 2)).toEqual([50, 200]); // only the moves that are shown
+  });
+});
+
+describe('a game set up from a later position', () => {
+  // Black to play move 39; White has made 39 moves, Black 38.
+  const MIDGAME = '6k1/5ppp/8/8/8/8/5PPP/6K1 b - - 0 39';
+
+  it('has no clock on its first position: the full allotment is not assumed', () => {
+    const pgn = `[Event "x"]\n[Round "1.1"]\n[White "A"]\n[Black "B"]\n[Result "*"]\n[SetUp "1"]\n[FEN "${MIDGAME}"]\n[TimeControl "${MATCH_TAG}"]\n[GameURL "https://lichess.org/broadcast/t/r/x/y"]\n\n39... Kf8 { [%clk 0:20:00] } 40. Kf1 { [%clk 0:15:00] } *\n`;
+    const game = parseGame(pgn, undefined, 0)!;
+    expect(game.initialFen.startsWith('6k1/5ppp/8/8/8/8/5PPP/6K1 b')).toBe(true);
+    expect(game.initialClock).toBeUndefined();
+    // each player's first recorded move has no earlier reading to compare with
+    expect(moveTimes(game, 2)).toEqual([undefined, undefined]);
+  });
+
+  it('never invents a first duration, and numbers the moves from the position', () => {
+    const game = { ...gameWith(MATCH_TAG, [1200, 900, 1100, 2400, 2890, 2380]), initialFen: MIDGAME } as GameData;
+    // plies: 39...(B) 40.(W) 40...(B) 41.(W) 41...(B) 42.(W)
+    expect(moveTimes(game, 6)).toEqual([
+      undefined, // Black's first move here: no earlier reading
+      undefined, // White's first move here: no earlier reading
+      undefined, // Black's move 40: the reading where the increment starts
+      undefined, // White's move 41: the clock rose from 900 to 2400, more than thirty seconds explain
+      undefined, // Black's move 41: the same, from 1100 to 2890
+      50, // White's move 42: 2400 - 2380 + 30
+    ]);
+  });
+
+  it('applies the period and the increment at the right move numbers', () => {
+    // White to play move 41: both players have made 40 moves
+    const game = { ...gameWith(MATCH_TAG, [3000, 2800, 2980, 2700]), initialFen: '6k1/5ppp/8/8/8/8/5PPP/6K1 w - - 0 41' } as GameData;
+    // 41.(W) 41...(B) 42.(W) 42...(B): first readings are unknown, the second ones use the 30-second increment
+    expect(moveTimes(game, 4)).toEqual([undefined, undefined, 50, 130]);
+    // read as if it began at move one, the same clocks would have given 4200 and 4400 seconds for the first two moves
+    const wrong = { ...game, initialFen: START } as GameData;
+    expect(moveTimes(wrong, 4)[0]).toBe(4200);
   });
 });
 

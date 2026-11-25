@@ -1,5 +1,5 @@
 import { castlingSide } from 'chessops/chess';
-import { parseTimeControl } from './clock';
+import { parseTimeControl, startsAtFirstMove } from './clock';
 import { makeFen } from 'chessops/fen';
 import { parseComment, parsePgn, startingPosition } from 'chessops/pgn';
 import { makeSanAndPlay, parseSan } from 'chessops/san';
@@ -148,7 +148,8 @@ export const parseGame = (pgn: string, prev: GameData | undefined, stamp: number
     eco: clean(h.get('ECO')),
     opening: clean(h.get('Opening')),
     initialFen,
-    initialClock: initialClockFrom(h.get('TimeControl')),
+    // The full allotment is on the clocks only when the game starts at its first move.
+    initialClock: startsAtFirstMove(initialFen) ? initialClockFrom(h.get('TimeControl')) : undefined,
     timeControl: clean(h.get('TimeControl')),
     plies,
   };

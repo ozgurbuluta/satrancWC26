@@ -125,20 +125,35 @@ export const ambiguousAfterMove = (periods: Period[], moveNo: number): boolean =
   return here !== next || (moveNo === 1 && here > 0);
 };
 
+/** Whether a game starts at its first move, with White to play. A game set up from a later position does not. */
+export const startsAtFirstMove = (fen: string): boolean => {
+  const fields = fen.trim().split(/\s+/);
+  return fields[1] !== 'b' && (fields[5] === undefined || fields[5] === '1');
+};
+
 /**
  * Seconds spent on each of the first `count` half-moves. `undefined` where it
  * is not known: the time control cannot be read, the reading for the move or
  * the one before it is missing, the reading can be understood in two ways,
  * or the clock went up by more than the time control explains.
+ *
+ * A game that is set up from a later position (a FEN in the feed) has no
+ * known clocks before its first recorded moves, so each player's first move
+ * there is unknown, and moves are numbered from the position's own move
+ * number so that periods and increments fall where they belong.
  */
 export const moveTimes = (game: GameData, count: number): (number | undefined)[] => {
   const n = Math.min(count, game.plies.length);
   const periods = parseTimeControl(game.timeControl);
   if (!periods) return Array.from({ length: n }, () => undefined);
   const whiteStarts = game.initialFen.split(' ')[1] !== 'b';
+  const fromStart = startsAtFirstMove(game.initialFen);
+  const fullMove = Math.max(1, Number(game.initialFen.trim().split(/\s+/)[5]) || 1);
   const out: (number | undefined)[] = [];
-  const last: (number | undefined)[] = [periods[0].seconds, periods[0].seconds];
-  const made = [0, 0];
+  // index 0 is White, 1 is Black
+  const last: (number | undefined)[] = fromStart ? [periods[0].seconds, periods[0].seconds] : [undefined, undefined];
+  // moves each player has already made in the starting position
+  const made = [whiteStarts ? fullMove - 1 : fullMove, fullMove - 1];
   for (let i = 0; i < n; i++) {
     const side = (i % 2 === 0) === whiteStarts ? 0 : 1;
     const clk = game.plies[i].clk;
