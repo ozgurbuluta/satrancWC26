@@ -1,0 +1,1875 @@
+{
+ "families": {
+  "A": {
+   "candidates": [
+    {
+     "penaltyShared": 0.001,
+     "penaltyOwn": 0.01,
+     "lossAtTemperature1": 2.265962
+    },
+    {
+     "penaltyShared": 0.001,
+     "penaltyOwn": 0.05,
+     "lossAtTemperature1": 2.266713
+    },
+    {
+     "penaltyShared": 0.001,
+     "penaltyOwn": 0.2,
+     "lossAtTemperature1": 2.267121
+    },
+    {
+     "penaltyShared": 0.01,
+     "penaltyOwn": 0.01,
+     "lossAtTemperature1": 2.31785
+    },
+    {
+     "penaltyShared": 0.01,
+     "penaltyOwn": 0.05,
+     "lossAtTemperature1": 2.332448
+    },
+    {
+     "penaltyShared": 0.01,
+     "penaltyOwn": 0.2,
+     "lossAtTemperature1": 2.336896
+    }
+   ],
+   "penaltyShared": 0.001,
+   "penaltyOwn": 0.01,
+   "temperature": 0.981,
+   "theta": [
+    0.1425,
+    -0.1986,
+    -0.3001,
+    -0.4171,
+    -0.0924,
+    1.255,
+    3.0918,
+    1.9322,
+    -1.3598,
+    1.085,
+    0.2397,
+    1.3994,
+    0,
+    2.4717,
+    0.3883,
+    -5.4062,
+    0.9617,
+    1.5289,
+    0.3249,
+    0.9274,
+    0.609,
+    -0.1689,
+    0.8742,
+    -0.8641,
+    0.988,
+    0.1626,
+    0.338,
+    0.3161,
+    1.9945,
+    -0.0171,
+    0.0017,
+    0.0029,
+    -0.037,
+    -0.0245,
+    0.0218,
+    0.0654,
+    0.0637,
+    -0.0269,
+    0.0153,
+    -0.0864,
+    0.0189,
+    0,
+    0.0478,
+    0.0055,
+    -0.1837,
+    0.0447,
+    -0.0157,
+    -0.0462,
+    0.0357,
+    0.0112,
+    0.0174,
+    0.0131,
+    -0.0943,
+    0.0425,
+    -0.0314,
+    -0.0235,
+    -0.029,
+    0.0383,
+    -0.0517,
+    -0.0527,
+    0.0566,
+    -0.0726,
+    -0.0077,
+    0.0341,
+    0.0728,
+    0.0266,
+    0.0232,
+    -0.0032,
+    0.007,
+    0.1367,
+    0,
+    0.0462,
+    0.0115,
+    -0.0777,
+    -0.0048,
+    0.0174,
+    0.0482,
+    -0.0385,
+    -0.0184,
+    0.038,
+    0.0255,
+    -0.003,
+    -0.0096,
+    0.0465,
+    -0.0291,
+    0.0607,
+    0.0518,
+    0.0154,
+    0.0096,
+    0.0637,
+    0.0862,
+    0.0075,
+    -0.0068,
+    0.0051,
+    -0.0146,
+    0.0314,
+    -0.0263,
+    -0.0166,
+    0.1349,
+    0,
+    0.0037,
+    0.0135,
+    -0.0513,
+    -0.0963,
+    -0.0364,
+    0.0538,
+    -0.1576,
+    0.0035,
+    -0.1296,
+    0.0601,
+    0.0688,
+    0.0168,
+    -0.0085,
+    0.0429,
+    0,
+    0
+   ],
+   "loss": 2.265757
+  },
+  "B": {
+   "candidates": [
+    {
+     "label": "corrections 0.01",
+     "temperature": 0.971,
+     "kappa": 0.5,
+     "others": 0.5,
+     "halfLife": 4,
+     "epsilon": 0.005,
+     "loss": 2.244946,
+     "baseModelAlone": 2.405426
+    },
+    {
+     "label": "corrections 0.2",
+     "temperature": 0.963,
+     "kappa": 0.5,
+     "others": 0.5,
+     "halfLife": 4,
+     "epsilon": 0.005,
+     "loss": 2.24546,
+     "baseModelAlone": 2.406705
+    },
+    {
+     "label": "no per-player corrections, clock 0.01",
+     "temperature": 0.962,
+     "kappa": 0.5,
+     "others": 0.5,
+     "halfLife": 4,
+     "epsilon": 0.005,
+     "loss": 2.244994,
+     "baseModelAlone": 2.405626
+    },
+    {
+     "label": "no per-player corrections, clock 0.2",
+     "temperature": 0.962,
+     "kappa": 0.5,
+     "others": 0.5,
+     "halfLife": 4,
+     "epsilon": 0.005,
+     "loss": 2.245594,
+     "baseModelAlone": 2.406864
+    }
+   ],
+   "theta": [
+    0.2092,
+    -0.1692,
+    -0.2683,
+    -0.411,
+    -0.0468,
+    1.2853,
+    3.1136,
+    1.907,
+    -1.4017,
+    1.1035,
+    0.2022,
+    1.4107,
+    0,
+    2.5728,
+    0.3929,
+    -5.4469,
+    0.9804,
+    1.5407,
+    0.2615,
+    1.0916,
+    0.5836,
+    0.0679,
+    0.9277,
+    -0.8924,
+    0.8933,
+    0.163,
+    0.3325,
+    0,
+    0,
+    -0.011,
+    -0.0083,
+    0.0013,
+    -0.0357,
+    -0.0236,
+    0.0256,
+    0.0659,
+    0.063,
+    -0.0273,
+    0.0138,
+    -0.0888,
+    0.0234,
+    0,
+    0.0519,
+    0.0056,
+    -0.1844,
+    0.0475,
+    -0.0171,
+    -0.0488,
+    0.0429,
+    0.0125,
+    0.0262,
+    0.014,
+    -0.0956,
+    0.0399,
+    -0.0301,
+    -0.0227,
+    0,
+    0,
+    -0.0459,
+    -0.0494,
+    0.0572,
+    -0.0722,
+    -0.0018,
+    0.0391,
+    0.0731,
+    0.0256,
+    0.0215,
+    0.0033,
+    0.0022,
+    0.1363,
+    0,
+    0.0554,
+    0.0116,
+    -0.0794,
+    0.0049,
+    0.0197,
+    0.0499,
+    -0.0349,
+    -0.0025,
+    0.0133,
+    0.0277,
+    -0.0034,
+    -0.0121,
+    0.0457,
+    -0.029,
+    0,
+    0,
+    0.0035,
+    0.0134,
+    0.0657,
+    0.0986,
+    0.0074,
+    -0.0151,
+    0.0042,
+    -0.0174,
+    0.0382,
+    -0.0306,
+    -0.0155,
+    0.1345,
+    0,
+    0.0037,
+    0.0136,
+    -0.0474,
+    -0.1043,
+    -0.0416,
+    0.0609,
+    -0.2441,
+    0.0036,
+    -0.1773,
+    0.0609,
+    0.0716,
+    0.0173,
+    -0.0069,
+    0.0429,
+    0,
+    0
+   ],
+   "players": true,
+   "temperature": 0.971,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0.005,
+   "loss": 2.244946,
+   "label": "corrections 0.01",
+   "penaltyPlayers": 0.01,
+   "penaltyClock": 0.01,
+   "grid": {
+    "kappa": [
+     0.25,
+     0.5,
+     1,
+     2,
+     4,
+     8,
+     16
+    ],
+    "others": [
+     0,
+     0.05,
+     0.1,
+     0.25,
+     0.5,
+     1
+    ],
+    "halfLife": [
+     0.5,
+     1,
+     2,
+     4,
+     null
+    ],
+    "epsilon": [
+     0,
+     0.002,
+     0.005,
+     0.01,
+     0.02,
+     0.05
+    ]
+   }
+  }
+ },
+ "chosen": "B",
+ "onSelection": {
+  "v2": {
+   "n": 5733,
+   "logLoss": 2.244946,
+   "brier": 0.787003,
+   "top1": 0.334903,
+   "top3": 0.586778,
+   "ece": 0.031371,
+   "bins": [
+    {
+     "n": 544,
+     "said": 0.083295,
+     "happened": 0.137868
+    },
+    {
+     "n": 1526,
+     "said": 0.147302,
+     "happened": 0.162516
+    },
+    {
+     "n": 1061,
+     "said": 0.246855,
+     "happened": 0.234684
+    },
+    {
+     "n": 705,
+     "said": 0.345607,
+     "happened": 0.321986
+    },
+    {
+     "n": 506,
+     "said": 0.451316,
+     "happened": 0.444664
+    },
+    {
+     "n": 414,
+     "said": 0.545227,
+     "happened": 0.483092
+    },
+    {
+     "n": 303,
+     "said": 0.648612,
+     "happened": 0.528053
+    },
+    {
+     "n": 264,
+     "said": 0.747756,
+     "happened": 0.693182
+    },
+    {
+     "n": 210,
+     "said": 0.849056,
+     "happened": 0.8
+    },
+    {
+     "n": 200,
+     "said": 0.960266,
+     "happened": 0.925
+    }
+   ],
+   "sure70": {
+    "n": 674,
+    "said": 0.842377,
+    "happened": 0.795252
+   },
+   "sure90": {
+    "n": 200,
+    "said": 0.960266,
+    "happened": 0.925
+   },
+   "shownEce": 0.022156,
+   "shownBins": [
+    {
+     "n": 7442,
+     "said": 0.062995,
+     "happened": 0.087611
+    },
+    {
+     "n": 4830,
+     "said": 0.141124,
+     "happened": 0.157971
+    },
+    {
+     "n": 1860,
+     "said": 0.243923,
+     "happened": 0.246774
+    },
+    {
+     "n": 1004,
+     "said": 0.343852,
+     "happened": 0.337649
+    },
+    {
+     "n": 580,
+     "said": 0.450089,
+     "happened": 0.437931
+    },
+    {
+     "n": 420,
+     "said": 0.544581,
+     "happened": 0.478571
+    },
+    {
+     "n": 303,
+     "said": 0.648612,
+     "happened": 0.528053
+    },
+    {
+     "n": 264,
+     "said": 0.747756,
+     "happened": 0.693182
+    },
+    {
+     "n": 210,
+     "said": 0.849056,
+     "happened": 0.8
+    },
+    {
+     "n": 200,
+     "said": 0.960266,
+     "happened": 0.925
+    }
+   ],
+   "games": 118,
+   "intervals": {
+    "logLoss": [
+     2.202897,
+     2.287469
+    ],
+    "brier": [
+     0.776285,
+     0.797444
+    ],
+    "top1": [
+     0.32124,
+     0.349615
+    ],
+    "top3": [
+     0.572032,
+     0.60177
+    ],
+    "ece": [
+     0.024301,
+     0.042832
+    ],
+    "shownEce": [
+     0.01824,
+     0.028557
+    ],
+    "gap70": [
+     0.018729,
+     0.077545
+    ],
+    "gap90": [
+     -0.000833,
+     0.077864
+    ]
+   },
+   "difference": {
+    "logLoss": {
+     "value": -0.020811,
+     "interval": [
+      -0.028451,
+      -0.013432
+     ]
+    },
+    "brier": {
+     "value": -0.007509,
+     "interval": [
+      -0.010497,
+      -0.004648
+     ]
+    },
+    "top1": {
+     "value": 0.003663,
+     "interval": [
+      0.000176,
+      0.007045
+     ]
+    },
+    "top3": {
+     "value": 0.000872,
+     "interval": [
+      -0.002847,
+      0.004805
+     ]
+    },
+    "ece": {
+     "value": -0.008727,
+     "interval": [
+      -0.016337,
+      -0.003363
+     ]
+    },
+    "shownEce": {
+     "value": -0.008473,
+     "interval": [
+      -0.010742,
+      -0.005228
+     ]
+    },
+    "gap70": {
+     "value": -0.061029,
+     "interval": [
+      -0.080544,
+      -0.040919
+     ]
+    },
+    "gap90": {
+     "value": -0.064721,
+     "interval": [
+      -0.101553,
+      -0.028903
+     ]
+    }
+   }
+  },
+  "A": {
+   "n": 5733,
+   "logLoss": 2.265757,
+   "brier": 0.794513,
+   "top1": 0.33124,
+   "top3": 0.585906,
+   "ece": 0.040098,
+   "bins": [
+    {
+     "n": 621,
+     "said": 0.081967,
+     "happened": 0.133655
+    },
+    {
+     "n": 1538,
+     "said": 0.147784,
+     "happened": 0.176853
+    },
+    {
+     "n": 1121,
+     "said": 0.246694,
+     "happened": 0.23818
+    },
+    {
+     "n": 668,
+     "said": 0.34383,
+     "happened": 0.33982
+    },
+    {
+     "n": 445,
+     "said": 0.446944,
+     "happened": 0.424719
+    },
+    {
+     "n": 335,
+     "said": 0.544802,
+     "happened": 0.507463
+    },
+    {
+     "n": 287,
+     "said": 0.647388,
+     "happened": 0.505226
+    },
+    {
+     "n": 222,
+     "said": 0.751849,
+     "happened": 0.644144
+    },
+    {
+     "n": 186,
+     "said": 0.848109,
+     "happened": 0.725806
+    },
+    {
+     "n": 310,
+     "said": 0.964503,
+     "happened": 0.864516
+    }
+   ],
+   "sure70": {
+    "n": 718,
+    "said": 0.8686,
+    "happened": 0.760446
+   },
+   "sure90": {
+    "n": 310,
+    "said": 0.964503,
+    "happened": 0.864516
+   },
+   "shownEce": 0.030629,
+   "shownBins": [
+    {
+     "n": 7785,
+     "said": 0.061296,
+     "happened": 0.090687
+    },
+    {
+     "n": 4733,
+     "said": 0.14156,
+     "happened": 0.168815
+    },
+    {
+     "n": 1825,
+     "said": 0.243064,
+     "happened": 0.249863
+    },
+    {
+     "n": 899,
+     "said": 0.342446,
+     "happened": 0.350389
+    },
+    {
+     "n": 525,
+     "said": 0.447304,
+     "happened": 0.420952
+    },
+    {
+     "n": 341,
+     "said": 0.544014,
+     "happened": 0.501466
+    },
+    {
+     "n": 287,
+     "said": 0.647388,
+     "happened": 0.505226
+    },
+    {
+     "n": 222,
+     "said": 0.751849,
+     "happened": 0.644144
+    },
+    {
+     "n": 186,
+     "said": 0.848109,
+     "happened": 0.725806
+    },
+    {
+     "n": 310,
+     "said": 0.964503,
+     "happened": 0.864516
+    }
+   ],
+   "games": 118,
+   "intervals": {
+    "logLoss": [
+     2.223983,
+     2.307947
+    ],
+    "brier": [
+     0.784166,
+     0.805071
+    ],
+    "top1": [
+     0.316799,
+     0.346244
+    ],
+    "top3": [
+     0.571101,
+     0.601144
+    ],
+    "ece": [
+     0.033255,
+     0.052798
+    ],
+    "shownEce": [
+     0.026442,
+     0.036461
+    ],
+    "gap70": [
+     0.080156,
+     0.137546
+    ],
+    "gap90": [
+     0.063933,
+     0.140325
+    ]
+   }
+  },
+  "B": {
+   "n": 5733,
+   "logLoss": 2.244946,
+   "brier": 0.787003,
+   "top1": 0.334903,
+   "top3": 0.586778,
+   "ece": 0.031371,
+   "bins": [
+    {
+     "n": 544,
+     "said": 0.083295,
+     "happened": 0.137868
+    },
+    {
+     "n": 1526,
+     "said": 0.147302,
+     "happened": 0.162516
+    },
+    {
+     "n": 1061,
+     "said": 0.246855,
+     "happened": 0.234684
+    },
+    {
+     "n": 705,
+     "said": 0.345607,
+     "happened": 0.321986
+    },
+    {
+     "n": 506,
+     "said": 0.451316,
+     "happened": 0.444664
+    },
+    {
+     "n": 414,
+     "said": 0.545227,
+     "happened": 0.483092
+    },
+    {
+     "n": 303,
+     "said": 0.648612,
+     "happened": 0.528053
+    },
+    {
+     "n": 264,
+     "said": 0.747756,
+     "happened": 0.693182
+    },
+    {
+     "n": 210,
+     "said": 0.849056,
+     "happened": 0.8
+    },
+    {
+     "n": 200,
+     "said": 0.960266,
+     "happened": 0.925
+    }
+   ],
+   "sure70": {
+    "n": 674,
+    "said": 0.842377,
+    "happened": 0.795252
+   },
+   "sure90": {
+    "n": 200,
+    "said": 0.960266,
+    "happened": 0.925
+   },
+   "shownEce": 0.022156,
+   "shownBins": [
+    {
+     "n": 7442,
+     "said": 0.062995,
+     "happened": 0.087611
+    },
+    {
+     "n": 4830,
+     "said": 0.141124,
+     "happened": 0.157971
+    },
+    {
+     "n": 1860,
+     "said": 0.243923,
+     "happened": 0.246774
+    },
+    {
+     "n": 1004,
+     "said": 0.343852,
+     "happened": 0.337649
+    },
+    {
+     "n": 580,
+     "said": 0.450089,
+     "happened": 0.437931
+    },
+    {
+     "n": 420,
+     "said": 0.544581,
+     "happened": 0.478571
+    },
+    {
+     "n": 303,
+     "said": 0.648612,
+     "happened": 0.528053
+    },
+    {
+     "n": 264,
+     "said": 0.747756,
+     "happened": 0.693182
+    },
+    {
+     "n": 210,
+     "said": 0.849056,
+     "happened": 0.8
+    },
+    {
+     "n": 200,
+     "said": 0.960266,
+     "happened": 0.925
+    }
+   ],
+   "games": 118,
+   "intervals": {
+    "logLoss": [
+     2.202897,
+     2.287469
+    ],
+    "brier": [
+     0.776285,
+     0.797444
+    ],
+    "top1": [
+     0.32124,
+     0.349615
+    ],
+    "top3": [
+     0.572032,
+     0.60177
+    ],
+    "ece": [
+     0.024301,
+     0.042832
+    ],
+    "shownEce": [
+     0.01824,
+     0.028557
+    ],
+    "gap70": [
+     0.018729,
+     0.077545
+    ],
+    "gap90": [
+     -0.000833,
+     0.077864
+    ]
+   }
+  },
+  "base": {
+   "n": 5733,
+   "logLoss": 2.405444,
+   "brier": 0.831256,
+   "top1": 0.288331,
+   "top3": 0.546136,
+   "ece": 0.041913,
+   "bins": [
+    {
+     "n": 579,
+     "said": 0.084027,
+     "happened": 0.138169
+    },
+    {
+     "n": 1904,
+     "said": 0.146184,
+     "happened": 0.172269
+    },
+    {
+     "n": 1144,
+     "said": 0.247518,
+     "happened": 0.236014
+    },
+    {
+     "n": 728,
+     "said": 0.344765,
+     "happened": 0.307692
+    },
+    {
+     "n": 410,
+     "said": 0.446501,
+     "happened": 0.414634
+    },
+    {
+     "n": 309,
+     "said": 0.543953,
+     "happened": 0.440129
+    },
+    {
+     "n": 214,
+     "said": 0.650883,
+     "happened": 0.514019
+    },
+    {
+     "n": 156,
+     "said": 0.747634,
+     "happened": 0.628205
+    },
+    {
+     "n": 132,
+     "said": 0.843907,
+     "happened": 0.704545
+    },
+    {
+     "n": 157,
+     "said": 0.965983,
+     "happened": 0.917197
+    }
+   ],
+   "sure70": {
+    "n": 445,
+    "said": 0.853227,
+    "happened": 0.752809
+   },
+   "sure90": {
+    "n": 157,
+    "said": 0.965983,
+    "happened": 0.917197
+   },
+   "shownEce": 0.028345,
+   "shownBins": [
+    {
+     "n": 7606,
+     "said": 0.067034,
+     "happened": 0.095714
+    },
+    {
+     "n": 5338,
+     "said": 0.140366,
+     "happened": 0.164856
+    },
+    {
+     "n": 1807,
+     "said": 0.244138,
+     "happened": 0.245158
+    },
+    {
+     "n": 921,
+     "said": 0.34309,
+     "happened": 0.325733
+    },
+    {
+     "n": 467,
+     "said": 0.446088,
+     "happened": 0.423983
+    },
+    {
+     "n": 315,
+     "said": 0.543116,
+     "happened": 0.434921
+    },
+    {
+     "n": 214,
+     "said": 0.650883,
+     "happened": 0.514019
+    },
+    {
+     "n": 156,
+     "said": 0.747634,
+     "happened": 0.628205
+    },
+    {
+     "n": 132,
+     "said": 0.843907,
+     "happened": 0.704545
+    },
+    {
+     "n": 157,
+     "said": 0.965983,
+     "happened": 0.917197
+    }
+   ],
+   "games": 118,
+   "intervals": {
+    "logLoss": [
+     2.367906,
+     2.44376
+    ],
+    "brier": [
+     0.823472,
+     0.839241
+    ],
+    "top1": [
+     0.276522,
+     0.300667
+    ],
+    "top3": [
+     0.53243,
+     0.559993
+    ],
+    "ece": [
+     0.033439,
+     0.053107
+    ],
+    "shownEce": [
+     0.0246,
+     0.034236
+    ],
+    "gap70": [
+     0.061353,
+     0.141569
+    ],
+    "gap90": [
+     0.004401,
+     0.100008
+    ]
+   }
+  },
+  "uniform": {
+   "n": 5733,
+   "logLoss": 3.300118,
+   "brier": 0.949676,
+   "top1": 0.050324,
+   "top3": 0.140508,
+   "ece": 0,
+   "bins": [
+    {
+     "n": 5366,
+     "said": 0.034228,
+     "happened": 0.034228
+    },
+    {
+     "n": 135,
+     "said": 0.139947,
+     "happened": 0.139947
+    },
+    {
+     "n": 109,
+     "said": 0.228899,
+     "happened": 0.228899
+    },
+    {
+     "n": 54,
+     "said": 0.333333,
+     "happened": 0.333333
+    },
+    {
+     "n": 0,
+     "said": 0,
+     "happened": 0
+    },
+    {
+     "n": 52,
+     "said": 0.5,
+     "happened": 0.5
+    },
+    {
+     "n": 0,
+     "said": 0,
+     "happened": 0
+    },
+    {
+     "n": 0,
+     "said": 0,
+     "happened": 0
+    },
+    {
+     "n": 0,
+     "said": 0,
+     "happened": 0
+    },
+    {
+     "n": 17,
+     "said": 1,
+     "happened": 1
+    }
+   ],
+   "sure70": {
+    "n": 17,
+    "said": 1,
+    "happened": 1
+   },
+   "sure90": {
+    "n": 17,
+    "said": 1,
+    "happened": 1
+   },
+   "shownEce": 0,
+   "shownBins": [
+    {
+     "n": 0,
+     "said": 0,
+     "happened": 0
+    },
+    {
+     "n": 0,
+     "said": 0,
+     "happened": 0
+    },
+    {
+     "n": 0,
+     "said": 0,
+     "happened": 0
+    },
+    {
+     "n": 0,
+     "said": 0,
+     "happened": 0
+    },
+    {
+     "n": 0,
+     "said": 0,
+     "happened": 0
+    },
+    {
+     "n": 0,
+     "said": 0,
+     "happened": 0
+    },
+    {
+     "n": 0,
+     "said": 0,
+     "happened": 0
+    },
+    {
+     "n": 0,
+     "said": 0,
+     "happened": 0
+    },
+    {
+     "n": 0,
+     "said": 0,
+     "happened": 0
+    },
+    {
+     "n": 0,
+     "said": 0,
+     "happened": 0
+    }
+   ],
+   "games": 118,
+   "intervals": {
+    "logLoss": [
+     3.264569,
+     3.336877
+    ],
+    "brier": [
+     0.94647,
+     0.95283
+    ],
+    "top1": [
+     0.047183,
+     0.053531
+    ],
+    "top3": [
+     0.132827,
+     0.148274
+    ],
+    "ece": [
+     0,
+     0
+    ],
+    "shownEce": [
+     0,
+     0
+    ],
+    "gap70": [
+     0,
+     0
+    ],
+    "gap90": [
+     0,
+     0
+    ]
+   }
+  }
+ },
+ "protocol": "docs/PREDICTOR-V2-PROTOCOL.md",
+ "corpora": {
+  "2026": {
+   "path": "data/player-history/games.pgn",
+   "sha256": "ad14048d7fa6308d3752e7cdfed7ed629073f34c919bae4786c3e48b4e74e555",
+   "games": 331,
+   "selected": 104,
+   "excluded": {
+    "another variant or a set-up starting position": 14,
+    "faster than classical by its first clock readings": 213
+   }
+  },
+  "earlier": {
+   "path": "data/player-history/earlier/games.pgn",
+   "sha256": "a36ea69c64954881cb849017f4704affdae89f7e016c4540bf4069762d9d6c5d",
+   "games": 351,
+   "selected": 351,
+   "excluded": {}
+  }
+ },
+ "sample": {
+  "fit": {
+   "tournaments": 24,
+   "games": 233,
+   "decisions": 10578,
+   "gukesh": 5965,
+   "sindarov": 4613,
+   "withEarlierGames": 683
+  },
+  "selection": {
+   "tournaments": 11,
+   "games": 118,
+   "decisions": 5733,
+   "gukesh": 3124,
+   "sindarov": 2609,
+   "withEarlierGames": 492
+  },
+  "holdout": {
+   "tournaments": 7,
+   "games": 83,
+   "decisions": 4240,
+   "gukesh": 2037,
+   "sindarov": 2203,
+   "withEarlierGames": 396
+  },
+  "benchmark": {
+   "tournaments": 1,
+   "games": 21,
+   "decisions": 963,
+   "gukesh": 519,
+   "sindarov": 444,
+   "withEarlierGames": 89
+  }
+ },
+ "tournaments": [
+  {
+   "name": "Tata Steel Challengers 2023",
+   "set": "fit",
+   "start": "2023-01-27",
+   "end": "2023-01-31",
+   "months": [
+    "2023-01"
+   ],
+   "games": 3,
+   "gukesh": 0,
+   "sindarov": 3
+  },
+  {
+   "name": "Tata Steel Masters 2023",
+   "set": "fit",
+   "start": "2023-01-27",
+   "end": "2023-01-31",
+   "months": [
+    "2023-01"
+   ],
+   "games": 3,
+   "gukesh": 3,
+   "sindarov": 0
+  },
+  {
+   "name": "Menorca Open 2023",
+   "set": "fit",
+   "start": "2023-04-11",
+   "end": "2023-04-30",
+   "months": [
+    "2023-04"
+   ],
+   "games": 5,
+   "gukesh": 5,
+   "sindarov": 0
+  },
+  {
+   "name": "2023 TePe Sigeman & Co",
+   "set": "fit",
+   "start": "2023-05-04",
+   "end": "2023-05-31",
+   "months": [
+    "2023-05"
+   ],
+   "games": 7,
+   "gukesh": 7,
+   "sindarov": 0
+  },
+  {
+   "name": "Dubai Open 2023 - Group A",
+   "set": "fit",
+   "start": "2023-05-27",
+   "end": "2023-06-30",
+   "months": [
+    "2023-05",
+    "2023-06"
+   ],
+   "games": 8,
+   "gukesh": 0,
+   "sindarov": 8
+  },
+  {
+   "name": "Norway Chess 2023",
+   "set": "fit",
+   "start": "2023-05-30",
+   "end": "2023-06-30",
+   "months": [
+    "2023-05",
+    "2023-06"
+   ],
+   "games": 2,
+   "gukesh": 2,
+   "sindarov": 0
+  },
+  {
+   "name": "FIDE World Cup 2023 Open Section",
+   "set": "fit",
+   "start": "2023-07-30",
+   "end": "2023-08-31",
+   "months": [
+    "2023-07",
+    "2023-08"
+   ],
+   "games": 18,
+   "gukesh": 10,
+   "sindarov": 8
+  },
+  {
+   "name": "2023 Abu Dhabi Chess Festival",
+   "set": "fit",
+   "start": "2023-08-16",
+   "end": "2023-08-31",
+   "months": [
+    "2023-08"
+   ],
+   "games": 8,
+   "gukesh": 0,
+   "sindarov": 8
+  },
+  {
+   "name": "Qatar Masters 2023",
+   "set": "fit",
+   "start": "2023-10-11",
+   "end": "2023-10-31",
+   "months": [
+    "2023-10"
+   ],
+   "games": 18,
+   "gukesh": 9,
+   "sindarov": 9
+  },
+  {
+   "name": "FIDE Grand Swiss 2023",
+   "set": "fit",
+   "start": "2023-10-25",
+   "end": "2023-11-30",
+   "months": [
+    "2023-10",
+    "2023-11"
+   ],
+   "games": 22,
+   "gukesh": 11,
+   "sindarov": 11
+  },
+  {
+   "name": "Chennai Grand Masters 2023",
+   "set": "fit",
+   "start": "2023-12-15",
+   "end": "2023-12-31",
+   "months": [
+    "2023-12"
+   ],
+   "games": 6,
+   "gukesh": 6,
+   "sindarov": 0
+  },
+  {
+   "name": "Tata Steel Masters 2024",
+   "set": "fit",
+   "start": "2024-01-13",
+   "end": "2024-01-31",
+   "months": [
+    "2024-01"
+   ],
+   "games": 13,
+   "gukesh": 13,
+   "sindarov": 0
+  },
+  {
+   "name": "Prague Chess Festival 2024",
+   "set": "fit",
+   "start": "2024-02-27",
+   "end": "2024-03-31",
+   "months": [
+    "2024-02",
+    "2024-03"
+   ],
+   "games": 9,
+   "gukesh": 9,
+   "sindarov": 0
+  },
+  {
+   "name": "FIDE Candidates 2024",
+   "set": "fit",
+   "start": "2024-04-04",
+   "end": "2024-04-30",
+   "months": [
+    "2024-04"
+   ],
+   "games": 14,
+   "gukesh": 14,
+   "sindarov": 0
+  },
+  {
+   "name": "Dubai Police Global Chess Challenge Masters",
+   "set": "fit",
+   "start": "2024-05-04",
+   "end": "2024-05-31",
+   "months": [
+    "2024-05"
+   ],
+   "games": 8,
+   "gukesh": 0,
+   "sindarov": 8
+  },
+  {
+   "name": "Sharjah",
+   "set": "fit",
+   "start": "2024-05-14",
+   "end": "2024-05-31",
+   "months": [
+    "2024-05"
+   ],
+   "games": 3,
+   "gukesh": 0,
+   "sindarov": 3
+  },
+  {
+   "name": "UzChess Cup 2024",
+   "set": "fit",
+   "start": "2024-06-06",
+   "end": "2024-06-30",
+   "months": [
+    "2024-06"
+   ],
+   "games": 9,
+   "gukesh": 0,
+   "sindarov": 9
+  },
+  {
+   "name": "Superbet Romania Chess Classic 2024",
+   "set": "fit",
+   "start": "2024-06-26",
+   "end": "2024-07-31",
+   "months": [
+    "2024-06",
+    "2024-07"
+   ],
+   "games": 9,
+   "gukesh": 9,
+   "sindarov": 0
+  },
+  {
+   "name": "30th Abu Dhabi Chess Festival 2024",
+   "set": "fit",
+   "start": "2024-08-15",
+   "end": "2024-08-31",
+   "months": [
+    "2024-08"
+   ],
+   "games": 9,
+   "gukesh": 0,
+   "sindarov": 9
+  },
+  {
+   "name": "45th Chess Olympiad Budapest 2024",
+   "set": "fit",
+   "start": "2024-09-12",
+   "end": "2024-09-30",
+   "months": [
+    "2024-09"
+   ],
+   "games": 20,
+   "gukesh": 10,
+   "sindarov": 10
+  },
+  {
+   "name": "German Bundesliga 2024/25",
+   "set": "selection",
+   "start": "2024-09-28",
+   "end": "2025-04-30",
+   "months": [
+    "2024-09",
+    "2024-11",
+    "2025-01",
+    "2025-02",
+    "2025-03",
+    "2025-04"
+   ],
+   "games": 14,
+   "gukesh": 0,
+   "sindarov": 14
+  },
+  {
+   "name": "WR Chess Masters Cup 2024",
+   "set": "fit",
+   "start": "2024-10-14",
+   "end": "2024-10-31",
+   "months": [
+    "2024-10"
+   ],
+   "games": 2,
+   "gukesh": 0,
+   "sindarov": 2
+  },
+  {
+   "name": "European Chess Club Cup",
+   "set": "fit",
+   "start": "2024-10-20",
+   "end": "2024-10-31",
+   "months": [
+    "2024-10"
+   ],
+   "games": 14,
+   "gukesh": 7,
+   "sindarov": 7
+  },
+  {
+   "name": "3rd International President Cup Tashkent 2024",
+   "set": "fit",
+   "start": "2024-11-21",
+   "end": "2024-11-30",
+   "months": [
+    "2024-11"
+   ],
+   "games": 9,
+   "gukesh": 0,
+   "sindarov": 9
+  },
+  {
+   "name": "FIDE World Championship 2024",
+   "set": "fit",
+   "start": "2024-11-25",
+   "end": "2024-12-31",
+   "months": [
+    "2024-11",
+    "2024-12"
+   ],
+   "games": 14,
+   "gukesh": 14,
+   "sindarov": 0
+  },
+  {
+   "name": "Tata Steel Chess 2025",
+   "set": "selection",
+   "start": "2025-01-18",
+   "end": "2025-02-28",
+   "months": [
+    "2025-01",
+    "2025-02"
+   ],
+   "games": 13,
+   "gukesh": 13,
+   "sindarov": 0
+  },
+  {
+   "name": "GCT: 2025 Superbet Classic Romania",
+   "set": "selection",
+   "start": "2025-05-07",
+   "end": "2025-05-31",
+   "months": [
+    "2025-05"
+   ],
+   "games": 9,
+   "gukesh": 9,
+   "sindarov": 0
+  },
+  {
+   "name": "TePe Sigeman & Co Chess Tournament 2025",
+   "set": "selection",
+   "start": "2025-05-20",
+   "end": "2025-05-31",
+   "months": [
+    "2025-05"
+   ],
+   "games": 7,
+   "gukesh": 0,
+   "sindarov": 7
+  },
+  {
+   "name": "Norway Chess 2025",
+   "set": "selection",
+   "start": "2025-05-21",
+   "end": "2025-06-30",
+   "months": [
+    "2025-05",
+    "2025-06"
+   ],
+   "games": 10,
+   "gukesh": 10,
+   "sindarov": 0
+  },
+  {
+   "name": "2nd Uzchess Cup",
+   "set": "selection",
+   "start": "2025-06-18",
+   "end": "2025-06-30",
+   "months": [
+    "2025-06"
+   ],
+   "games": 9,
+   "gukesh": 0,
+   "sindarov": 9
+  },
+  {
+   "name": "GCT: Sinquefield Cup 2025",
+   "set": "selection",
+   "start": "2025-08-01",
+   "end": "2025-08-31",
+   "months": [
+    "2025-08"
+   ],
+   "games": 9,
+   "gukesh": 9,
+   "sindarov": 0
+  },
+  {
+   "name": "FIDE Grand Swiss 2025",
+   "set": "selection",
+   "start": "2025-08-26",
+   "end": "2025-09-30",
+   "months": [
+    "2025-09"
+   ],
+   "games": 22,
+   "gukesh": 11,
+   "sindarov": 11
+  },
+  {
+   "name": "German Bundesliga 2025/26",
+   "set": "selection",
+   "start": "2025-09-27",
+   "end": "2025-09-30",
+   "months": [
+    "2025-09"
+   ],
+   "games": 2,
+   "gukesh": 0,
+   "sindarov": 2
+  },
+  {
+   "name": "European Chess Club Cup 2025",
+   "set": "selection",
+   "start": "2025-10-18",
+   "end": "2025-10-31",
+   "months": [
+    "2025-10"
+   ],
+   "games": 5,
+   "gukesh": 5,
+   "sindarov": 0
+  },
+  {
+   "name": "FIDE World Cup 2025",
+   "set": "selection",
+   "start": "2025-10-27",
+   "end": "2025-11-30",
+   "months": [
+    "2025-11"
+   ],
+   "games": 18,
+   "gukesh": 4,
+   "sindarov": 14
+  },
+  {
+   "name": "Tata Steel Chess 2026",
+   "set": "holdout",
+   "start": "2026-01-15",
+   "end": "2026-02-28",
+   "months": [
+    "2026-01",
+    "2026-02"
+   ],
+   "games": 25,
+   "gukesh": 13,
+   "sindarov": 13
+  },
+  {
+   "name": "Prague International Chess Festival 2026",
+   "set": "holdout",
+   "start": "2026-02-19",
+   "end": "2026-03-31",
+   "months": [
+    "2026-02",
+    "2026-03"
+   ],
+   "games": 9,
+   "gukesh": 9,
+   "sindarov": 0
+  },
+  {
+   "name": "FIDE Candidates 2026: Open",
+   "set": "holdout",
+   "start": "2026-03-02",
+   "end": "2026-04-30",
+   "months": [
+    "2026-03",
+    "2026-04"
+   ],
+   "games": 14,
+   "gukesh": 0,
+   "sindarov": 14
+  },
+  {
+   "name": "GCT: Super Chess Classic Romania 2026",
+   "set": "holdout",
+   "start": "2026-05-10",
+   "end": "2026-05-31",
+   "months": [
+    "2026-05"
+   ],
+   "games": 9,
+   "gukesh": 0,
+   "sindarov": 9
+  },
+  {
+   "name": "Norway Chess 2026",
+   "set": "holdout",
+   "start": "2026-05-24",
+   "end": "2026-06-30",
+   "months": [
+    "2026-05",
+    "2026-06"
+   ],
+   "games": 10,
+   "gukesh": 10,
+   "sindarov": 0
+  },
+  {
+   "name": "Chennai Grand Masters 2026",
+   "set": "holdout",
+   "start": "2026-07-16",
+   "end": "2026-07-31",
+   "months": [
+    "2026-07"
+   ],
+   "games": 7,
+   "gukesh": 7,
+   "sindarov": 0
+  },
+  {
+   "name": "GCT: Sinquefield Cup 2026",
+   "set": "holdout",
+   "start": "2026-08-04",
+   "end": "2026-08-31",
+   "months": [
+    "2026-08"
+   ],
+   "games": 9,
+   "gukesh": 0,
+   "sindarov": 9
+  },
+  {
+   "name": "46th FIDE Chess Olympiad Samarkand 2026",
+   "set": "benchmark",
+   "start": "2026-09-16",
+   "end": "2026-09-30",
+   "months": [
+    "2026-09"
+   ],
+   "games": 21,
+   "gukesh": 11,
+   "sindarov": 10
+  }
+ ],
+ "pairsLeftOut": [
+  {
+   "earlier": "2023 TePe Sigeman & Co",
+   "ends": "2023-05-31",
+   "later": "Norway Chess 2023",
+   "starts": "2023-05-30"
+  },
+  {
+   "earlier": "FIDE World Cup 2023 Open Section",
+   "ends": "2023-08-31",
+   "later": "2023 Abu Dhabi Chess Festival",
+   "starts": "2023-08-16"
+  },
+  {
+   "earlier": "Qatar Masters 2023",
+   "ends": "2023-10-31",
+   "later": "FIDE Grand Swiss 2023",
+   "starts": "2023-10-25"
+  },
+  {
+   "earlier": "Dubai Police Global Chess Challenge Masters",
+   "ends": "2024-05-31",
+   "later": "Sharjah",
+   "starts": "2024-05-14"
+  },
+  {
+   "earlier": "45th Chess Olympiad Budapest 2024",
+   "ends": "2024-09-30",
+   "later": "German Bundesliga 2024/25",
+   "starts": "2024-09-28"
+  },
+  {
+   "earlier": "WR Chess Masters Cup 2024",
+   "ends": "2024-10-31",
+   "later": "European Chess Club Cup",
+   "starts": "2024-10-20"
+  },
+  {
+   "earlier": "GCT: 2025 Superbet Classic Romania",
+   "ends": "2025-05-31",
+   "later": "Norway Chess 2025",
+   "starts": "2025-05-21"
+  },
+  {
+   "earlier": "GCT: Sinquefield Cup 2025",
+   "ends": "2025-08-31",
+   "later": "FIDE Grand Swiss 2025",
+   "starts": "2025-08-26"
+  },
+  {
+   "earlier": "FIDE Grand Swiss 2025",
+   "ends": "2025-09-30",
+   "later": "German Bundesliga 2025/26",
+   "starts": "2025-09-27"
+  },
+  {
+   "earlier": "European Chess Club Cup 2025",
+   "ends": "2025-10-31",
+   "later": "FIDE World Cup 2025",
+   "starts": "2025-10-27"
+  },
+  {
+   "earlier": "Tata Steel Chess 2026",
+   "ends": "2026-02-28",
+   "later": "Prague International Chess Festival 2026",
+   "starts": "2026-02-19"
+  }
+ ]
+}

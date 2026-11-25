@@ -1,0 +1,361 @@
+{
+ "about": "A second, flatter temperature mixed into the base model (share rho, temperature T2), tried on the selection games only. See scripts/predictor-calibration-check.mjs.",
+ "decisions": 5733,
+ "rule": "adopt only if the selection log loss falls by at least 0.003",
+ "selected": {
+  "temperature": 0.971,
+  "kappa": 0.5,
+  "others": 0.5,
+  "halfLife": 4,
+  "epsilon": 0.005,
+  "rho": 0,
+  "T2": null,
+  "logLoss": 2.2449,
+  "calibrationError": 0.0314,
+  "sure70": {
+   "n": 674,
+   "said": 0.842,
+   "happened": 0.795
+  }
+ },
+ "candidates": [
+  {
+   "temperature": 0.928,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0.002,
+   "rho": 0.1,
+   "T2": 1.5,
+   "logLoss": 2.2446,
+   "calibrationError": 0.0323,
+   "sure70": {
+    "n": 674,
+    "said": 0.84,
+    "happened": 0.794
+   }
+  },
+  {
+   "temperature": 0.907,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.1,
+   "T2": 2,
+   "logLoss": 2.2448,
+   "calibrationError": 0.0319,
+   "sure70": {
+    "n": 672,
+    "said": 0.838,
+    "happened": 0.795
+   }
+  },
+  {
+   "temperature": 0.892,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.1,
+   "T2": 3,
+   "logLoss": 2.247,
+   "calibrationError": 0.0325,
+   "sure70": {
+    "n": 667,
+    "said": 0.832,
+    "happened": 0.795
+   }
+  },
+  {
+   "temperature": 0.887,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.1,
+   "T2": 5,
+   "logLoss": 2.2511,
+   "calibrationError": 0.0313,
+   "sure70": {
+    "n": 661,
+    "said": 0.828,
+    "happened": 0.797
+   }
+  },
+  {
+   "temperature": 0.878,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.2,
+   "T2": 1.5,
+   "logLoss": 2.2446,
+   "calibrationError": 0.0324,
+   "sure70": {
+    "n": 671,
+    "said": 0.837,
+    "happened": 0.794
+   }
+  },
+  {
+   "temperature": 0.842,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.2,
+   "T2": 2,
+   "logLoss": 2.2468,
+   "calibrationError": 0.0319,
+   "sure70": {
+    "n": 653,
+    "said": 0.828,
+    "happened": 0.801
+   }
+  },
+  {
+   "temperature": 0.823,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.2,
+   "T2": 3,
+   "logLoss": 2.2543,
+   "calibrationError": 0.0327,
+   "sure70": {
+    "n": 630,
+    "said": 0.816,
+    "happened": 0.813
+   }
+  },
+  {
+   "temperature": 0.818,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.2,
+   "T2": 5,
+   "logLoss": 2.2652,
+   "calibrationError": 0.0314,
+   "sure70": {
+    "n": 602,
+    "said": 0.808,
+    "happened": 0.816
+   }
+  },
+  {
+   "temperature": 0.82,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.3,
+   "T2": 1.5,
+   "logLoss": 2.2451,
+   "calibrationError": 0.0324,
+   "sure70": {
+    "n": 654,
+    "said": 0.833,
+    "happened": 0.803
+   }
+  },
+  {
+   "temperature": 0.777,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.3,
+   "T2": 2,
+   "logLoss": 2.2508,
+   "calibrationError": 0.0322,
+   "sure70": {
+    "n": 607,
+    "said": 0.82,
+    "happened": 0.815
+   }
+  },
+  {
+   "temperature": 0.757,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.3,
+   "T2": 3,
+   "logLoss": 2.2651,
+   "calibrationError": 0.0321,
+   "sure70": {
+    "n": 522,
+    "said": 0.809,
+    "happened": 0.845
+   }
+  },
+  {
+   "temperature": 0.753,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.3,
+   "T2": 5,
+   "logLoss": 2.2839,
+   "calibrationError": 0.0291,
+   "sure70": {
+    "n": 447,
+    "said": 0.807,
+    "happened": 0.868
+   }
+  },
+  {
+   "temperature": 0.69,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.5,
+   "T2": 1.5,
+   "logLoss": 2.2486,
+   "calibrationError": 0.0316,
+   "sure70": {
+    "n": 570,
+    "said": 0.828,
+    "happened": 0.821
+   }
+  },
+  {
+   "temperature": 0.642,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.5,
+   "T2": 2,
+   "logLoss": 2.2649,
+   "calibrationError": 0.0258,
+   "sure70": {
+    "n": 423,
+    "said": 0.83,
+    "happened": 0.872
+   }
+  },
+  {
+   "temperature": 0.623,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.5,
+   "T2": 3,
+   "logLoss": 2.2971,
+   "calibrationError": 0.025,
+   "sure70": {
+    "n": 332,
+    "said": 0.832,
+    "happened": 0.88
+   }
+  },
+  {
+   "temperature": 0.624,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.5,
+   "T2": 5,
+   "logLoss": 2.3353,
+   "calibrationError": 0.0342,
+   "sure70": {
+    "n": 296,
+    "said": 0.832,
+    "happened": 0.872
+   }
+  },
+  {
+   "temperature": 0.524,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.7,
+   "T2": 1.5,
+   "logLoss": 2.2578,
+   "calibrationError": 0.0214,
+   "sure70": {
+    "n": 449,
+    "said": 0.837,
+    "happened": 0.864
+   }
+  },
+  {
+   "temperature": 0.482,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.7,
+   "T2": 2,
+   "logLoss": 2.2913,
+   "calibrationError": 0.0314,
+   "sure70": {
+    "n": 347,
+    "said": 0.839,
+    "happened": 0.882
+   }
+  },
+  {
+   "temperature": 0.47,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.7,
+   "T2": 3,
+   "logLoss": 2.3491,
+   "calibrationError": 0.049,
+   "sure70": {
+    "n": 295,
+    "said": 0.835,
+    "happened": 0.875
+   }
+  },
+  {
+   "temperature": 0.476,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0,
+   "rho": 0.7,
+   "T2": 5,
+   "logLoss": 2.4138,
+   "calibrationError": 0.0697,
+   "sure70": {
+    "n": 272,
+    "said": 0.833,
+    "happened": 0.875
+   }
+  }
+ ],
+ "best": {
+  "temperature": 0.928,
+  "kappa": 0.5,
+  "others": 0.5,
+  "halfLife": 4,
+  "epsilon": 0.002,
+  "rho": 0.1,
+  "T2": 1.5,
+  "logLoss": 2.2446,
+  "calibrationError": 0.0323,
+  "sure70": {
+   "n": 674,
+   "said": 0.84,
+   "happened": 0.794
+  }
+ },
+ "gain": 0.0003,
+ "adopted": false
+}

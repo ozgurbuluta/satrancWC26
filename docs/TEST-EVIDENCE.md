@@ -26,9 +26,10 @@ parents, legal-move entry, puzzle rules, prediction logic, the stream
 finder, share links and the copy helper, the board's lifecycle, the
 viewer's own line, the engine following the board, keyboard shortcuts, the
 Turkish wording, time controls and move times, the workspace panels, the
-move predictor (features, the estimate, rounding, the shipped model's
-counts) and its panel (the score it may use, every hidden and refused
-state): 253 tests.
+engine's lines and decimals, the move predictor (features, the blend of
+earlier moves with the base model worked out by hand, rounding, the shipped
+model's tables, counts and measurements) and its panel (the score it may
+use, every hidden and refused state): 272 tests.
 Also in CI: the secret check over the whole history, the type check, and
 builds for `/` and `/satranc/`.
 
@@ -178,20 +179,20 @@ the prediction checks above and by `tests/store.guess.test.ts`.
 Not covered by this run: real Safari and a real phone for the new layout
 and for tapping moves on the board.
 
-## The model estimate (issue 4)
+## The model estimate (issues 4 and 13)
 
-Run on 25 November 2026 in headless Chromium against the preview build, in
-`tests/e2e/board.cjs` (92 of 92 checks with these added), against a
-simulated match in which Sindarov is to play move 6 of a Ruy Lopez.
+Run on 25 November 2026 in headless Chromium against the preview build, with
+the second version of the model, in `tests/e2e/board.cjs` (92 of 92
+checks), against a simulated match in which Sindarov is to play move 6 of a
+Ruy Lopez.
 
 | Model estimate, bottom of the Tahmin tab | Result |
 |---|---|
-| Rows | three different legal moves and "Diğer hamleler"; 57 + 29 + 5 + 9 = 100 |
+| Rows | three different legal moves and "Diğer hamleler"; 49 + 23 + 20 + 8 = 100 |
 | Label | "Deneysel", and "Sindarov için, 6. hamle" |
-| A legal move with a share under one percent | printed "<1 %", never 0: after 1. e4 the rows read e5 98 %, c5 1 %, c6 <1 %, Diğer hamleler 1 % (looked at in the browser at 1440 px and 390 px; asserted in the unit tests) |
 | Place | the last element of the tab, in the flow of the page, not fixed or sticky; on a phone (390 px) inside the screen width, no sideways scrolling |
 | Its moves | text, not buttons: they cannot be mistaken for a guess |
-| Details | closed until asked; give the measured numbers and the limits |
+| Details | closed until asked; quote the untouched holdout (83 games, 4,240 moves: first choice 35 %, first three 59 %), what was said and played at 70 % and above there (84 %, 82 %) and on the reused benchmark (83 %, 70 %), and the limits |
 | Guess mode on, no guess yet | hidden, with a "Tahmin etmeden göster" button |
 | After a guess | shown again |
 | A move of the viewer's own on the board | leaves the estimate about the game, not about the board |
@@ -200,10 +201,26 @@ simulated match in which Sindarov is to play move 6 of a Ruy Lopez.
 Unit tests cover what the browser run does not: a paused viewer (the
 estimate is for the position on the viewer's board, with that position's
 clock), a finished game (no estimate), a player who is not Gukesh or
-Sindarov (no estimate), and the match score (earlier games only, never the
-open game or a later one, also while paused).
+Sindarov (no estimate), the match score (earlier games only, never the
+open game or a later one, also while paused), and a legal move with a share
+under one percent, which reads "<1 %" and never 0 (after 1. d4 the third
+row).
 
 `share.cjs` 61 of 61 and `puzzles.cjs` 33 of 33 on the same build.
+
+The final model file is 310,021 bytes (about 303 KiB; 160,473 bytes gzip)
+and loads with the Tahmin tab. That tab's script is 324.68 kB (170.37 kB
+gzip), against 147 kB (61 kB gzip) with the first version.
+
+Final independent review on 2026-11-25 restored the original three-decimal
+prior counts before compact encoding. All 13,750 positions and 14,307
+move entries decode exactly to the independently reproduced, audited
+artifact; all model parameters are unchanged. The generated file also
+matches a separately encoded reference byte for byte (SHA-256
+`46d5b119bc2561bed8c0bf4243f9b5c855c05dc5224bf799ebc3350f1261bb99`).
+`--measure-frozen` reproduces the measurements without fitting or selecting
+again. The full 272-test suite, TypeScript/production build, and full-history
+secret scan pass after this precision fix.
 
 Not covered: real Safari, a real phone, and the estimate against the
 production feed.

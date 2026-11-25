@@ -8,8 +8,15 @@ import type { GameData } from '../lib/pgn';
 import { predict, shares, type PredictorModel } from '../lib/predictor/model';
 import { clocksAt, referencesHeld, selectStakes, useStore } from '../store';
 
+interface Measured {
+  n: number;
+  games: number;
+  top1: number;
+  top3: number;
+  whenSure: { n: number; said: number; happened: number };
+}
 const MODEL = model as unknown as PredictorModel & {
-  report: { selection: { selected: number }; split: { test: { games: number } }; shown: { n: number; top1: number; top3: number; whenSure: { n: number; said: number; happened: number } } };
+  report: { selection: { selected: number }; shown: Measured; benchmark: { v2: { n: number; sure70: { n: number; said: number; happened: number } } } };
 };
 const DOCS = `${REPO_URL}/blob/main/docs/PREDICTOR.md`;
 const whole = (x: number) => String(Math.round(x * 100));
@@ -35,6 +42,7 @@ interface Props {
 export function ModelEstimate({ game, fen }: Props) {
   const t = useT();
   const notation = useStore(s => s.settings.notation);
+  const lang = useStore(s => s.settings.lang);
   const revealed = useStore(s => s.revealed);
   const resultVisible = useStore(s => s.resultVisible);
   const held = useStore(referencesHeld);
@@ -124,12 +132,19 @@ export function ModelEstimate({ game, fen }: Props) {
         <p>{t.modelWhat.replace('{games}', String(report.selection.selected))}</p>
         <p>
           {t.modelMeasured
-            .replace('{games}', String(report.split.test.games))
-            .replace('{n}', String(report.shown.n))
+            .replace('{games}', String(report.shown.games))
+            .replace('{n}', new Intl.NumberFormat(lang === 'tr' ? 'tr-TR' : 'en-GB').format(report.shown.n))
             .replace('{top1}', whole(report.shown.top1))
             .replace('{top3}', whole(report.shown.top3))}
         </p>
-        <p>{t.modelSure.replace('{said}', whole(report.shown.whenSure.said)).replace('{happened}', whole(report.shown.whenSure.happened))}</p>
+        <p>
+          {t.modelSure.replace('{said}', whole(report.shown.whenSure.said)).replace('{happened}', whole(report.shown.whenSure.happened))}{' '}
+          {/* the same on the other measured event, where it was further off: one event is not all events */}
+          {t.modelSureElsewhere
+            .replace('{n}', String(report.benchmark.v2.n))
+            .replace('{said}', whole(report.benchmark.v2.sure70.said))
+            .replace('{happened}', whole(report.benchmark.v2.sure70.happened))}
+        </p>
         <p>{t.modelStyle}</p>
         <p>
           {t.modelClock}{' '}

@@ -299,7 +299,7 @@ const pgn = (round, id, sans, result, opts = {}) => {
     check('its moves are text, not controls', (await estimate.locator('.model-moves button, .model-moves a').count()) === 0);
     await estimate.locator('summary').click();
     const details = (await estimate.locator('.model-details').innerText()).replace(/\s+/g, ' ');
-    check('the details give the measured numbers and the limits', /963 hamlesinde ilk tercih yüzde \d+, ilk üç tercih yüzde \d+ tuttu/.test(details) && /fazla emin/.test(details) && /ölçülebilir bir fark yaratmadı/.test(details) && /yazılı bir kuraldır/.test(details), details.slice(0, 140));
+    check('the details give the measured numbers and the limits', /83 oyunun 4\.240 hamlesinde ilk tercih yüzde \d+, ilk üç tercih yüzde \d+ tuttu/.test(details) && /Yüzdeleri kesinlik olarak okuma/.test(details) && /ölçülebilir bir fark yaratmadı/.test(details) && /yazılı bir kuraldır/.test(details), details.slice(0, 140));
 
     await page.locator('.predict .seg button', { hasText: 'Açık' }).click();
     await page.waitForTimeout(300);

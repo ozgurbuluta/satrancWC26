@@ -1,11 +1,25 @@
-// The move predictor: a fitted choice model over the legal moves.
+// The move predictor: a base choice model over the legal moves, blended with
+// what the player has played in the position before.
 //
-// Every legal move gets a score, a weighted sum of its features. The weights
+// The base model gives every legal move a score, a weighted sum of features
+// read off the board, and turns the scores into probabilities. Its weights
 // were fitted on the two players' earlier classical games (see
-// scripts/train-predictor.mjs and docs/PREDICTOR.md). Scores become
-// probabilities that sum to one over all legal moves. There is one set of
-// weights shared by everyone, a correction for each of the two players, and
-// a correction that grows as the mover's clock runs down.
+// scripts/train-predictor.mjs and docs/PREDICTOR.md): one set shared by
+// everyone, a correction for each of the two players where the selection
+// games supported one, and a correction that grows as the clock runs down.
+//
+// Where the player has been in the position before, the estimate is pulled
+// towards what they played there:
+//
+//   p(m) = (own(m) + w · others(m) + κ · base(m)) / (own + w · others + κ)
+//
+// Up to this point the estimate lies between the base model and the share
+// actually played (other people's moves counted at their discount w): it is
+// the base model where there are no earlier games, and close to the played
+// share where there are many. A last step then spreads a small share ε
+// evenly over every legal move, a third ingredient that is neither of the
+// two. Counts are aged, so a game of last month weighs more than one of
+// three years ago.
 //
 // The match situation (score and games left) is not something the data can
 // teach: the earlier games are tournaments, not matches. It enters through
@@ -18,17 +32,37 @@ export interface PredictorModel {
   features: string[];
   weights: {
     shared: number[];
-    /** Corrections per player key ("gukesh", "sindarov"). */
+    /** Corrections per player key ("gukesh", "sindarov"). All zero where none were fitted. */
     players: Record<string, number[]>;
     /** Correction applied in proportion to clock pressure (0 to 1). */
     clock: number[];
   };
-  /** Scores are divided by this before they become probabilities. Fitted on the calibration games. */
+  /** The base model's scores are divided by this before they become probabilities. Chosen on the selection games. */
   temperature: number;
+  /** How earlier moves are blended with the base model. All of it chosen on the selection games. */
+  blend: {
+    /** How many earlier games the base model is worth. */
+    kappa: number;
+    /** What a move played here by someone else counts for, next to one of the player's own. */
+    others: number;
+    /** Counts halve with every this many years of age; null for no ageing. Already applied to the tables. */
+    halfLifeYears: number | null;
+    /** A small share spread evenly over every legal move. */
+    epsilon: number;
+    /** The day the tables are aged as of. */
+    asOf: string;
+  };
   /** FIDE id to player key. */
   players: Record<string, string>;
-  /** Moves played before in a position: position key, then UCI, then count. By player key, and for everyone. */
-  priors: { players: Record<string, Record<string, Record<string, number>>>; any: Record<string, Record<string, number>> };
+  /** Whose count a letter in the tables stands for: a player key, or "others". */
+  priorColumns: Record<string, string>;
+  /**
+   * Moves played before, as one text: "key=move,move;key=move". A move is
+   * its UCI followed by a letter and a count for each column that has one:
+   * "e2e4g2.5x1" is e2e4, 2.5 times by the player of column g and once by
+   * column x. Counts are already aged.
+   */
+  priors: string;
   /** The match-situation rule: the most it can add to or take from a move's score. */
   stakesMax: number;
   /** Seconds on the clock below which pressure starts to count. */
@@ -109,12 +143,43 @@ export const softmax = (scores: number[]): number[] => {
   return e.map(x => x / sum);
 };
 
+/** The tables of a model by position key, read from its text once and kept. */
+const tables = new WeakMap<PredictorModel, Map<string, string>>();
+const tableOf = (model: PredictorModel): Map<string, string> => {
+  let table = tables.get(model);
+  if (!table) {
+    table = new Map();
+    for (const part of model.priors.split(';')) {
+      const at = part.indexOf('=');
+      if (at > 0) table.set(part.slice(0, at), part.slice(at + 1));
+    }
+    tables.set(model, table);
+  }
+  return table;
+};
+
+/** What was played before in a position: for each move, how often by each column ("gukesh", "sindarov", "others"). */
+export const earlierMoves = (model: PredictorModel, key: string): Map<string, Record<string, number>> => {
+  const moves = new Map<string, Record<string, number>>();
+  const entry = tableOf(model).get(key);
+  if (!entry) return moves;
+  for (const part of entry.split(',')) {
+    const move = /^([a-h][1-8][a-h][1-8][qrbn]?)(.*)$/.exec(part);
+    if (!move) continue;
+    const counts: Record<string, number> = {};
+    for (const [, letter, count] of move[2].matchAll(/([a-z])(\d*\.?\d+)/g)) {
+      const who = model.priorColumns[letter];
+      if (who) counts[who] = Number(count);
+    }
+    moves.set(move[1], counts);
+  }
+  return moves;
+};
+
 /** The model's estimate for the next move in a position. */
 export const predict = (model: PredictorModel, input: PredictInput): Prediction => {
   const playerKey = input.moverId ? model.players[input.moverId] : undefined;
-  const key = positionKey(input.fen);
-  const repPlayer = playerKey ? model.priors.players[playerKey]?.[key] : undefined;
-  const cands = candidates({ fen: input.fen, lastMove: input.lastMove, ownLastMove: input.ownLastMove, repPlayer, repAny: model.priors.any[key] });
+  const cands = candidates({ fen: input.fen, lastMove: input.lastMove, ownLastMove: input.ownLastMove });
   const pressure = clockPressure(input.secondsLeft, model.clockFullSeconds);
   const urgency = matchUrgency(input.match);
   if (cands.length === 0) return { supported: !!playerKey, moves: [], other: 0, pressure, urgency, seenBefore: false };
@@ -122,10 +187,28 @@ export const predict = (model: PredictorModel, input: PredictInput): Prediction 
     // The match rule: a player who is behind is taken to avoid even trades a little, one who is ahead to welcome them.
     (s, i) => s / model.temperature - urgency * model.stakesMax * cands[i].f[TRADE],
   );
-  const p = softmax(scores);
+  let p = softmax(scores);
+  let seenBefore = false;
+  if (playerKey && Object.values(model.priorColumns).includes(playerKey)) {
+    // the player's own earlier moves here, other people's at a discount, and the base model as kappa games' worth
+    const { kappa, others, epsilon } = model.blend;
+    const played = earlierMoves(model, positionKey(input.fen));
+    const mass = p.map(q => kappa * q);
+    let total = kappa;
+    cands.forEach((c, i) => {
+      const counts = played.get(c.uci);
+      if (!counts) return;
+      const own = counts[playerKey] ?? 0;
+      const rest = Object.values(counts).reduce((sum, x) => sum + x, 0) - own;
+      if (own > 0) seenBefore = true;
+      mass[i] += own + others * rest;
+      total += own + others * rest;
+    });
+    p = mass.map(m => ((1 - epsilon) * m) / total + epsilon / cands.length);
+  }
   const moves = cands.map((c, i) => ({ uci: c.uci, san: c.san, p: p[i] })).sort((a, b) => b.p - a.p || a.uci.localeCompare(b.uci));
   const top = moves.slice(0, 3).reduce((sum, m) => sum + m.p, 0);
-  return { supported: !!playerKey, moves, other: Math.max(0, 1 - top), pressure, urgency, seenBefore: !!repPlayer };
+  return { supported: !!playerKey, moves, other: Math.max(0, 1 - top), pressure, urgency, seenBefore };
 };
 
 export interface Share {
