@@ -2,9 +2,18 @@ import { describe, expect, it } from 'vitest';
 import shipped from '../src/data/predictor.json';
 import { legalSans } from '../src/lib/position';
 import { candidates, FEATURES, FEATURE_COUNT, positionKey } from '../src/lib/predictor/features';
-import { clockPressure, matchUrgency, predict, shares, type PredictorModel } from '../src/lib/predictor/model';
+import { clockPressure, earlierMoves, matchUrgency, predict, shares, type PredictorModel } from '../src/lib/predictor/model';
 
 const MODEL = shipped as unknown as PredictorModel;
+/** A model with no weights and no tables: every legal move equally likely. */
+const FLAT: PredictorModel = {
+  ...MODEL,
+  weights: { shared: MODEL.features.map(() => 0), players: {}, clock: MODEL.features.map(() => 0) },
+  temperature: 1,
+  blend: { kappa: 1, others: 0, halfLifeYears: null, epsilon: 0, asOf: '2026-11-01' },
+  priorColumns: ['gukesh', 'sindarov'],
+  priors: {},
+};
 const GUKESH = '46616543';
 const SINDAROV = '14205483';
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -165,8 +174,7 @@ describe('the estimate', () => {
   });
 
   it('breaks exact ties by the move text, the same way every time', () => {
-    const flat: PredictorModel = { ...MODEL, weights: { shared: MODEL.features.map(() => 0), players: {}, clock: MODEL.features.map(() => 0) }, priors: { players: {}, any: {} } };
-    const p = predict(flat, { fen: START });
+    const p = predict(FLAT, { fen: START });
     expect(new Set(p.moves.map(m => m.p.toFixed(12))).size).toBe(1);
     expect(p.moves.map(m => m.uci)).toEqual([...p.moves.map(m => m.uci)].sort());
   });
@@ -189,6 +197,84 @@ describe('the estimate', () => {
     expect(p.seenBefore).toBe(true);
     // far from any opening the table has nothing
     expect(predict(MODEL, { fen: '8/8/8/3k4/8/3K4/3R4/8 b - - 0 70', moverId: SINDAROV }).seenBefore).toBe(false);
+  });
+});
+
+describe('earlier moves blended with the base model', () => {
+  // A base model that finds all twenty first moves equally likely, so every number below can be worked out by hand.
+  const at = (model: PredictorModel, uci: string, moverId = GUKESH) => predict(model, { fen: START, moverId }).moves.find(m => m.uci === uci)!.p;
+  const withTable = (entry: string, blend: Partial<PredictorModel['blend']> = {}): PredictorModel => ({ ...FLAT, blend: { ...FLAT.blend, ...blend }, priors: { [positionKey(START)]: entry } });
+
+  it('is the base model where nothing was played before', () => {
+    const p = predict(FLAT, { fen: START, moverId: GUKESH });
+    for (const m of p.moves) expect(m.p).toBeCloseTo(1 / 20, 12);
+    expect(p.seenBefore).toBe(false);
+  });
+
+  it('pulls towards what the player played, by (own + κ·base) / (games + κ)', () => {
+    // Gukesh: e4 three times, d4 once. κ = 2, so the base model is worth two games.
+    const model = withTable('e2e4 3 0|d2d4 1 5', { kappa: 2 });
+    expect(at(model, 'e2e4')).toBeCloseTo((3 + 2 / 20) / (4 + 2), 12);
+    expect(at(model, 'd2d4')).toBeCloseTo((1 + 2 / 20) / (4 + 2), 12);
+    expect(at(model, 'g1f3')).toBeCloseTo((2 / 20) / (4 + 2), 12);
+    expect(predict(model, { fen: START, moverId: GUKESH }).seenBefore).toBe(true);
+    // the other player's column is their own: Sindarov has only played d4 here
+    expect(at(model, 'd2d4', SINDAROV)).toBeCloseTo((5 + 2 / 20) / (5 + 2), 12);
+    expect(at(model, 'e2e4', SINDAROV)).toBeCloseTo((2 / 20) / (5 + 2), 12);
+  });
+
+  it('never says more than the share that was played, however many games there are', () => {
+    // 60 / 40 in a hundred games stays close to 60 / 40: it is not sharpened
+    const model = withTable('e2e4 60 0|d2d4 40 0', { kappa: 2 });
+    expect(at(model, 'e2e4')).toBeLessThan(0.6);
+    expect(at(model, 'e2e4')).toBeGreaterThan(0.58);
+    expect(at(model, 'd2d4')).toBeLessThan(0.4);
+    expect(at(model, 'd2d4')).toBeGreaterThan(0.39);
+    // one game is weak evidence: the move is likelier than the rest, far from certain
+    const once = withTable('e2e4 1 0', { kappa: 2 });
+    expect(at(once, 'e2e4')).toBeCloseTo((1 + 0.1) / 3, 12);
+  });
+
+  it('counts other people’s moves at a discount, or not at all', () => {
+    // a third column: moves played here by anyone but the two
+    const model: PredictorModel = { ...withTable('e2e4 1 0 0|c2c4 0 2 6', { kappa: 1, others: 0.25 }), priorColumns: ['gukesh', 'sindarov', 'others'] };
+    // for Gukesh: one own e4; Sindarov's two and the others' six c4 count a quarter each
+    expect(at(model, 'c2c4')).toBeCloseTo((0.25 * 8 + 1 / 20) / (1 + 2 + 1), 12);
+    expect(at(model, 'e2e4')).toBeCloseTo((1 + 1 / 20) / (1 + 2 + 1), 12);
+    const none: PredictorModel = { ...model, blend: { ...model.blend, others: 0 } };
+    expect(at(none, 'c2c4')).toBeCloseTo((1 / 20) / 2, 12);
+    // a position only others have been in is not one the player has seen
+    const onlyOthers: PredictorModel = { ...model, priors: { [positionKey(START)]: 'c2c4 0 0 6' } };
+    expect(predict(onlyOthers, { fen: START, moverId: GUKESH }).seenBefore).toBe(false);
+  });
+
+  it('leaves every legal move a small share when ε is set', () => {
+    const model = withTable('e2e4 1000 0', { kappa: 0.25, epsilon: 0.02 });
+    const p = predict(model, { fen: START, moverId: GUKESH });
+    expect(p.moves.reduce((sum, m) => sum + m.p, 0)).toBeCloseTo(1, 12);
+    for (const m of p.moves) expect(m.p).toBeGreaterThanOrEqual(0.02 / 20 - 1e-12);
+    expect(p.moves[0].p).toBeLessThan(1 - 0.02 * (19 / 20) + 1e-12);
+  });
+
+  it('ignores a table entry for a move that is not legal, and a player it has no column for', () => {
+    const model = withTable('e2e5 9 9|e2e4 1 0', { kappa: 1 });
+    const p = predict(model, { fen: START, moverId: GUKESH });
+    expect(p.moves).toHaveLength(20);
+    expect(p.moves.reduce((sum, m) => sum + m.p, 0)).toBeCloseTo(1, 12);
+    expect(at(model, 'e2e4')).toBeCloseTo((1 + 1 / 20) / 2, 12);
+    // someone else to move: the base model alone, and the panel is told it does not know them
+    const stranger = predict(model, { fen: START, moverId: '1503014' });
+    expect(stranger.supported).toBe(false);
+    for (const m of stranger.moves) expect(m.p).toBeCloseTo(1 / 20, 12);
+  });
+
+  it('applies the match rule to the base model, not to what was played', () => {
+    const model = withTable('e2e4 1 0', { kappa: 1 });
+    const calm = predict(model, { fen: START, moverId: GUKESH });
+    const behind = predict(model, { fen: START, moverId: GUKESH, match: { moverPoints: 0, opponentPoints: 3, gamesLeft: 3 } });
+    // no first move is a trade, so the rule changes nothing here
+    expect(behind.urgency).toBe(1);
+    expect(behind.moves.map(m => m.p)).toEqual(calm.moves.map(m => m.p));
   });
 });
 
@@ -231,38 +317,75 @@ describe('clock pressure and the match rule', () => {
 describe('the model that is shipped', () => {
   const report = (shipped as unknown as { report: Record<string, any> }).report;
 
-  it('has weights for exactly the features the code computes', () => {
+  it('has weights for exactly the features the code computes, and no weight on the old repertoire features', () => {
     expect(MODEL.features).toEqual([...FEATURES]);
     for (const w of [MODEL.weights.shared, MODEL.weights.clock, MODEL.weights.players.gukesh, MODEL.weights.players.sindarov]) {
       expect(w).toHaveLength(FEATURE_COUNT);
       for (const x of w) expect(Number.isFinite(x)).toBe(true);
+      // earlier moves enter through the blend, not through the weighted sum
+      expect(w[FEATURES.indexOf('repPlayer')]).toBe(0);
+      expect(w[FEATURES.indexOf('repAny')]).toBe(0);
     }
     expect(MODEL.temperature).toBeGreaterThan(0);
     expect(MODEL.players).toEqual({ [GUKESH]: 'gukesh', [SINDAROV]: 'sindarov' });
-    expect(Object.keys(MODEL.priors.players.gukesh).length).toBeGreaterThan(100);
-    expect(Object.keys(MODEL.priors.players.sindarov).length).toBeGreaterThan(100);
   });
 
-  it('carries its own measurements, and says the shown ones are not from a blind test', () => {
-    expect(report.selection.selected).toBe(104);
-    expect(report.split.fit).toMatchObject({ games: 74, decisions: 3761 });
-    expect(report.split.calibration).toMatchObject({ games: 9, decisions: 479, gukesh: 0 });
-    expect(report.split.test).toMatchObject({ games: 21, decisions: 963 });
-    expect(report.shown.blind).toBe(false);
-    expect(report.shown.n).toBe(963);
-    for (const key of ['firstProtocol', 'revision']) {
-      const p = report[key];
-      expect(p.test.all.n).toBe(963);
-      expect(p.test.all.top1).toBeGreaterThan(p.baselines.uniform.top1);
-      expect(p.test.all.logLoss).toBeLessThan(p.baselines.uniform.logLoss);
-      expect(p.test.all.top3).toBeGreaterThanOrEqual(p.test.all.top1);
+  it('blends with settings that were chosen on the selection games', () => {
+    expect(MODEL.blend).toEqual({ kappa: 0.5, others: 0.5, halfLifeYears: 4, epsilon: 0.005, asOf: '2026-11-01' });
+    expect(report.chosen.family).toBe('B');
+    expect(report.chosen.onSelection.B).toBeLessThan(report.chosen.onSelection.A);
+  });
+
+  it('has tables that read as counts for the columns it names, for legal moves only', () => {
+    expect(MODEL.priorColumns).toEqual(['gukesh', 'sindarov', 'others']);
+    const keys = Object.keys(MODEL.priors);
+    expect(keys.length).toBeGreaterThan(1000);
+    for (const key of keys) {
+      const moves = earlierMoves(MODEL, key);
+      expect(moves.size).toBeGreaterThan(0);
+      for (const [uci, counts] of moves) {
+        expect(uci).toMatch(/^[a-h][1-8][a-h][1-8][qrbn]?$/);
+        expect(counts).toHaveLength(3);
+        for (const x of counts) expect(x).toBeGreaterThanOrEqual(0);
+        expect(counts.some(x => x > 0)).toBe(true);
+      }
     }
-    // the first protocol is kept as it was measured
-    expect(report.firstProtocol.test.all.top1).toBeCloseTo(0.292, 2);
-    // what the panel quotes is the revision
-    expect(report.shown.top1).toBe(report.revision.test.all.top1);
-    // "every move equally likely" is scored by expectation: 1/n, averaged
-    expect(report.revision.baselines.uniform.top1).toBeLessThan(0.06);
-    expect(report.revision.baselines.uniform.top3).toBeCloseTo(3 * report.revision.baselines.uniform.top1, 1);
+    // the first move of a game: both players have been there many times, and every move in the table is legal
+    const first = earlierMoves(MODEL, positionKey(START));
+    const legal = new Set(candidates({ fen: START }).map(c => c.uci));
+    for (const uci of first.keys()) expect(legal.has(uci)).toBe(true);
+    expect([...first.values()].reduce((sum, c) => sum + c[0], 0)).toBeGreaterThan(5);
+    expect([...first.values()].reduce((sum, c) => sum + c[1], 0)).toBeGreaterThan(5);
+  });
+
+  it('carries its own measurements: a blind one on the untouched holdout, and the reused benchmark', () => {
+    expect(report.selection.selected).toBe(455);
+    expect(report.selection.tournaments).toBe(43);
+    expect(report.split.fit).toMatchObject({ games: 233, decisions: 10578 });
+    expect(report.split.selection).toMatchObject({ games: 118, decisions: 5733 });
+    expect(report.split.holdout).toMatchObject({ games: 83, decisions: 4240 });
+    expect(report.split.benchmark).toMatchObject({ games: 21, decisions: 963 });
+    // what the panel quotes is the untouched holdout
+    expect(report.shown.blind).toBe(true);
+    expect(report.shown.n).toBe(4240);
+    expect(report.shown.games).toBe(83);
+    expect(report.shown.top3).toBeGreaterThanOrEqual(report.shown.top1);
+    expect(report.shown.whenSure).toEqual(report.shown.sure70);
+    expect(report.shown.whenSure.n).toBeGreaterThan(0);
+    for (const k of ['logLoss', 'brier', 'top1', 'top3', 'ece']) {
+      const [low, high] = report.shown.intervals[k];
+      expect(low).toBeLessThanOrEqual(report.shown[k]);
+      expect(high).toBeGreaterThanOrEqual(report.shown[k]);
+    }
+    // the benchmark is the first version's 963 decisions, and its published numbers are reproduced there
+    expect(report.benchmark.blind).toBe(false);
+    expect(report.benchmark.v1).toMatchObject({ n: 963, top1: 0.2876, top3: 0.5369, logLoss: 2.5489, brier: 0.8537, ece: 0.0949 });
+    expect(report.benchmark.v2.n).toBe(963);
+    expect(report.benchmark.v2.difference.logLoss.value).toBeCloseTo(report.benchmark.v2.logLoss - report.benchmark.v1.logLoss, 3);
+    // the claim is the rule applied to the numbers, nothing else
+    const c = report.claims;
+    expect(c.benchmarkLogLossLower).toBe(report.benchmark.v2.difference.logLoss.interval[1] < 0);
+    expect(c.benchmarkCalibrationErrorLower).toBe(report.benchmark.v2.ece < report.benchmark.v1.ece);
+    expect(c.moreReliableThanV1).toBe(c.benchmarkLogLossLower && c.benchmarkCalibrationErrorLower && c.benchmarkGapAt70Smaller && c.holdoutLogLossNotWorseThanOther && c.holdoutCalibrationErrorNotWorseThanOther);
   });
 });

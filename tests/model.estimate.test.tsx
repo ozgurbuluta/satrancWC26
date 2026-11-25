@@ -2,6 +2,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { boot, game, HOUR, ITALIAN, push, QGD, R1, R2, R3, resetWorld, round, world } from './helpers';
+import shipped from '../src/data/predictor.json';
 
 const T0 = Date.UTC(2026, 10, 25, 15, 0, 0);
 const GUKESH = '46616543';
@@ -168,11 +169,17 @@ describe('the estimate in the prediction tab', () => {
   it('tells what it is and how well it did, in measured numbers', async () => {
     await mount(game({ round: 1, id: 'g1', sans: ITALIAN.slice(0, 4) }));
     const details = host.querySelector('.model-details')!.textContent!;
-    expect(details).toContain('104 klasik oyunundan');
+    expect(details).toContain('455 klasik oyunundan');
     expect(details).toContain('Motor kullanmaz');
-    expect(details).toMatch(/21 oyunun 963 hamlesinde ilk tercih yüzde \d+, ilk üç tercih yüzde \d+ tuttu/);
-    expect(details).toContain('tam kör bir ölçümden gelmiyor');
-    expect(details).toContain('fazla emin');
+    // the untouched holdout, with the numbers of the shipped file and nothing rounder
+    const shown = (shipped as unknown as { report: { shown: { top1: number; top3: number; whenSure: { said: number; happened: number } } } }).report.shown;
+    const whole = (x: number) => String(Math.round(x * 100));
+    expect(details).toContain(`hiç kullanılmayan 83 oyunun 4.240 hamlesinde ilk tercih yüzde ${whole(shown.top1)}, ilk üç tercih yüzde ${whole(shown.top3)} tuttu`);
+    expect(details).toContain('yalnızca en sonda, bir kez bakıldı');
+    expect(details).toContain(`ortalama yüzde ${whole(shown.whenSure.said)} dedi; bunların yüzde ${whole(shown.whenSure.happened)} kadarı oynandı`);
+    expect(details).toContain('Yüzdeleri kesinlik olarak okuma');
+    // "too sure" is said exactly when the measurement shows it: three points or more between said and played
+    expect(details.includes('fazla emin')).toBe(shown.whenSure.said - shown.whenSure.happened >= 0.03);
     expect(details).toContain('ölçülebilir bir fark yaratmadı');
     expect(details).toContain('öğrenilmiş değil, yazılı bir kuraldır');
     expect(details).toContain('CC BY-SA 4.0');

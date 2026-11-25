@@ -2,6 +2,7 @@
 //
 //   node scripts/train-predictor.mjs                       the selection stage
 //   node scripts/train-predictor.mjs --final               the selection stage again, then the final measurement
+//   node scripts/train-predictor.mjs --measure-frozen      the final measurement from the committed selection, without fitting
 //   node scripts/train-predictor.mjs --calibration-check   one more calibration step, tried on the selection games and not adopted
 //
 // The protocol this follows was written down before any fitting:
@@ -27,11 +28,19 @@
 // committed before the final measurement is run. --final repeats the
 // selection, stops if it does not come out identical to that file, and then
 // writes src/data/predictor.json and docs/PREDICTOR-REPORT.md.
+// --measure-frozen writes the same two files without fitting anything: it
+// reads the committed selection, checks that the corpora, the split and the
+// tournaments are the ones it was made on and that its settings give its
+// recorded losses on the selection games, and then measures. Both use the
+// committed file and nothing else for the measurement, so they write the
+// same bytes.
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'vite';
 
 const FINAL = process.argv.includes('--final');
+/** Measure with the committed selection as it is: nothing is fitted and nothing is chosen in such a run. */
+const FROZEN = process.argv.includes('--measure-frozen');
 const vite = await createServer({ configFile: false, appType: 'custom', server: { middlewareMode: true }, logLevel: 'error' });
 const { parseGame, splitGames } = await vite.ssrLoadModule('/src/lib/pgn.ts');
 const { candidates, FEATURES, positionKey } = await vite.ssrLoadModule('/src/lib/predictor/features.ts');
@@ -592,104 +601,137 @@ if (process.argv.includes('--calibration-check')) {
 }
 
 // ---------- 5. every choice, on the selection games only
-const fitRows = bySet.fit;
 const selRows = ownOf('selection');
-const selection = { families: { A: { candidates: [] }, B: { candidates: [] } } };
-{
-  // Family A as the first version did it: penalties by the loss at temperature 1, then the temperature.
-  let best;
-  for (const penaltyShared of [0.001, 0.01]) {
-    for (const penaltyOwn of [0.01, 0.05, 0.2]) {
-      const theta = fit(fitRows, { active: ALL, penaltyShared, penaltyPlayers: penaltyOwn, penaltyClock: penaltyOwn });
-      const loss = logLoss(selRows, familyA(theta, 1));
-      selection.families.A.candidates.push({ penaltyShared, penaltyOwn, lossAtTemperature1: loss });
-      log(`family A, penalties ${penaltyShared} / ${penaltyOwn}: selection log loss ${loss.toFixed(4)} at temperature 1`);
-      if (!best || loss < best.loss) best = { theta, loss, penaltyShared, penaltyOwn };
-    }
-  }
-  const temperature = searchTemperature(t => logLoss(selRows, familyA(best.theta, t)), 0.5, 2.5);
-  Object.assign(selection.families.A, { penaltyShared: best.penaltyShared, penaltyOwn: best.penaltyOwn, temperature, theta: Array.from(best.theta), loss: logLoss(selRows, familyA(best.theta, temperature)) });
-  log(`family A chosen: penalties ${best.penaltyShared} / ${best.penaltyOwn}, temperature ${temperature}, selection log loss ${selection.families.A.loss.toFixed(4)}`);
-}
-{
-  // Family B: four fits of the base model; for each, the blend is searched one setting at a time until nothing changes.
-  const GRID = { kappa: [0.25, 0.5, 1, 2, 4, 8, 16], others: [0, 0.05, 0.1, 0.25, 0.5, 1], halfLife: [0.5, 1, 2, 4, null], epsilon: [0, 0.002, 0.005, 0.01, 0.02, 0.05] };
-  const variants = [
-    { label: 'corrections 0.01', players: true, penaltyPlayers: 0.01, penaltyClock: 0.01 },
-    { label: 'corrections 0.2', players: true, penaltyPlayers: 0.2, penaltyClock: 0.2 },
-    { label: 'no per-player corrections, clock 0.01', players: false, penaltyPlayers: 0, penaltyClock: 0.01 },
-    { label: 'no per-player corrections, clock 0.2', players: false, penaltyPlayers: 0, penaltyClock: 0.2 },
-  ];
-  let best;
-  for (const variant of variants) {
-    const theta = fit(fitRows, { active: BOARD, penaltyShared: 0.001, penaltyPlayers: variant.penaltyPlayers, penaltyClock: variant.penaltyClock, players: variant.players });
-    const cfg = { theta, players: variant.players, temperature: 1, kappa: 1, others: 0.25, halfLife: null, epsilon: 0 };
-    const lossOf = change => logLoss(selRows, familyB({ ...cfg, ...change }));
-    let loss = lossOf({});
-    for (let round = 1; round <= 10; round++) {
-      const before = JSON.stringify([cfg.temperature, cfg.kappa, cfg.others, cfg.halfLife, cfg.epsilon]);
-      cfg.temperature = searchTemperature(t => lossOf({ temperature: t }));
-      for (const name of Object.keys(GRID)) {
-        for (const value of GRID[name]) {
-          const candidate = lossOf({ [name]: value });
-          if (candidate < lossOf({})) cfg[name] = value;
-        }
+/** The models a selection describes: both families, the base model of family B, and the chosen one as v2. */
+const modelsOf = sel => {
+  const A = sel.families.A;
+  const B = sel.families.B;
+  const models = {
+    A: familyA(Float64Array.from(A.theta), A.temperature),
+    B: familyB({ ...B, theta: Float64Array.from(B.theta) }),
+    base: baseOf(Float64Array.from(B.theta), B.temperature),
+  };
+  models.v2 = models[sel.chosen];
+  return models;
+};
+/** What the selection was made on: the corpora, the sets, the tournaments, and the pairs the safe end bound costs. */
+const dataOf = () => ({
+  corpora: selectionCounts,
+  sample,
+  tournaments: tournaments.map(t => ({ name: t.name, set: t.set, start: t.start, end: t.end, months: t.months, games: t.games, gukesh: t.gukesh, sindarov: t.sindarov })),
+  // X began before E and shares a player with it, but ends in the month E starts, so it is not counted for E
+  pairsLeftOut: tournaments.flatMap(x =>
+    tournaments.filter(e => e !== x && x.start < e.start && !earlier(x, e) && x.end.slice(0, 7) === e.start.slice(0, 7) && ((x.gukesh && e.gukesh) || (x.sindarov && e.sindarov))).map(e => ({ earlier: x.name, ends: x.end, later: e.name, starts: e.start })),
+  ),
+});
+/** The whole selection stage: ten fits, every choice on the selection games. Returns the text of the selection file. */
+const select = () => {
+  const fitRows = bySet.fit;
+  const selection = { families: { A: { candidates: [] }, B: { candidates: [] } } };
+  {
+    // Family A as the first version did it: penalties by the loss at temperature 1, then the temperature.
+    let best;
+    for (const penaltyShared of [0.001, 0.01]) {
+      for (const penaltyOwn of [0.01, 0.05, 0.2]) {
+        const theta = fit(fitRows, { active: ALL, penaltyShared, penaltyPlayers: penaltyOwn, penaltyClock: penaltyOwn });
+        const loss = logLoss(selRows, familyA(theta, 1));
+        selection.families.A.candidates.push({ penaltyShared, penaltyOwn, lossAtTemperature1: loss });
+        log(`family A, penalties ${penaltyShared} / ${penaltyOwn}: selection log loss ${loss.toFixed(4)} at temperature 1`);
+        if (!best || loss < best.loss) best = { theta, loss, penaltyShared, penaltyOwn };
       }
-      loss = lossOf({});
-      if (JSON.stringify([cfg.temperature, cfg.kappa, cfg.others, cfg.halfLife, cfg.epsilon]) === before) break;
     }
-    const baseAlone = logLoss(selRows, baseOf(theta, searchTemperature(t => logLoss(selRows, baseOf(theta, t)))));
-    selection.families.B.candidates.push({ label: variant.label, temperature: cfg.temperature, kappa: cfg.kappa, others: cfg.others, halfLife: cfg.halfLife, epsilon: cfg.epsilon, loss, baseModelAlone: baseAlone });
-    log(`family B, ${variant.label}: T ${cfg.temperature}, κ ${cfg.kappa}, w ${cfg.others}, half-life ${cfg.halfLife ?? 'none'}, ε ${cfg.epsilon}: selection log loss ${loss.toFixed(4)} (base model alone ${baseAlone.toFixed(4)})`);
-    if (!best || loss < best.loss) best = { ...cfg, loss, label: variant.label, penaltyPlayers: variant.penaltyPlayers, penaltyClock: variant.penaltyClock };
+    const temperature = searchTemperature(t => logLoss(selRows, familyA(best.theta, t)), 0.5, 2.5);
+    Object.assign(selection.families.A, { penaltyShared: best.penaltyShared, penaltyOwn: best.penaltyOwn, temperature, theta: Array.from(best.theta), loss: logLoss(selRows, familyA(best.theta, temperature)) });
+    log(`family A chosen: penalties ${best.penaltyShared} / ${best.penaltyOwn}, temperature ${temperature}, selection log loss ${selection.families.A.loss.toFixed(4)}`);
   }
-  Object.assign(selection.families.B, { ...best, theta: Array.from(best.theta), grid: GRID });
-  log(`family B chosen: ${best.label}, selection log loss ${best.loss.toFixed(4)}`);
-}
-selection.chosen = selection.families.B.loss < selection.families.A.loss ? 'B' : 'A';
-log(`chosen on the selection games: family ${selection.chosen}`);
+  {
+    // Family B: four fits of the base model; for each, the blend is searched one setting at a time until nothing changes.
+    const GRID = { kappa: [0.25, 0.5, 1, 2, 4, 8, 16], others: [0, 0.05, 0.1, 0.25, 0.5, 1], halfLife: [0.5, 1, 2, 4, null], epsilon: [0, 0.002, 0.005, 0.01, 0.02, 0.05] };
+    const variants = [
+      { label: 'corrections 0.01', players: true, penaltyPlayers: 0.01, penaltyClock: 0.01 },
+      { label: 'corrections 0.2', players: true, penaltyPlayers: 0.2, penaltyClock: 0.2 },
+      { label: 'no per-player corrections, clock 0.01', players: false, penaltyPlayers: 0, penaltyClock: 0.01 },
+      { label: 'no per-player corrections, clock 0.2', players: false, penaltyPlayers: 0, penaltyClock: 0.2 },
+    ];
+    let best;
+    for (const variant of variants) {
+      const theta = fit(fitRows, { active: BOARD, penaltyShared: 0.001, penaltyPlayers: variant.penaltyPlayers, penaltyClock: variant.penaltyClock, players: variant.players });
+      const cfg = { theta, players: variant.players, temperature: 1, kappa: 1, others: 0.25, halfLife: null, epsilon: 0 };
+      const lossOf = change => logLoss(selRows, familyB({ ...cfg, ...change }));
+      let loss = lossOf({});
+      for (let round = 1; round <= 10; round++) {
+        const before = JSON.stringify([cfg.temperature, cfg.kappa, cfg.others, cfg.halfLife, cfg.epsilon]);
+        cfg.temperature = searchTemperature(t => lossOf({ temperature: t }));
+        for (const name of Object.keys(GRID)) {
+          for (const value of GRID[name]) {
+            const candidate = lossOf({ [name]: value });
+            if (candidate < lossOf({})) cfg[name] = value;
+          }
+        }
+        loss = lossOf({});
+        if (JSON.stringify([cfg.temperature, cfg.kappa, cfg.others, cfg.halfLife, cfg.epsilon]) === before) break;
+      }
+      const baseAlone = logLoss(selRows, baseOf(theta, searchTemperature(t => logLoss(selRows, baseOf(theta, t)))));
+      selection.families.B.candidates.push({ label: variant.label, temperature: cfg.temperature, kappa: cfg.kappa, others: cfg.others, halfLife: cfg.halfLife, epsilon: cfg.epsilon, loss, baseModelAlone: baseAlone });
+      log(`family B, ${variant.label}: T ${cfg.temperature}, κ ${cfg.kappa}, w ${cfg.others}, half-life ${cfg.halfLife ?? 'none'}, ε ${cfg.epsilon}: selection log loss ${loss.toFixed(4)} (base model alone ${baseAlone.toFixed(4)})`);
+      if (!best || loss < best.loss) best = { ...cfg, loss, label: variant.label, penaltyPlayers: variant.penaltyPlayers, penaltyClock: variant.penaltyClock };
+    }
+    Object.assign(selection.families.B, { ...best, theta: Array.from(best.theta), grid: GRID });
+    log(`family B chosen: ${best.label}, selection log loss ${best.loss.toFixed(4)}`);
+  }
+  selection.chosen = selection.families.B.loss < selection.families.A.loss ? 'B' : 'A';
+  log(`chosen on the selection games: family ${selection.chosen}`);
 
-const A = selection.families.A;
-const B = selection.families.B;
-const models = {
-  A: familyA(Float64Array.from(A.theta), A.temperature),
-  B: familyB({ ...B, theta: Float64Array.from(B.theta) }),
-  base: baseOf(Float64Array.from(B.theta), B.temperature),
+  const models = modelsOf(selection);
+
+  // What the selection games show, which may be read: the chosen model, the other family and the base model.
+  selection.onSelection = {
+    v2: measure(selRows, models.v2, { against: selection.chosen === 'B' ? models.A : models.B }),
+    A: measure(selRows, models.A),
+    B: measure(selRows, models.B),
+    base: measure(selRows, models.base),
+    uniform: measure(selRows, uniform, { expected: true }),
+  };
+  for (const [name, m] of Object.entries(selection.onSelection)) {
+    log(`selection games, ${name}: log loss ${m.logLoss.toFixed(4)}, Brier ${m.brier.toFixed(4)}, first ${(100 * m.top1).toFixed(1)} %, three ${(100 * m.top3).toFixed(1)} %, calibration error ${(100 * m.ece).toFixed(1)} %, at 70 % and above: ${m.sure70.n} said ${(100 * m.sure70.said).toFixed(1)} % played ${(100 * m.sure70.happened).toFixed(1)} %`);
+  }
+  selection.protocol = 'docs/PREDICTOR-V2-PROTOCOL.md';
+  Object.assign(selection, dataOf());
+  // Six decimals in the file, so that it comes out the same on another machine.
+  return JSON.stringify(selection, (key, value) => (typeof value === 'number' && !Number.isInteger(value) ? round(value, 6) : value), 1) + '\n';
 };
-models.v2 = models[selection.chosen];
 
-// What the selection games show, which may be read: the chosen model, the other family and the base model.
-selection.onSelection = {
-  v2: measure(selRows, models.v2, { against: selection.chosen === 'B' ? models.A : models.B }),
-  A: measure(selRows, models.A),
-  B: measure(selRows, models.B),
-  base: measure(selRows, models.base),
-  uniform: measure(selRows, uniform, { expected: true }),
-};
-for (const [name, m] of Object.entries(selection.onSelection)) {
-  log(`selection games, ${name}: log loss ${m.logLoss.toFixed(4)}, Brier ${m.brier.toFixed(4)}, first ${(100 * m.top1).toFixed(1)} %, three ${(100 * m.top3).toFixed(1)} %, calibration error ${(100 * m.ece).toFixed(1)} %, at 70 % and above: ${m.sure70.n} said ${(100 * m.sure70.said).toFixed(1)} % played ${(100 * m.sure70.happened).toFixed(1)} %`);
-}
-selection.protocol = 'docs/PREDICTOR-V2-PROTOCOL.md';
-selection.corpora = selectionCounts;
-selection.sample = sample;
-selection.tournaments = tournaments.map(t => ({ name: t.name, set: t.set, start: t.start, end: t.end, months: t.months, games: t.games, gukesh: t.gukesh, sindarov: t.sindarov }));
-/** Pairs the safe end bound costs: X began before E and shares a player with it, but ends in the month E starts, so it is not counted for E. */
-selection.pairsLeftOut = tournaments.flatMap(x =>
-  tournaments.filter(e => e !== x && x.start < e.start && !earlier(x, e) && x.end.slice(0, 7) === e.start.slice(0, 7) && ((x.gukesh && e.gukesh) || (x.sindarov && e.sindarov))).map(e => ({ earlier: x.name, ends: x.end, later: e.name, starts: e.start })),
-);
-
-// Six decimals in the file, so that it comes out the same on another machine.
-const selectionText = JSON.stringify(selection, (key, value) => (typeof value === 'number' && !Number.isInteger(value) ? round(value, 6) : value), 1) + '\n';
-if (!FINAL) {
-  mkdirSync('data/predictor-v2', { recursive: true });
-  writeFileSync(SELECTION, selectionText);
-  log(`wrote ${SELECTION}. Commit it before running --final.`);
-  await vite.close();
-  process.exit(0);
+if (!FROZEN) {
+  const selectionText = select();
+  if (!FINAL) {
+    mkdirSync('data/predictor-v2', { recursive: true });
+    writeFileSync(SELECTION, selectionText);
+    log(`wrote ${SELECTION}. Commit it before running --final or --measure-frozen.`);
+    await vite.close();
+    process.exit(0);
+  }
+  if (!existsSync(SELECTION) || readFileSync(SELECTION, 'utf8') !== selectionText) throw new Error(`${SELECTION} is missing or is not what this selection stage gives. Run the selection stage, commit it, then run --final.`);
+  log('the selection stage came out identical to the committed file');
 }
 
-// ---------- 6. the final measurement, once
-if (!existsSync(SELECTION) || readFileSync(SELECTION, 'utf8') !== selectionText) throw new Error(`${SELECTION} is missing or is not what this selection stage gives. Run the selection stage, commit it, then run --final.`);
+// ---------- 6. the final measurement, once, from the committed selection and nothing else
+if (!existsSync(SELECTION)) throw new Error(`${SELECTION} is missing. Run the selection stage and commit it first.`);
+const selection = JSON.parse(readFileSync(SELECTION, 'utf8'));
+{
+  // the committed selection has to have been made on these very games, split and grouped this way
+  const here = JSON.parse(JSON.stringify(dataOf()));
+  for (const part of Object.keys(here)) {
+    if (JSON.stringify(selection[part]) !== JSON.stringify(here[part])) throw new Error(`the committed selection was made on other data: "${part}" differs from what the corpora give now`);
+  }
+  for (const family of ['A', 'B']) if (selection.families[family].theta.length !== 4 * K) throw new Error(`family ${family} of the committed selection has weights for other features`);
+}
+const models = modelsOf(selection);
+// and its settings have to give its recorded losses on the selection games
+for (const family of ['A', 'B']) {
+  const loss = round(logLoss(selRows, models[family]), 6);
+  if (loss !== selection.families[family].loss) throw new Error(`family ${family} of the committed selection gives log loss ${loss} on the selection games, not the ${selection.families[family].loss} it records`);
+}
+log(`committed selection verified (${sha256(SELECTION).slice(0, 16)}…): family ${selection.chosen}; measuring`);
 const { writeFinal } = await import('./predictor-final.mjs');
 await writeFinal({ publishedV1, v1, round, FEATURES, K, REP_PLAYER, REP_ANY, ALL, PLAYERS, V1, SELECTION, AS_OF, PRIOR_PLIES, CLOCK_FULL_SECONDS, STAKES_MAX, CLASSICAL_SECONDS, selection, models, measure, uniform, scoresOf, softmaxInto, ownOf, games, tournaments, history, sample, selectionCounts, yearsBetween, log, sha256 });
 await vite.close();
