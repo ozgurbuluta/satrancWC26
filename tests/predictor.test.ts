@@ -11,8 +11,8 @@ const FLAT: PredictorModel = {
   weights: { shared: MODEL.features.map(() => 0), players: {}, clock: MODEL.features.map(() => 0) },
   temperature: 1,
   blend: { kappa: 1, others: 0, halfLifeYears: null, epsilon: 0, asOf: '2026-11-01' },
-  priorColumns: ['gukesh', 'sindarov'],
-  priors: {},
+  priorColumns: { g: 'gukesh', s: 'sindarov' },
+  priors: '',
 };
 const GUKESH = '46616543';
 const SINDAROV = '14205483';
@@ -137,9 +137,10 @@ describe('the estimate', () => {
   });
 
   it('marks a legal move whose share rounds down to nothing, and changes no number for it', () => {
-    // the first move of the game: two moves take nearly everything, the third has a share far under one percent
+    // Black's reply to 1. d4: two moves take nearly everything in the players' own games, the third has a share under one percent
+    const afterD4 = 'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1';
     for (const moverId of [GUKESH, SINDAROV]) {
-      const p = predict(MODEL, { fen: START, moverId });
+      const p = predict(MODEL, { fen: afterD4, moverId });
       const before = JSON.stringify(p);
       const s = shares(p);
       expect(p.moves[2].p).toBeGreaterThan(0);
@@ -203,7 +204,7 @@ describe('the estimate', () => {
 describe('earlier moves blended with the base model', () => {
   // A base model that finds all twenty first moves equally likely, so every number below can be worked out by hand.
   const at = (model: PredictorModel, uci: string, moverId = GUKESH) => predict(model, { fen: START, moverId }).moves.find(m => m.uci === uci)!.p;
-  const withTable = (entry: string, blend: Partial<PredictorModel['blend']> = {}): PredictorModel => ({ ...FLAT, blend: { ...FLAT.blend, ...blend }, priors: { [positionKey(START)]: entry } });
+  const withTable = (entry: string, blend: Partial<PredictorModel['blend']> = {}): PredictorModel => ({ ...FLAT, blend: { ...FLAT.blend, ...blend }, priors: `${positionKey(START)}=${entry}` });
 
   it('is the base model where nothing was played before', () => {
     const p = predict(FLAT, { fen: START, moverId: GUKESH });
@@ -213,7 +214,7 @@ describe('earlier moves blended with the base model', () => {
 
   it('pulls towards what the player played, by (own + κ·base) / (games + κ)', () => {
     // Gukesh: e4 three times, d4 once. κ = 2, so the base model is worth two games.
-    const model = withTable('e2e4 3 0|d2d4 1 5', { kappa: 2 });
+    const model = withTable('e2e4g3,d2d4g1s5', { kappa: 2 });
     expect(at(model, 'e2e4')).toBeCloseTo((3 + 2 / 20) / (4 + 2), 12);
     expect(at(model, 'd2d4')).toBeCloseTo((1 + 2 / 20) / (4 + 2), 12);
     expect(at(model, 'g1f3')).toBeCloseTo((2 / 20) / (4 + 2), 12);
@@ -225,7 +226,7 @@ describe('earlier moves blended with the base model', () => {
 
   it('before ε, lies between the base model and the share that was played, and does not sharpen a mixed repertoire', () => {
     // 60 / 40 in a hundred games stays close to 60 / 40, a little towards the base model's 5 % each
-    const model = withTable('e2e4 60 0|d2d4 40 0', { kappa: 2 });
+    const model = withTable('e2e4g60,d2d4g40', { kappa: 2 });
     expect(at(model, 'e2e4')).toBeLessThan(0.6);
     expect(at(model, 'e2e4')).toBeGreaterThan(0.58);
     expect(at(model, 'd2d4')).toBeLessThan(0.4);
@@ -239,29 +240,29 @@ describe('earlier moves blended with the base model', () => {
       expect(m.p).toBeLessThanOrEqual(Math.max(played, 1 / 20) + 1e-12);
     }
     // ε is a third ingredient, mixed in afterwards: (1 − ε) of the blend plus ε / 20 for every move
-    const smoothed = withTable('e2e4 60 0|d2d4 40 0', { kappa: 2, epsilon: 0.1 });
+    const smoothed = withTable('e2e4g60,d2d4g40', { kappa: 2, epsilon: 0.1 });
     expect(at(smoothed, 'e2e4')).toBeCloseTo(0.9 * at(model, 'e2e4') + 0.1 / 20, 12);
     expect(at(smoothed, 'g1f3')).toBeCloseTo(0.9 * at(model, 'g1f3') + 0.1 / 20, 12);
     // one game is weak evidence: the move is likelier than the rest, far from certain
-    const once = withTable('e2e4 1 0', { kappa: 2 });
+    const once = withTable('e2e4g1', { kappa: 2 });
     expect(at(once, 'e2e4')).toBeCloseTo((1 + 0.1) / 3, 12);
   });
 
   it('counts other people’s moves at a discount, or not at all', () => {
     // a third column: moves played here by anyone but the two
-    const model: PredictorModel = { ...withTable('e2e4 1 0 0|c2c4 0 2 6', { kappa: 1, others: 0.25 }), priorColumns: ['gukesh', 'sindarov', 'others'] };
+    const model: PredictorModel = { ...withTable('e2e4g1,c2c4s2x6', { kappa: 1, others: 0.25 }), priorColumns: { g: 'gukesh', s: 'sindarov', x: 'others' } };
     // for Gukesh: one own e4; Sindarov's two and the others' six c4 count a quarter each
     expect(at(model, 'c2c4')).toBeCloseTo((0.25 * 8 + 1 / 20) / (1 + 2 + 1), 12);
     expect(at(model, 'e2e4')).toBeCloseTo((1 + 1 / 20) / (1 + 2 + 1), 12);
     const none: PredictorModel = { ...model, blend: { ...model.blend, others: 0 } };
     expect(at(none, 'c2c4')).toBeCloseTo((1 / 20) / 2, 12);
     // a position only others have been in is not one the player has seen
-    const onlyOthers: PredictorModel = { ...model, priors: { [positionKey(START)]: 'c2c4 0 0 6' } };
+    const onlyOthers: PredictorModel = { ...model, priors: `${positionKey(START)}=c2c4x6` };
     expect(predict(onlyOthers, { fen: START, moverId: GUKESH }).seenBefore).toBe(false);
   });
 
   it('leaves every legal move a small share when ε is set', () => {
-    const model = withTable('e2e4 1000 0', { kappa: 0.25, epsilon: 0.02 });
+    const model = withTable('e2e4g1000', { kappa: 0.25, epsilon: 0.02 });
     const p = predict(model, { fen: START, moverId: GUKESH });
     expect(p.moves.reduce((sum, m) => sum + m.p, 0)).toBeCloseTo(1, 12);
     for (const m of p.moves) expect(m.p).toBeGreaterThanOrEqual(0.02 / 20 - 1e-12);
@@ -269,7 +270,7 @@ describe('earlier moves blended with the base model', () => {
   });
 
   it('ignores a table entry for a move that is not legal, and a player it has no column for', () => {
-    const model = withTable('e2e5 9 9|e2e4 1 0', { kappa: 1 });
+    const model = withTable('e2e5g9s9,e2e4g1', { kappa: 1 });
     const p = predict(model, { fen: START, moverId: GUKESH });
     expect(p.moves).toHaveLength(20);
     expect(p.moves.reduce((sum, m) => sum + m.p, 0)).toBeCloseTo(1, 12);
@@ -281,7 +282,7 @@ describe('earlier moves blended with the base model', () => {
   });
 
   it('applies the match rule to the base model, not to what was played', () => {
-    const model = withTable('e2e4 1 0', { kappa: 1 });
+    const model = withTable('e2e4g1', { kappa: 1 });
     const calm = predict(model, { fen: START, moverId: GUKESH });
     const behind = predict(model, { fen: START, moverId: GUKESH, match: { moverPoints: 0, opponentPoints: 3, gamesLeft: 3 } });
     // no first move is a trade, so the rule changes nothing here
@@ -349,25 +350,38 @@ describe('the model that is shipped', () => {
   });
 
   it('has tables that read as counts for the columns it names, for legal moves only', () => {
-    expect(MODEL.priorColumns).toEqual(['gukesh', 'sindarov', 'others']);
-    const keys = Object.keys(MODEL.priors);
-    expect(keys.length).toBeGreaterThan(1000);
+    expect(MODEL.priorColumns).toEqual({ g: 'gukesh', s: 'sindarov', x: 'others' });
+    const keys = MODEL.priors.split(';').map(part => part.slice(0, part.indexOf('=')));
+    expect(keys.length).toBe(report.tables.positions);
+    expect(new Set(keys).size).toBe(keys.length);
+    let moves = 0;
     for (const key of keys) {
-      const moves = earlierMoves(MODEL, key);
-      expect(moves.size).toBeGreaterThan(0);
-      for (const [uci, counts] of moves) {
+      const played = earlierMoves(MODEL, key);
+      expect(played.size).toBeGreaterThan(0);
+      for (const [uci, counts] of played) {
+        moves++;
         expect(uci).toMatch(/^[a-h][1-8][a-h][1-8][qrbn]?$/);
-        expect(counts).toHaveLength(3);
-        for (const x of counts) expect(x).toBeGreaterThanOrEqual(0);
-        expect(counts.some(x => x > 0)).toBe(true);
+        // every letter of the entry was understood, and stands for a count above nothing
+        expect(Object.keys(counts).length).toBeGreaterThan(0);
+        for (const [who, x] of Object.entries(counts)) {
+          expect(['gukesh', 'sindarov', 'others']).toContain(who);
+          expect(x).toBeGreaterThan(0);
+        }
       }
     }
+    expect(moves).toBe(report.tables.moves);
+    // the text holds nothing but what was just read back: key, moves, letters and counts
+    expect(MODEL.priors).toMatch(/^[0-9a-z]+=[a-h1-8qrbngsx.0-9,]+(;[0-9a-z]+=[a-h1-8qrbngsx.0-9,]+)*$/);
     // the first move of a game: both players have been there many times, and every move in the table is legal
     const first = earlierMoves(MODEL, positionKey(START));
     const legal = new Set(candidates({ fen: START }).map(c => c.uci));
     for (const uci of first.keys()) expect(legal.has(uci)).toBe(true);
-    expect([...first.values()].reduce((sum, c) => sum + c[0], 0)).toBeGreaterThan(5);
-    expect([...first.values()].reduce((sum, c) => sum + c[1], 0)).toBeGreaterThan(5);
+    expect([...first.values()].reduce((sum, c) => sum + (c.gukesh ?? 0), 0)).toBeGreaterThan(5);
+    expect([...first.values()].reduce((sum, c) => sum + (c.sindarov ?? 0), 0)).toBeGreaterThan(5);
+  });
+
+  it('is small enough to load with the tab: under 300 KB', () => {
+    expect(JSON.stringify(shipped).length).toBeLessThan(300 * 1024);
   });
 
   it('carries its own measurements: a blind one on the untouched holdout, and the reused benchmark', () => {

@@ -41,7 +41,7 @@ import { createServer } from 'vite';
 const FINAL = process.argv.includes('--final');
 /** Measure with the committed selection as it is: nothing is fitted and nothing is chosen in such a run. */
 const FROZEN = process.argv.includes('--measure-frozen');
-const vite = await createServer({ configFile: false, appType: 'custom', server: { middlewareMode: true }, logLevel: 'error' });
+const vite = await createServer({ configFile: false, appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false }, logLevel: 'error' });
 const { parseGame, splitGames } = await vite.ssrLoadModule('/src/lib/pgn.ts');
 const { candidates, FEATURES, positionKey } = await vite.ssrLoadModule('/src/lib/predictor/features.ts');
 const { clockPressure } = await vite.ssrLoadModule('/src/lib/predictor/model.ts');

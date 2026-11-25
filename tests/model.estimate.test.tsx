@@ -108,8 +108,8 @@ describe('the estimate in the prediction tab', () => {
   });
 
   it('prints a legal move with a share under one percent as "<1 %", never as 0', async () => {
-    // Black's first move after 1. e4: two replies take nearly everything in the players' own games
-    await mount(game({ round: 1, id: 'g1', sans: ['e4'] }));
+    // Black's first move after 1. d4: two replies take nearly everything in the players' own games
+    await mount(game({ round: 1, id: 'g1', sans: ['d4'] }));
     expect(text()).toMatch(/Gukesh için, 1… hamle/);
     const shown = rows().map(li => li.querySelector('.num')!.textContent);
     expect(shown).toHaveLength(4);
@@ -172,14 +172,18 @@ describe('the estimate in the prediction tab', () => {
     expect(details).toContain('455 klasik oyunundan');
     expect(details).toContain('Motor kullanmaz');
     // the untouched holdout, with the numbers of the shipped file and nothing rounder
-    const shown = (shipped as unknown as { report: { shown: { top1: number; top3: number; whenSure: { said: number; happened: number } } } }).report.shown;
+    const report = (shipped as unknown as { report: { shown: { top1: number; top3: number; whenSure: { said: number; happened: number } }; benchmark: { v2: { sure70: { said: number; happened: number } } } } }).report;
+    const shown = report.shown;
     const whole = (x: number) => String(Math.round(x * 100));
     expect(details).toContain(`ağırlıkları ve ayarları belirlenirken ayrı tutulan 83 oyunun 4.240 hamlesinde ilk tercih yüzde ${whole(shown.top1)}, ilk üç tercih yüzde ${whole(shown.top3)} tuttu`);
     expect(details).toContain('Bu ölçüm yalnızca en sonda, bir kez yapıldı');
     expect(details).toContain(`ortalama yüzde ${whole(shown.whenSure.said)} dedi; bunların yüzde ${whole(shown.whenSure.happened)} kadarı oynandı`);
+    // and the other measured event, where it was further off, is not left out
+    const elsewhere = report.benchmark.v2.sure70;
+    expect(details).toContain(`başka bir turnuvanın 963 hamlesinde ise yüzde ${whole(elsewhere.said)} dedi, yüzde ${whole(elsewhere.happened)} kadarı oynandı`);
+    expect(elsewhere.said - elsewhere.happened).toBeGreaterThan(shown.whenSure.said - shown.whenSure.happened);
+    expect(details).toContain('emin göründüğünde fazla emin olabiliyor');
     expect(details).toContain('Yüzdeleri kesinlik olarak okuma');
-    // "too sure" is said exactly when the measurement shows it: three points or more between said and played
-    expect(details.includes('fazla emin')).toBe(shown.whenSure.said - shown.whenSure.happened >= 0.03);
     expect(details).toContain('ölçülebilir bir fark yaratmadı');
     expect(details).toContain('öğrenilmiş değil, yazılı bir kuraldır');
     expect(details).toContain('CC BY-SA 4.0');

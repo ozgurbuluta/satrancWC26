@@ -16,7 +16,7 @@ interface Measured {
   whenSure: { n: number; said: number; happened: number };
 }
 const MODEL = model as unknown as PredictorModel & {
-  report: { selection: { selected: number }; shown: Measured };
+  report: { selection: { selected: number }; shown: Measured; benchmark: { v2: { n: number; sure70: { n: number; said: number; happened: number } } } };
 };
 const DOCS = `${REPO_URL}/blob/main/docs/PREDICTOR.md`;
 const whole = (x: number) => String(Math.round(x * 100));
@@ -138,9 +138,12 @@ export function ModelEstimate({ game, fen }: Props) {
             .replace('{top3}', whole(report.shown.top3))}
         </p>
         <p>
-          {/* said plainly when it is too sure: three points or more between what it said and what was played */}
-          {report.shown.whenSure.said - report.shown.whenSure.happened >= 0.03 ? `${t.modelSureOver} ` : ''}
-          {t.modelSure.replace('{said}', whole(report.shown.whenSure.said)).replace('{happened}', whole(report.shown.whenSure.happened))}
+          {t.modelSure.replace('{said}', whole(report.shown.whenSure.said)).replace('{happened}', whole(report.shown.whenSure.happened))}{' '}
+          {/* the same on the other measured event, where it was further off: one event is not all events */}
+          {t.modelSureElsewhere
+            .replace('{n}', String(report.benchmark.v2.n))
+            .replace('{said}', whole(report.benchmark.v2.sure70.said))
+            .replace('{happened}', whole(report.benchmark.v2.sure70.happened))}
         </p>
         <p>{t.modelStyle}</p>
         <p>

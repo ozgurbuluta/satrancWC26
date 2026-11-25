@@ -54,10 +54,15 @@ export interface PredictorModel {
   };
   /** FIDE id to player key. */
   players: Record<string, string>;
-  /** Whose counts the numbers of a table entry are, in order: player keys, then "others" if they count. */
-  priorColumns: string[];
-  /** Moves played before in a position: position key, then "uci count count …" for each move, joined by "|". */
-  priors: Record<string, string>;
+  /** Whose count a letter in the tables stands for: a player key, or "others". */
+  priorColumns: Record<string, string>;
+  /**
+   * Moves played before, as one text: "key=move,move;key=move". A move is
+   * its UCI followed by a letter and a count for each column that has one:
+   * "e2e4g2.5x1" is e2e4, 2.5 times by the player of column g and once by
+   * column x. Counts are already aged.
+   */
+  priors: string;
   /** The match-situation rule: the most it can add to or take from a move's score. */
   stakesMax: number;
   /** Seconds on the clock below which pressure starts to count. */
@@ -138,14 +143,35 @@ export const softmax = (scores: number[]): number[] => {
   return e.map(x => x / sum);
 };
 
-/** What was played before in a position: for each move, one count per column of `priorColumns`. */
-export const earlierMoves = (model: PredictorModel, key: string): Map<string, number[]> => {
-  const moves = new Map<string, number[]>();
-  const entry = model.priors[key];
+/** The tables of a model by position key, read from its text once and kept. */
+const tables = new WeakMap<PredictorModel, Map<string, string>>();
+const tableOf = (model: PredictorModel): Map<string, string> => {
+  let table = tables.get(model);
+  if (!table) {
+    table = new Map();
+    for (const part of model.priors.split(';')) {
+      const at = part.indexOf('=');
+      if (at > 0) table.set(part.slice(0, at), part.slice(at + 1));
+    }
+    tables.set(model, table);
+  }
+  return table;
+};
+
+/** What was played before in a position: for each move, how often by each column ("gukesh", "sindarov", "others"). */
+export const earlierMoves = (model: PredictorModel, key: string): Map<string, Record<string, number>> => {
+  const moves = new Map<string, Record<string, number>>();
+  const entry = tableOf(model).get(key);
   if (!entry) return moves;
-  for (const part of entry.split('|')) {
-    const [uci, ...counts] = part.split(' ');
-    moves.set(uci, counts.map(Number));
+  for (const part of entry.split(',')) {
+    const move = /^([a-h][1-8][a-h][1-8][qrbn]?)(.*)$/.exec(part);
+    if (!move) continue;
+    const counts: Record<string, number> = {};
+    for (const [, letter, count] of move[2].matchAll(/([a-z])(\d*\.?\d+)/g)) {
+      const who = model.priorColumns[letter];
+      if (who) counts[who] = Number(count);
+    }
+    moves.set(move[1], counts);
   }
   return moves;
 };
@@ -163,8 +189,7 @@ export const predict = (model: PredictorModel, input: PredictInput): Prediction 
   );
   let p = softmax(scores);
   let seenBefore = false;
-  const column = playerKey ? model.priorColumns.indexOf(playerKey) : -1;
-  if (column >= 0) {
+  if (playerKey && Object.values(model.priorColumns).includes(playerKey)) {
     // the player's own earlier moves here, other people's at a discount, and the base model as kappa games' worth
     const { kappa, others, epsilon } = model.blend;
     const played = earlierMoves(model, positionKey(input.fen));
@@ -173,8 +198,8 @@ export const predict = (model: PredictorModel, input: PredictInput): Prediction 
     cands.forEach((c, i) => {
       const counts = played.get(c.uci);
       if (!counts) return;
-      const own = counts[column] ?? 0;
-      const rest = counts.reduce((sum, x) => sum + x, 0) - own;
+      const own = counts[playerKey] ?? 0;
+      const rest = Object.values(counts).reduce((sum, x) => sum + x, 0) - own;
       if (own > 0) seenBefore = true;
       mass[i] += own + others * rest;
       total += own + others * rest;

@@ -54,10 +54,20 @@ export const writeFinal = async ctx => {
   log(`benchmark, published v1: log loss ${onBenchmark.v1.logLoss.toFixed(4)}; v2: ${onBenchmark.v2.logLoss.toFixed(4)}; claims ${JSON.stringify(claims)}`);
 
   // ---------- the tables that ship: every selected game, aged as of AS_OF
+  // One text, "key=move,move;key=move": a move is its UCI followed by a letter and a count for each column that
+  // has one, to two decimals ("e2e4g2.5x1"). Written this way the tables take two thirds of the room of a JSON object.
+  const useOthers = chosen === 'A' || B.others > 0;
+  const priorColumns = useOthers ? { g: 'gukesh', s: 'sindarov', x: 'others' } : { g: 'gukesh', s: 'sindarov' };
   const ageing = t => (B.halfLife === null ? 1 : 0.5 ** (yearsBetween(t.end, AS_OF) / B.halfLife));
-  const priors = {};
+  const short = x => {
+    const text = x.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+    return text.startsWith('0.') ? text.slice(1) : text;
+  };
+  const parts = [];
+  let positions = 0;
   let entries = 0;
   for (const key of [...history.keys()].sort()) {
+    if (!/^[0-9a-z]+$/.test(key)) throw new Error(`a position key that would not survive the table format: ${key}`);
     const moves = new Map();
     for (const e of history.get(key)) {
       if (!(e.t.end < AS_OF)) throw new Error(`a tournament that is not over by ${AS_OF}: ${e.t.name}`);
@@ -66,14 +76,16 @@ export const writeFinal = async ctx => {
       m[e.mover === 1 ? 0 : e.mover === 2 ? 1 : 2] += chosen === 'B' ? ageing(e.t) : 1;
     }
     const kept = [...moves.entries()]
-      .map(([uci, m]) => [uci, ...m.map(x => round(x, 3))])
+      .map(([uci, m]) => [uci, m.map(x => round(x, 2))])
       // a move only others played is of no use when others count for nothing
-      .filter(([, g, s, o]) => g > 0 || s > 0 || ((chosen === 'A' || B.others > 0) && o > 0))
+      .filter(([, [g, s, o]]) => g > 0 || s > 0 || (useOthers && o > 0))
       .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
     if (!kept.length) continue;
+    positions++;
     entries += kept.length;
-    priors[key] = kept.map(([uci, g, s, o]) => (chosen === 'A' || B.others > 0 ? `${uci} ${g} ${s} ${o}` : `${uci} ${g} ${s}`)).join('|');
+    parts.push(`${key}=${kept.map(([uci, [g, s, o]]) => `${uci}${g > 0 ? `g${short(g)}` : ''}${s > 0 ? `s${short(s)}` : ''}${useOthers && o > 0 ? `x${short(o)}` : ''}`).join(',')}`);
   }
+  const priors = parts.join(';');
 
   // ---------- the files
   const theta = chosen === 'B' ? B.theta : A.theta;
@@ -101,8 +113,8 @@ export const writeFinal = async ctx => {
     // how counts of earlier moves are blended with the base model (family B only)
     blend: chosen === 'B' ? { kappa: B.kappa, others: B.others, halfLifeYears: B.halfLife, epsilon: B.epsilon, asOf: AS_OF } : null,
     players: Object.fromEntries(Object.entries(PLAYERS).map(([id, key]) => [id, key])),
-    // position key, then "uci count count …" for each move, joined by "|": how often each column's player played it there, aged for family B
-    priorColumns: chosen === 'A' || B.others > 0 ? ['gukesh', 'sindarov', 'others'] : ['gukesh', 'sindarov'],
+    // whose count a letter in the tables stands for, and the tables: how often each played a move in a position, aged for family B
+    priorColumns,
     priors,
     priorPlies: PRIOR_PLIES,
     stakesMax: STAKES_MAX,
@@ -119,11 +131,12 @@ export const writeFinal = async ctx => {
       shown: { ...brief(onHoldout.v2), whenSure: brief(onHoldout.v2).sure70, blind: true },
       benchmark: { blind: false, v1: brief(onBenchmark.v1), v2: brief(onBenchmark.v2) },
       claims,
+      tables: { positions, moves: entries, asOf: AS_OF },
     },
   };
   const artifact = JSON.stringify(out) + '\n';
   writeFileSync('src/data/predictor.json', artifact);
-  log(`wrote src/data/predictor.json: ${(artifact.length / 1024).toFixed(0)} KB, ${Object.keys(priors).length} positions, ${entries} moves in the tables`);
+  log(`wrote src/data/predictor.json: ${(artifact.length / 1024).toFixed(0)} KB, ${positions} positions, ${entries} moves in the tables`);
 
   // ---------- the report, to read
   const pct = x => `${(100 * x).toFixed(1)} %`;
@@ -164,7 +177,7 @@ The gain is ${check.gain.toFixed(4)}. ${check.adopted ? 'It was adopted.' : 'It 
 
   const report = `# Move predictor, second version: what was measured
 
-Written by \`scripts/train-predictor.mjs --final\`. Do not edit by hand; run the script.
+Written by \`scripts/train-predictor.mjs\` (with \`--final\` or \`--measure-frozen\`). Do not edit by hand; run the script.
 
 How this was to be done was written down before any fitting: [PREDICTOR-V2-PROTOCOL.md](PREDICTOR-V2-PROTOCOL.md). The first version's own report is [PREDICTOR-REPORT-V1.md](PREDICTOR-REPORT-V1.md).
 
