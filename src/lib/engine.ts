@@ -338,6 +338,31 @@ export const wdl = (s: { cp?: number; mate?: number } | undefined): { win: numbe
 export type MoveQuality = 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder';
 
 /**
+ * How narrow the choice is for the side to move, read from the engine's
+ * lines: one good move, or two, and what the next line would cost. A line is
+ * "good" while it gives away less than an inaccuracy against the best one,
+ * by the same thresholds as judgeMove. Where every line shown is good there
+ * is nothing to say, and nothing is returned.
+ */
+export interface MoveChoice {
+  /** `only`: the second line is a mistake or worse. `best`: it is an inaccuracy. `two`: two good lines, the third is not. */
+  kind: 'only' | 'best' | 'two';
+  /** Index of the first line that is not good, and what playing it would be. */
+  next: number;
+  quality: 'inaccuracy' | 'mistake' | 'blunder';
+}
+
+export const moveChoice = (pvs: PV[], whiteToMove: boolean): MoveChoice | undefined => {
+  if (pvs.length < 2) return undefined;
+  const sign = whiteToMove ? 1 : -1;
+  const loss = (i: number) => (winningChances(pvs[0]) - winningChances(pvs[i])) * sign;
+  const qualityOf = (x: number): MoveChoice['quality'] => (x >= 0.3 ? 'blunder' : x >= 0.2 ? 'mistake' : 'inaccuracy');
+  if (loss(1) >= 0.1) return { kind: loss(1) >= 0.2 ? 'only' : 'best', next: 1, quality: qualityOf(loss(1)) };
+  if (pvs.length >= 3 && loss(2) >= 0.1) return { kind: 'two', next: 2, quality: qualityOf(loss(2)) };
+  return undefined;
+};
+
+/**
  * Judges a move by how much of the mover's winning chances it gave away,
  * with the thresholds Lichess uses. Needs a score before and after the move.
  */

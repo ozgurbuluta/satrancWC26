@@ -2700,11 +2700,6 @@ cg-board square.selected {
   font-variant-numeric: tabular-nums;
 }
 
-.honest {
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
-}
-
 .guess-rows li {
   display: flex;
   align-items: baseline;

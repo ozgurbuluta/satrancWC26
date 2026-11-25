@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { addedAfterMove, ambiguousAfterMove, formatDuration, moveTimes, parseTimeControl } from '../src/lib/clock';
+import { STRINGS } from '../src/i18n';
+import { addedAfterMove, ambiguousAfterMove, describeTimeControl, formatDuration, moveTimes, parseInfoTimeControl, parseTimeControl } from '../src/lib/clock';
 import { parseGame, type GameData } from '../src/lib/pgn';
 
 // The tag as the public feed of the match carries it (games 1 and 2, read on 25 November 2026).
@@ -97,6 +98,37 @@ describe('reading a time control', () => {
     // a game whose tag cannot be read starts with no clock rather than a wrong one
     const pgn = `[Event "x"]\n[Round "1.1"]\n[White "A"]\n[Black "B"]\n[Result "*"]\n[TimeControl "Classical"]\n[GameURL "https://lichess.org/broadcast/t/r/x/y"]\n\n1. e4 { [%clk 1:59:53] } *\n`;
     expect(parseGame(pgn, undefined, 0)!.initialClock).toBeUndefined();
+  });
+});
+
+describe('the time control as the broadcast describes it, said in the viewer’s language', () => {
+  // the text the public broadcast of the match carries, in English
+  const INFO = '120 min / 40 moves + 30 min / rest + 30 sec / move starting 41';
+
+  it('reads the broadcast’s description into the same periods as the tag', () => {
+    expect(parseInfoTimeControl(INFO)).toEqual(parseTimeControl(MATCH_TAG));
+    expect(parseInfoTimeControl('90 min + 30 sec / move')).toEqual([{ seconds: 5400, increment: 30 }]);
+    expect(parseInfoTimeControl('90 min / 40 moves + 30 min / end + 30 sec / move from move 1')).toEqual([
+      { moves: 40, seconds: 5400, increment: 30 },
+      { seconds: 1800, increment: 30 },
+    ]);
+    expect(parseInfoTimeControl('120 min')).toEqual([{ seconds: 7200, increment: 0 }]);
+  });
+
+  it('does not guess at a description it does not fully understand', () => {
+    for (const text of [undefined, '', 'Classical', '120 min / 40 moves', '30 sec / move', '120 min / 40 moves + 30 min / rest + 30 sec / move starting 20', '2 hours + 30 sec / move', '120 min + 60 min']) {
+      expect(parseInfoTimeControl(text), String(text)).toBeUndefined();
+    }
+  });
+
+  it('says it in Turkish, and in English, with no English left in the Turkish', () => {
+    const periods = parseInfoTimeControl(INFO)!;
+    expect(describeTimeControl(periods, STRINGS.tr)).toBe('40 hamle için 120 dakika, kalan hamleler için 30 dakika, 41. hamleden itibaren her hamlede 30 saniye eklenir');
+    expect(describeTimeControl(periods, STRINGS.en)).toBe('120 minutes for 40 moves, 30 minutes for the rest, 30 seconds added per move from move 41');
+    expect(describeTimeControl(periods, STRINGS.tr)).not.toMatch(/min|moves|sec|rest|starting/);
+    // one period with an increment from the first move, and a control given in seconds
+    expect(describeTimeControl(parseTimeControl('5400+30')!, STRINGS.tr)).toBe('oyunun tamamı için 90 dakika, her hamlede 30 saniye eklenir');
+    expect(describeTimeControl(parseTimeControl('90')!, STRINGS.tr)).toBe('oyunun tamamı için 90 saniye');
   });
 });
 

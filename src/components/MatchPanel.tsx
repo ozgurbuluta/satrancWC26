@@ -1,5 +1,6 @@
 import { KNOWN_PLAYERS, POINTS_TO_WIN } from '../config';
 import { useT } from '../hooks';
+import { describeTimeControl, parseInfoTimeControl, parseTimeControl } from '../lib/clock';
 import { fedFlag, formatPoints, shortName } from '../lib/format';
 import type { PlayerInfo } from '../lib/pgn';
 import { selectScore, useStore } from '../store';
@@ -14,6 +15,10 @@ export function MatchPanel() {
   const state = useStore();
   const { tour, feds } = state;
   const score = selectScore(state);
+  // The broadcast describes its time control in English. It is said again in the viewer's language where it can be
+  // read; where it cannot, the English page shows it as it came and the Turkish page leaves it out.
+  const periods = parseInfoTimeControl(tour?.info?.tc) ?? parseTimeControl(tour?.info?.tc);
+  const tempo = periods ? describeTimeControl(periods, t) : state.settings.lang === 'en' ? tour?.info?.tc : undefined;
 
   return (
     <div className="match">
@@ -32,10 +37,12 @@ export function MatchPanel() {
           </div>
         </div>
       )}
-      <p className="muted small center">
-        {t.firstTo.replace('{n}', formatPoints(POINTS_TO_WIN))}
-        {tour?.info?.tc ? ` · ${t.timeControl}: ${tour.info.tc}` : ''}
-      </p>
+      <p className="muted small center">{t.firstTo.replace('{n}', formatPoints(POINTS_TO_WIN))}</p>
+      {tempo && (
+        <p className="muted small center">
+          {t.timeControl}: {tempo}
+        </p>
+      )}
 
       <GameList />
     </div>
