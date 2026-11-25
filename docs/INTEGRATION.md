@@ -133,6 +133,10 @@ under the same policy:
   inline style, and nothing else.
 - **Privacy page.** It should say that `/satranc/` shows an embedded app with
   its own anonymous statistics and YouTube players.
+- **Colours.** The app is light now (page `#f1e9dd`). A wrapper that still
+  paints `#262421` behind the frame and as its theme colour shows a dark
+  flash before the app loads and dark safe-area bars on a phone; both should
+  become `#f1e9dd`.
 
 ## Checked locally
 
