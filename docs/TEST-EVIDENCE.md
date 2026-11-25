@@ -9,7 +9,7 @@ hand; their scripts are in `tests/e2e/`.
 `npm test`: pause and catch-up, board sync delay, following the match,
 tie-break days, the analytics privacy contract, storage refusal, the
 statistics switch (delayed start and page-leave included), nested Twitch
-parents, legal-move entry, puzzle rules and guess-the-move logic: 101 tests.
+parents, legal-move entry, puzzle rules and guess-the-move logic and the stream finder: 108 tests.
 Also in CI: the secret check over the whole history, the type check, and
 builds for `/` and `/satranc/`.
 

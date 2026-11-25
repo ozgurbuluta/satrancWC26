@@ -27,6 +27,8 @@ export const gameNumber = (title: string): number | undefined => {
   return m ? Number(m[1]) : undefined;
 };
 
+const DAY = 24 * 3600 * 1000;
+
 const newest = (list: StreamEntry[]): StreamEntry | undefined =>
   [...list].sort((a, b) => Date.parse(b.published) - Date.parse(a.published))[0];
 
@@ -45,7 +47,14 @@ export const pickVideo = (
   exclude?: RegExp,
 ): string | undefined => {
   if (!entries?.length || roundNo < 1) return undefined;
-  const candidates = entries.filter(e => ABOUT_MATCH.test(e.title) && !NOT_A_GAME.test(e.title) && !exclude?.test(e.title));
+  // A stream belongs to a game only if it was created around that game: a
+  // channel's older videos can name the same players and carry a number too.
+  const near = (e: StreamEntry) => {
+    if (round?.startsAt === undefined) return true;
+    const t = Date.parse(e.published);
+    return Number.isNaN(t) || (t >= round.startsAt - 10 * DAY && t <= round.startsAt + 2 * DAY);
+  };
+  const candidates = entries.filter(e => ABOUT_MATCH.test(e.title) && !NOT_A_GAME.test(e.title) && !exclude?.test(e.title) && near(e));
   const numbered = candidates.filter(e => gameNumber(e.title) === roundNo);
   if (numbered.length) return newest(numbered)!.id;
   if (!round?.finished || round.startsAt === undefined) return undefined;
