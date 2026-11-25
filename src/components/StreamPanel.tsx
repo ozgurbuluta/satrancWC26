@@ -23,7 +23,7 @@ export function StreamPanel({ live = true }: { live?: boolean }) {
   const setSetting = useStore(s => s.setSetting);
   const [draft, setDraft] = useState(customStream);
   const [bad, setBad] = useState(false);
-  const [showPaste, setShowPaste] = useState(false);
+  const [showPaste, setShowPaste] = useState(streamId === 'custom');
   const uncovered = useStore(s => s.streamUncovered);
   const setUncovered = useStore(s => s.setStreamUncovered);
 
@@ -49,29 +49,36 @@ export function StreamPanel({ live = true }: { live?: boolean }) {
   };
 
   const covered = paused && !uncovered;
+  // What the dropdown shows: the chosen channel, or "own link" while one is in use or being entered.
+  const chosen = showPaste || streamId === 'custom' ? 'custom' : (preset?.id ?? STREAM_PRESETS[0].id);
 
   return (
     <section className={`stream ${hidden ? 'is-hidden' : ''}`}>
       <div className="stream-top">
-        <div className="chips" role="tablist" aria-label={t.stream}>
-          {STREAM_PRESETS.map(p => (
-            <button
-              key={p.id}
-              role="tab"
-              aria-selected={(preset?.id ?? STREAM_PRESETS[0].id) === p.id && streamId !== 'custom'}
-              className={`chip ${(preset?.id ?? STREAM_PRESETS[0].id) === p.id && streamId !== 'custom' ? 'active' : ''}`}
-              onClick={() => {
-                setSetting('streamId', p.id);
-                if (hidden) setSetting('streamHidden', false);
-              }}
-            >
-              {p.label}
-            </button>
-          ))}
-          <button className={`chip ${streamId === 'custom' ? 'active' : ''}`} aria-expanded={showPaste} onClick={() => setShowPaste(v => !v)}>
-            + {t.customStream}
-          </button>
-        </div>
+        <label className="stream-pick">
+          <span className="eyebrow">{t.stream}</span>
+          <select
+            value={chosen}
+            onChange={e => {
+              const id = e.target.value;
+              if (id === 'custom') {
+                // the field for the link opens; the stream changes once a link is accepted
+                setShowPaste(true);
+                return;
+              }
+              setShowPaste(false);
+              setSetting('streamId', id);
+              if (hidden) setSetting('streamHidden', false);
+            }}
+          >
+            {STREAM_PRESETS.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+            <option value="custom">{t.customStreamOption}</option>
+          </select>
+        </label>
         {embed && !hidden && (
           <a
             className="icon-btn"

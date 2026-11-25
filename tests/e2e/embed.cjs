@@ -62,9 +62,9 @@ const run = async (label, opts = {}) => {
   const out = {};
   out.frameUrl = frame.url();
   out.shellTitle = await page.title();
-  out.activeMove = await frame.locator('.move.active').first().innerText().catch(() => null);
+  out.activeMove = await frame.locator('.strip-track .move.active').first().innerText().catch(() => null);
   out.movesShown = await frame.locator('button.move').count();
-  out.evalText = await frame.locator('.eval-big').innerText().catch(() => null);
+  out.evalText = await frame.locator('.eval-strip').getAttribute('aria-label').catch(() => null);
   out.engineSource = await frame.locator('.engine-src').innerText().catch(() => null);
   out.storage = await frame.evaluate(() => { try { localStorage.setItem('satranc:probe2', '1'); const ok = localStorage.getItem('satranc:probe2') === '1'; localStorage.removeItem('satranc:probe2'); return ok ? 'works' : 'no'; } catch (e) { return 'denied: ' + e.name; } });
   out.framed = await frame.evaluate(() => { try { return window.top !== window.self; } catch { return true; } });
@@ -83,7 +83,7 @@ const run = async (label, opts = {}) => {
   const before = out.activeMove;
   await page.keyboard.press('ArrowLeft');
   await frame.waitForTimeout(300);
-  out.arrowKeyMoved = (await frame.locator('.move.active').first().innerText().catch(() => null)) !== before;
+  out.arrowKeyMoved = (await frame.locator('.strip-track .move.active').first().innerText().catch(() => null)) !== before;
   // outbound link opens a normal tab
   if (!opts.device) {
     await frame.locator('a.icon-btn').first().click().catch(e => (out.popupError = String(e).slice(0, 120)));
@@ -100,7 +100,8 @@ const run = async (label, opts = {}) => {
   out.persistenceNotice = (await frame.locator('.notice').count()) > 0;
   await frame.locator('.settings .seg button', { hasText: 'English' }).click();
   await frame.waitForTimeout(300);
-  out.languageSwitched = (await frame.locator('.tabs button').first().innerText()) === 'Analysis';
+  // the first tab is the move list on wide screens and the analysis elsewhere
+  out.languageSwitched = /^(Analysis|Moves)$/.test(await frame.locator('.tabs button').first().innerText());
   if (opts.shot) await page.screenshot({ path: opts.shot });
 
   console.log(`\n=== ${label}`);

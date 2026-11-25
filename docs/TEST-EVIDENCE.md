@@ -22,8 +22,11 @@ hand; their scripts are in `tests/e2e/`.
 `npm test`: pause and catch-up, board sync delay, following the match,
 tie-break days, the analytics privacy contract, storage refusal, the
 statistics switch (delayed start and page-leave included), nested Twitch
-parents, legal-move entry, puzzle rules, guess-the-move logic, the stream
-finder, share links and the copy helper: 143 tests.
+parents, legal-move entry, puzzle rules, prediction logic, the stream
+finder, share links and the copy helper, the board's lifecycle, the
+viewer's own line, the engine following the board, keyboard shortcuts, the
+Turkish wording, time controls and move times, and the workspace panels:
+220 tests.
 Also in CI: the secret check over the whole history, the type check, and
 builds for `/` and `/satranc/`.
 
@@ -93,26 +96,85 @@ known puzzles. 33 of 33 checks passed on 25 November 2026.
 | Phone size | no sideways scroll, touch targets 40px, taps work |
 | Content security policy violations, page errors | none |
 
-## Guess the move
+## Board, analysis, prediction and the workspace (issue 7)
 
-Script: `tests/e2e/guess.cjs`, against a simulated live game (the feed is
-replaced; the masters database is the real one). 32 of 32 checks passed on
-25 November 2026.
+Script: `tests/e2e/board.cjs`, against a simulated match (the feed is
+replaced; the engine is the real one in the browser). Run on 25 November
+2026 in headless Chromium against the preview build. 83 of 83 checks passed.
 
-| Check | Result |
+The script remembers the board node and every piece node, and records each
+piece that is animated, added or removed, so the checks below are about the
+board's own DOM and not only about the final position.
+
+| One board, pieces that only move when a move is made | Result |
 |---|---|
-| Guess mode off | engine lines and arrow shown, board not playable |
-| Guess mode on | asks whose move it is; references held back; arrow, engine lines and the only-move note hidden |
-| Guess on the board (Nf3) | shown as an arrow and under the board ("Tahminin: Af3"); the knight does not move |
-| After the guess | engine available again; master frequencies with sample size (332,635 games); engine block separate |
-| Labels | frequencies say they are past games; engine block says it is not what the player will choose; the page says it has no prediction model and the shares are not probabilities |
-| The move arrives and matches | "Tutturdun", score 1 of 1 |
-| Typed guess that is wrong | "Bu kez tutmadı", with the move played and the guess |
-| Illegal typed guess | refused |
-| "Show the engine for this move" | that move can no longer be guessed |
-| While paused, with later moves already played | nothing announced; a guess is settled only by the move revealed next |
-| Phone size | video and whole board fit together; a guess by tapping works; no sideways scroll |
-| Content security policy violations, page errors | none |
+| One step back | same board node, exactly one piece animated, none added or removed |
+| One step back over castling | exactly two pieces animated (king and rook) |
+| 20 quick steps back, far past the start | same board, 32 pieces, first position |
+| Back at the first position, six more times | nothing animated, added or removed; the control is disabled |
+| Up arrow from the first position to the newest | shown at once, no piece animated |
+| Home, End, quick steps back and forward | first position, newest position, same board |
+
+| Moves of the viewer's own | Result |
+|---|---|
+| Dragging d2 to d3 at the newest position | the pawn stays; the strip shows "Analiz ● 6. d3"; the board is marked; sharing is gone |
+| Engine | lines for the position on the board (Black to play move 6); the evaluation above the board has a score |
+| A second move by two clicks | legal squares marked; the move joins the line |
+| Two new moves of the game arrive | "Oyunda 2 yeni hamle oynandı."; the line and its position untouched |
+| Left arrow | steps back inside the line |
+| Up arrow, the button, the last-move control | each drops the line and shows the newest move; sharing is back |
+| A line from an earlier move | starts there; "Analizi kapat" returns to where it started |
+| An illegal drag | nothing changes |
+
+| Prediction | Result |
+|---|---|
+| Guess mode on | asked in the Tahmin tab only; nothing about a guess in the board column |
+| Engine beside the board | not hidden by guess mode |
+| A move on the board | starts a line, makes no guess |
+| A move picked from the list | becomes the guess; the board keeps the viewer's line |
+| Arrow keys in the move field | do not drive the board |
+
+| Promotion on the main board | Result |
+|---|---|
+| Pawn to the last rank | asks which piece |
+| Arrow keys while the choice is open | nothing happens |
+| Cancel | the pawn is back, nothing played |
+| Rook | played into the line as an underpromotion |
+| A game set up from a position | no invented clock ("–:––") |
+
+| Puzzle | Result |
+|---|---|
+| The right move and the reply | same board node; at most two pieces animated; every other piece is the node it was |
+| Start over | first position shown at once, nothing animated |
+
+| Top bar, game list, broadcast | Result |
+|---|---|
+| Game squares | 14, each named ("1. oyun: Sindarov – Gukesh, ½–½"); played, live and coming told apart; the open one marked |
+| A square, and a row of the full list | opens its game |
+| The full list | a dialog that takes the focus; Escape closes it and returns the focus |
+| Broadcast | a labelled dropdown of the four channels and "Kendi bağlantım"; choosing changes the video; works from the keyboard |
+| Time per move | both players named, longest think shown, one bar per move with a known time |
+
+| Phone (390 px) and tablet (1024 px) | Result |
+|---|---|
+| Sideways scrolling | none at either width |
+| Board on the phone | within 24 px of the full width |
+| Controls | at least 40 px tall |
+| A swipe that starts on a piece | scrolls the page, moves no piece |
+| Two taps | play a move of the viewer's own |
+| Way back to live on the phone | a full-width button of its own, 44 px tall |
+| Game list on the phone | a drawer that fits the screen |
+| Tablet | board and broadcast side by side, engine in the first tab |
+
+The other scripts were updated to the new markup and run again on the same
+build: `share.cjs` 61 of 61, `puzzles.cjs` 33 of 33, `embed.cjs` (desktop,
+storage refused, phone) and `csp-engine.cjs` as before, with no page errors
+and no content security policy violations. `guess.cjs` was removed: it
+tested guessing on the board, which no longer exists; its place is taken by
+the prediction checks above and by `tests/store.guess.test.ts`.
+
+Not covered by this run: real Safari and a real phone for the new layout
+and for tapping moves on the board.
 
 ## Share links
 

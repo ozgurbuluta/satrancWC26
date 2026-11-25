@@ -18,7 +18,7 @@ const { chromium } = require('playwright');
   await p.waitForSelector('.player-bar', { timeout: 25000 });
   let src = null;
   for (let i = 0; i < 40 && !/Yerel|Local/.test(src || ''); i++) { await p.waitForTimeout(500); src = await p.locator('.engine-src').innerText().catch(() => null); }
-  console.log('engine source:', src, '| eval:', await p.locator('.eval-big').innerText().catch(() => null));
+  console.log('engine source:', src, '| eval:', await p.locator('.eval-strip').getAttribute('aria-label').catch(() => null));
   console.log('engine lines:', await p.locator('.pv-list li').count());
   await p.locator('.tabs button', { hasText: 'Benzer' }).click();
   await p.waitForTimeout(5000);

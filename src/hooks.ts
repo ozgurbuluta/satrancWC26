@@ -49,3 +49,21 @@ export const useIsMobile = (): boolean => {
 
 /** Re-renders the caller whenever a new position score is stored. */
 export const useScoresVersion = (): number => useSyncExternalStore(subscribeScores, scoresVersion);
+
+/** Follows a CSS media query. */
+export const useMedia = (query: string): boolean => {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const on = () => setMatches(mq.matches);
+    on();
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, [query]);
+  return matches;
+};
+
+/** Three columns: engine and time beside the board on the left, the broadcast and the tabs on the right. */
+export const WIDE_LAYOUT = '(min-width: 1180px)';
+/** Room in the top bar for one square per game. */
+export const GAME_SQUARES = '(min-width: 1280px)';

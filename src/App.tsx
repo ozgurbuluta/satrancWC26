@@ -1,22 +1,25 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { REPO_URL } from './config';
-import { AnalysisPanel } from './components/AnalysisPanel';
-import { Board, type BoardShape } from './components/Board';
+import { MovesPanel } from './components/AnalysisPanel';
+import { Board } from './components/Board';
 import { CatchUpBar } from './components/CatchUpBar';
-import { EvalBar } from './components/EvalBar';
+import { EngineCard, EvalStrip, WinChance } from './components/EnginePanel';
 import { Header } from './components/Header';
 import { MatchPanel } from './components/MatchPanel';
+import { MoveStrip } from './components/MoveStrip';
 import { PromotionPicker, usePromotion } from './components/MoveEntry';
 import { PlayerBar } from './components/PlayerBar';
 import { SettingsPanel } from './components/SettingsPanel';
 import { ShareButton } from './components/ShareButton';
 import { StreamPanel } from './components/StreamPanel';
-import { useEval, useIsMobile, useNow, useT } from './hooks';
+import { TimePanel } from './components/TimePanel';
+import { GAME_SQUARES, useEval, useIsMobile, useMedia, useNow, useT, WIDE_LAYOUT } from './hooks';
 import { setContext, track, trackOutbound } from './lib/analytics';
-import { displayName, firstMoveSquares, localizeSan, materialFromFen, shortName } from './lib/format';
+import { displayName, firstMoveSquares, materialFromFen, pvToSan, shortName } from './lib/format';
 import { seedGameScores } from './lib/quality';
+import { shortcutFor } from './lib/shortcuts';
 import { unlockAudio } from './lib/sound';
-import { AUTO_SWITCH_SEC, canGuess, canSharePosition, engineHeldBack, selectGameData, selectRoundNo, selectShownPly, useStore } from './store';
+import { analysisPosition, AUTO_SWITCH_SEC, canSharePosition, selectGameData, selectGuessFen, selectRoundNo, selectShownPly, useStore } from './store';
 
 // Loaded on first use, so the first paint only carries the board and the analysis tab.
 const SimilarPanel = lazy(() => import('./components/SimilarPanel').then(m => ({ default: m.SimilarPanel })));
@@ -38,8 +41,6 @@ export default function App() {
   const flipped = useStore(s => s.flipped);
   const resultVisible = useStore(s => s.resultVisible);
   const loadError = useStore(s => s.loadError);
-  const gameOrder = useStore(s => s.gameOrder);
-  const games = useStore(s => s.games);
   const settings = useStore(s => s.settings);
   const paused = useStore(s => s.paused);
   const preview = useStore(s => s.preview);
@@ -47,7 +48,6 @@ export default function App() {
   const step = useStore(s => s.step);
   const setViewPly = useStore(s => s.setViewPly);
   const toggleFlip = useStore(s => s.toggleFlip);
-  const selectGame = useStore(s => s.selectGame);
   const setSetting = useStore(s => s.setSetting);
   const pause = useStore(s => s.pause);
   const setPreview = useStore(s => s.setPreview);
@@ -61,11 +61,10 @@ export default function App() {
   const view = useStore(s => s.view);
   const setView = useStore(s => s.setView);
   const movesWhenLeft = useStore(s => s.movesWhenLeft);
-  const guessing = useStore(canGuess);
-  const held = useStore(engineHeldBack);
-  const guess = useStore(s => s.guess);
-  const makeGuess = useStore(s => s.makeGuess);
-  const peekEngine = useStore(s => s.peekEngine);
+  const analysis = useStore(s => s.analysis);
+  const analysisMove = useStore(s => s.analysisMove);
+  const closeAnalysis = useStore(s => s.closeAnalysis);
+  const guessFen = useStore(selectGuessFen);
   const [boardSync, setBoardSync] = useState(0);
   const [shareSlot, setShareSlot] = useState<HTMLDivElement | null>(null);
   const [tab, setTabState] = useState<Tab>('analysis');
@@ -74,6 +73,9 @@ export default function App() {
     track('tab_open', { tab: id });
   };
   const isMobile = useIsMobile();
+  // Engine and time sit beside the board on wide screens; elsewhere they live in the tabs.
+  const wide = useMedia(WIDE_LAYOUT);
+  const squares = useMedia(GAME_SQUARES);
   const layoutRef = useRef<HTMLElement>(null);
 
   useEffect(() => init(), [init]);
@@ -101,18 +103,16 @@ export default function App() {
   // Keyboard navigation, and unlock audio on the first interaction.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement | null;
-      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
       // the shortcuts drive the live game; the puzzle corner has its own buttons
       if (useStore.getState().view !== 'live') return;
-      if (e.key === 'ArrowLeft') step(-1);
-      else if (e.key === 'ArrowRight') step(1);
-      else if (e.key === 'Home' || e.key === 'ArrowUp') setViewPly(0);
-      else if (e.key === 'End' || e.key === 'ArrowDown') setViewPly(null);
-      else if (e.key === 'Escape') setPreview(null);
-      else if (e.key === 'f') toggleFlip();
-      else return;
+      const shortcut = shortcutFor(e, !!document.querySelector('.promo'));
+      if (!shortcut) return;
+      if (shortcut === 'back') step(-1);
+      else if (shortcut === 'forward') step(1);
+      else if (shortcut === 'start') setViewPly(0);
+      else if (shortcut === 'live') setViewPly(null);
+      else if (shortcut === 'closePreview') setPreview(null);
+      else toggleFlip();
       e.preventDefault();
     };
     const unlock = () => unlockAudio();
@@ -126,32 +126,40 @@ export default function App() {
 
   const ply = game && shown > 0 ? game.plies[shown - 1] : undefined;
   const gameFen = ply?.fen ?? game?.initialFen;
-  // A position from another game temporarily replaces the board.
-  const fen = preview?.fen ?? gameFen;
+  // The viewer's own line, when the board shows one. It belongs to the game it was started in.
+  const line = analysis && game && analysis.gameId === game.id ? analysis : null;
+  const linePos = useMemo(() => (line ? analysisPosition(line) : undefined), [line]);
+  // What the board shows: another game's position, the viewer's own line, or the game.
+  const fen = preview?.fen ?? linePos?.fen ?? gameFen;
   const atLiveEdge = viewPly === null;
+  // The engine follows the board. A result is only ever shown for the position it was asked about.
   const evaluation = useEval(fen, settings.engine && !!game && view === 'live');
   const material = useMemo(() => (fen ? materialFromFen(fen) : undefined), [fen]);
-  // No best-move arrow while the viewer is still guessing this move.
   const arrow = useMemo(
-    () => (settings.arrow && !held && fen && evaluation ? firstMoveSquares(fen, evaluation.pvs[0]?.moves[0]) : undefined),
-    [settings.arrow, held, fen, evaluation],
+    () => (settings.arrow && fen && evaluation ? firstMoveSquares(fen, evaluation.pvs[0]?.moves[0]) : undefined),
+    [settings.arrow, fen, evaluation],
   );
-  // A guess is drawn as an arrow; the pieces themselves do not move.
+  // A move on the board is the viewer's own analysis. It is never a prediction.
+  // A promotion waits for its piece only on the exact board it was started on:
+  // any step, a new move of the game under it, another game or another view drops it.
   const promo = usePromotion(
     fen ?? '',
     move => {
-      makeGuess(move);
-      setBoardSync(n => n + 1);
+      if (!analysisMove(move.uci)) setBoardSync(n => n + 1);
     },
     () => setBoardSync(n => n + 1),
-    `${game?.id}:${shown}:${view}:${settings.guessMode}:${boardSync}`,
+    `${game?.id}:${view}:${line ? `own:${line.cursor}:${line.moves.length}` : `game:${shown}`}:${boardSync}`,
   );
-  const guessOpen = !!guess && !!game && guess.gameId === game.id && guess.forPly === revealed + 1 && atLiveEdge && !preview;
-  const guessShapes = useMemo<BoardShape[]>(() => (guessOpen && guess ? [{ from: guess.from, to: guess.to, brush: 'green' }] : []), [guessOpen, guess]);
   const lastMove = useMemo<[string, string] | undefined>(
-    () => (preview ? preview.lastMove : ply ? [ply.from, ply.to] : undefined),
-    [preview, ply],
+    () => (preview ? preview.lastMove : linePos ? linePos.lastMove : ply ? [ply.from, ply.to] : undefined),
+    [preview, linePos, ply],
   );
+  const check = preview ? false : linePos ? linePos.check : !!ply?.check;
+  // The viewer's own moves with their numbers, for the line under the board.
+  const ownMoves = useMemo(() => (line ? pvToSan(line.rootFen, line.moves.map(m => m.uci), line.moves.length) : []), [line]);
+  const newInGame = line && !paused ? Math.max(0, revealed - line.revealedAtStart) : 0;
+  // "Live" only while there is something live to go back to.
+  const backLabel = !paused && !resultVisible ? t.backToLive : t.backToGamePos;
 
   // Tab title follows the game so a background tab still tells you something, without spoiling a paused game.
   useEffect(() => {
@@ -181,6 +189,7 @@ export default function App() {
   };
 
   const orientation = flipped ? 'black' : 'white';
+  const inLine = !!line && !preview;
   const top = orientation === 'white' ? 'black' : 'white';
   const bottom = orientation;
   const layoutStyle = !isMobile && settings.sideWidth ? ({ '--side-w': `${settings.sideWidth}px` } as React.CSSProperties) : undefined;
@@ -191,7 +200,7 @@ export default function App() {
   const locale = settings.lang === 'tr' ? 'tr-TR' : 'en-GB';
 
   const resultBanner = () => {
-    if (!game || !resultVisible || !atLiveEdge || preview) return null;
+    if (!game || !resultVisible || !atLiveEdge || preview || line) return null;
     const text = game.result === '1/2-1/2' ? t.draw : `${displayName(game.result === '1-0' ? game.white : game.black)} ${t.wins}`;
     const when =
       nextRound?.startsAt && !nextRound.finished
@@ -205,17 +214,6 @@ export default function App() {
     );
   };
 
-  // Guess mode: say that the board is waiting for a move, or show the guess that was made.
-  const guessStrip = () => {
-    if (!game || !guessing || preview) return null;
-    const mover = (fen ?? '').split(' ')[1] === 'b' ? game.black : game.white;
-    return (
-      <div className="banner guess" role="status">
-        {guessOpen && guess ? `${t.yourGuess} ${localizeSan(guess.san, settings.notation)}` : t.guessStrip.replace('{player}', shortName(mover))}
-      </div>
-    );
-  };
-
   // A later game is live or about to start. Unless the viewer declines, the page opens it by itself.
   const nextUpBanner = () => {
     if (!nextUp || !nextUpRound || preview) return null;
@@ -223,7 +221,8 @@ export default function App() {
     const now = Date.now();
     const started = !!nextUpRound.ongoing || (nextUpRound.startsAt ?? Infinity) <= now;
     const left = Math.min(AUTO_SWITCH_SEC, Math.max(0, AUTO_SWITCH_SEC - Math.floor((now - nextUp.since) / 1000)));
-    const counting = followLatest && atLiveEdge;
+    // The page never moves to another game by itself while the viewer is exploring.
+    const counting = followLatest && atLiveEdge && !line;
     return (
       <div className="banner nextup" role="status">
         <span>
@@ -242,23 +241,12 @@ export default function App() {
     );
   };
 
+  // With the engine in its own column, the first tab is the list of moves.
   const tabLabel = (id: Tab) =>
-    ({ analysis: t.tabAnalysis, predict: t.tabPredict, similar: t.tabSimilar, charts: t.tabCharts, match: t.tabMatch, settings: t.tabSettings })[id];
+    ({ analysis: wide ? t.tabMoves : t.tabAnalysis, predict: t.tabPredict, similar: t.tabSimilar, charts: t.tabCharts, match: t.tabMatch, settings: t.tabSettings })[id];
 
   const boardColumn = (
     <section className="board-col">
-      {gameOrder.length > 1 && (
-        <label className="game-picker">
-          {t.selectGame}
-          <select value={game?.id ?? ''} onChange={e => selectGame(e.target.value)}>
-            {gameOrder.map(id => (
-              <option key={id} value={id}>
-                {displayName(games[id].white)} – {displayName(games[id].black)}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
       {game && fen ? (
         <>
           <PlayerBar
@@ -270,17 +258,19 @@ export default function App() {
             captured={material ? (top === 'white' ? material.capturedByWhite : material.capturedByBlack) : []}
             lead={material ? (top === 'white' ? material.diff : -material.diff) : 0}
           />
-          <div className="board-row">
-            <EvalBar evaluation={settings.engine ? evaluation : undefined} orientation={orientation} />
+          <EvalStrip evaluation={evaluation} />
+          <div className={`board-row ${inLine ? 'analysing' : ''}`}>
             <Board
               fen={fen}
               lastMove={lastMove}
-              check={!preview && !!ply?.check}
+              check={check}
               orientation={orientation}
               arrow={arrow}
-              shapes={guessShapes}
-              onMove={guessing && !promo.pending ? promo.squares : undefined}
+              // Any legal move can be tried, from the newest position or an earlier one. Another game's position is only looked at.
+              onMove={!preview && !promo.pending ? promo.squares : undefined}
               syncToken={boardSync}
+              // Fingers tap to move here, so a swipe over the board still scrolls the page.
+              touch="tap"
             />
             {promo.pending && <PromotionPicker onChoose={promo.choose} />}
           </div>
@@ -303,54 +293,70 @@ export default function App() {
               </button>
             </div>
           ) : (
-            <div className="controls">
-              <button onClick={() => setViewPly(0)} disabled={shown === 0} aria-label={t.first} title={t.first}>
-                ⏮
-              </button>
-              <button onClick={() => step(-1)} disabled={shown === 0} aria-label={t.prev} title={t.prev}>
-                ◀
-              </button>
-              <button onClick={() => step(1)} disabled={atLiveEdge && !paused} aria-label={t.next} title={t.next}>
-                ▶
-              </button>
-              <button onClick={() => setViewPly(null)} disabled={atLiveEdge} aria-label={t.last} title={t.last}>
-                ⏭
-              </button>
-              <button onClick={toggleFlip} aria-label={t.flip} title={t.flip}>
-                ⇅
-              </button>
-              {shareable && game && (
-                <ShareButton
-                  // a new game starts with no panel: a link copied for another game is not left on screen
-                  key={game.id}
-                  compact={isMobile}
-                  panelHost={shareSlot}
-                  // the position on the board, which is never beyond what this viewer has been shown
-                  target={{ view: 'live', gameNo: roundNo, ply: shown }}
-                  describe={(shown === 0 ? t.shareGame : t.sharePosition).replace('{g}', String(roundNo)).replace('{m}', String(Math.ceil(shown / 2)))}
-                />
-              )}
-              {!paused && !resultVisible && (
-                <button className="pause-btn" onClick={pause} title={t.pauseTitle}>
-                  ⏸ {t.pauseBtn}
-                </button>
-              )}
-              {!atLiveEdge && !paused && (
-                <button className="go-live" onClick={() => setViewPly(null)}>
-                  <i className="pulse" /> {t.backToLive}
-                </button>
-              )}
-            </div>
+            <>
+              <MoveStrip
+                game={game}
+                shown={shown}
+                line={line}
+                ownMoves={ownMoves}
+                backLabel={backLabel}
+                atNewest={atLiveEdge && !line}
+                liveNow={!paused && !resultVisible}
+              />
+              <div className="board-actions">
+                {shareable && (
+                  <ShareButton
+                    // a new game starts with no panel: a link copied for another game is not left on screen
+                    key={game.id}
+                    compact={isMobile}
+                    panelHost={shareSlot}
+                    // the position on the board, which is never beyond what this viewer has been shown
+                    target={{ view: 'live', gameNo: roundNo, ply: shown }}
+                    describe={(shown === 0 ? t.shareGame : t.sharePosition).replace('{g}', String(roundNo)).replace('{m}', String(Math.ceil(shown / 2)))}
+                  />
+                )}
+                {!paused && !resultVisible && (
+                  <button className="pause-btn" onClick={pause} title={t.pauseTitle}>
+                    ⏸ {t.pauseBtn}
+                  </button>
+                )}
+                {line && newInGame > 0 && (
+                  <span className="muted small" role="status">
+                    {t.newMovesInGame.replace('{n}', String(newInGame))}
+                  </span>
+                )}
+                {line && line.rootPly < revealed && (
+                  <button type="button" className="link small" onClick={closeAnalysis} title={t.closeAnalysisTitle}>
+                    {t.closeAnalysis}
+                  </button>
+                )}
+              </div>
+            </>
           )}
           <div className="share-slot" ref={setShareSlot} />
           {paused && !preview && (settings.streamHidden || streamUncovered) && <CatchUpBar />}
-          {nextUpBanner() ?? resultBanner() ?? guessStrip()}
-          {revealed === 0 && !resultVisible && !paused && !preview && <div className="banner">{t.notStarted}</div>}
+          {nextUpBanner() ?? resultBanner()}
+          {revealed === 0 && !resultVisible && !paused && !preview && !line && <div className="banner">{t.notStarted}</div>}
         </>
       ) : (
         <div className="board-skeleton">{loadError ? t.loadError : ''}</div>
       )}
     </section>
+  );
+
+  // What the engine says about the position on the board. Beside the board on wide screens, in the first tab elsewhere.
+  const enginePanels = game && fen && (
+    <>
+      <WinChance game={game} evaluation={evaluation} />
+      <EngineCard game={game} fen={fen} shown={shown} evaluation={evaluation} inLine={inLine} />
+    </>
+  );
+
+  const leftColumn = (
+    <aside className="left-col" aria-label={t.tabAnalysis}>
+      {enginePanels}
+      {game && <TimePanel game={game} shown={shown} />}
+    </aside>
   );
 
   const sideColumn = (
@@ -365,34 +371,39 @@ export default function App() {
         </div>
       ) : (
         <>
-      <div className="tabs" role="tablist">
-        {TABS.map(id => (
-          <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>
-            {tabLabel(id)}
-          </button>
-        ))}
-      </div>
-      <div className="tab-body">
-        {tab === 'analysis' && game && fen && (
-          <AnalysisPanel game={game} fen={fen} shown={shown} evaluation={evaluation} held={held} onShowEngine={peekEngine} />
-        )}
-        <Suspense fallback={<p className="muted pad">{t.loading}</p>}>
-          {tab === 'predict' && game && gameFen && <PredictPanel game={game} fen={gameFen} evaluation={evaluation} />}
-          {tab === 'similar' && game && gameFen && <SimilarPanel game={game} fen={gameFen} shown={shown} />}
-          {tab === 'charts' && game && <ChartsPanel game={game} shown={shown} />}
-        </Suspense>
-        {tab === 'match' && <MatchPanel />}
-        {tab === 'settings' && <SettingsPanel />}
-      </div>
+          <div className="tabs" role="tablist">
+            {TABS.map(id => (
+              <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>
+                {tabLabel(id)}
+              </button>
+            ))}
+          </div>
+          <div className="tab-body">
+            {tab === 'analysis' && game && fen && (
+              <>
+                {!wide && enginePanels}
+                <MovesPanel game={game} shown={shown} lineFrom={inLine && line ? line.rootPly : undefined} />
+              </>
+            )}
+            <Suspense fallback={<p className="muted pad">{t.loading}</p>}>
+              {tab === 'predict' && game && guessFen && <PredictPanel game={game} fen={guessFen} evaluation={evaluation} boardElsewhere={fen !== guessFen} />}
+              {tab === 'similar' && game && gameFen && <SimilarPanel game={game} fen={gameFen} shown={shown} />}
+              {tab === 'charts' && game && <ChartsPanel game={game} shown={shown} withTime={!wide} />}
+            </Suspense>
+            {tab === 'match' && <MatchPanel />}
+            {tab === 'settings' && <SettingsPanel />}
+          </div>
         </>
       )}
     </section>
   );
 
+  const threeColumns = wide && view === 'live';
   return (
     <div className="app">
-      <Header />
-      <main className="layout" ref={layoutRef} style={layoutStyle}>
+      <Header squares={squares} />
+      <main className={`layout ${threeColumns ? 'three' : ''}`} ref={layoutRef} style={layoutStyle}>
+        {threeColumns && leftColumn}
         {view === 'puzzles' ? (
           <Suspense fallback={<section className="board-col" />}>
             <PuzzleBoard />

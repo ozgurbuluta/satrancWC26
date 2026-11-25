@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useScoresVersion, useT } from '../hooks';
 import type { Strings } from '../i18n';
-import { fillScores, judgeMove, scoreOf, type EvalResult } from '../lib/engine';
+import { cachedEval, fillScores, judgeMove, scoreOf, type EvalResult } from '../lib/engine';
 import { getMasters, totalGames, type ExplorerData } from '../lib/explorer';
 import { firstMoveSquares, formatEval, localizeSan, pvToSan, shortName } from '../lib/format';
 import type { GameData } from '../lib/pgn';
 import { moveByUci } from '../lib/position';
-import { canGuess, useStore, type GuessEntry } from '../store';
+import { canGuess, referencesHeld, useStore, type GuessEntry } from '../store';
 import { qualityLabel } from './AnalysisPanel';
-import { MoveInput } from './MoveEntry';
+import { MoveChooser, MoveInput } from './MoveEntry';
 
 const moveNo = (ply: number) => `${Math.ceil(ply / 2)}${ply % 2 === 1 ? '.' : '…'}`;
 
@@ -26,9 +26,15 @@ const engineVerdict = (fenBefore: string, fenAfter: string, uci: string | undefi
 
 interface Props {
   game: GameData;
-  /** Position on the board (the newest visible one when a guess is possible). */
+  /**
+   * The position the prediction is about: the newest visible one of the game.
+   * Never the board's, which may show an earlier move or a line of the viewer's own.
+   */
   fen: string;
+  /** Evaluation of whatever the board shows. Used here only when that is this same position. */
   evaluation?: EvalResult;
+  /** The board shows something other than `fen`. */
+  boardElsewhere: boolean;
 }
 
 /**
@@ -37,8 +43,12 @@ interface Props {
  * (real frequencies, only while the position exists in the database) and
  * what the engine considers strongest. Neither is a probability of what the
  * player will do, and nothing here pretends to be one.
+ *
+ * Everything about a prediction happens in this panel. The board is not
+ * involved: a move made there is analysis, and choosing a move here moves
+ * nothing there.
  */
-export function PredictPanel({ game, fen, evaluation }: Props) {
+export function PredictPanel({ game, fen, evaluation, boardElsewhere }: Props) {
   const t = useT();
   const lang = useStore(s => s.settings.lang);
   const notation = useStore(s => s.settings.notation);
@@ -48,8 +58,8 @@ export function PredictPanel({ game, fen, evaluation }: Props) {
   const log = useStore(s => s.guessLog[game.id]);
   const revealed = useStore(s => s.revealed);
   const resultVisible = useStore(s => s.resultVisible);
-  const viewPly = useStore(s => s.viewPly);
   const allowed = useStore(canGuess);
+  const held = useStore(referencesHeld);
   const makeGuess = useStore(s => s.makeGuess);
   const clearGuess = useStore(s => s.clearGuess);
   const peekEngine = useStore(s => s.peekEngine);
@@ -59,7 +69,9 @@ export function PredictPanel({ game, fen, evaluation }: Props) {
   const whiteToMove = fen.split(' ')[1] !== 'b';
   const mover = whiteToMove ? game.white : game.black;
   // The references would give the game away to someone still guessing.
-  const showReferences = !guessMode || open || !allowed;
+  const showReferences = !held;
+  // The engine looks at one position at a time, the board's. Its lines are shown here only for this position.
+  const engineEval = evaluation && evaluation.fen === fen ? evaluation : cachedEval(fen);
 
   // The engine's opinion of a guess needs a score before and after it: for the
   // open guess, and for the latest settled one. One request, because a newer
@@ -118,6 +130,8 @@ export function PredictPanel({ game, fen, evaluation }: Props) {
                 <strong>{t.guessPrompt.replace('{player}', shortName(mover))}</strong>
               </p>
               <p className="muted small">{t.guessHow}</p>
+              {boardElsewhere && <p className="muted small">{t.guessAbout}</p>}
+              <MoveChooser fen={fen} onMove={makeGuess} />
               <MoveInput fen={fen} label={t.typeMove} onMove={makeGuess} />
               <button className="link small" onClick={peekEngine}>
                 {t.guessSkip}
@@ -137,7 +151,7 @@ export function PredictPanel({ game, fen, evaluation }: Props) {
               </p>
             </>
           )}
-          {!allowed && !open && <p className="muted">{resultVisible ? t.guessOver : viewPly !== null ? t.guessNotLive : t.guessPeeked}</p>}
+          {!allowed && !open && <p className="muted">{resultVisible ? t.guessOver : t.guessPeeked}</p>}
         </section>
       )}
 
@@ -192,9 +206,9 @@ export function PredictPanel({ game, fen, evaluation }: Props) {
 
           <section>
             <h3>{t.engineSuggests}</h3>
-            {evaluation && evaluation.pvs.length > 0 ? (
+            {engineEval && engineEval.pvs.length > 0 ? (
               <ol className="engine-first">
-                {evaluation.pvs.map((pv, i) => {
+                {engineEval.pvs.map((pv, i) => {
                   const first = pvToSan(fen, pv.moves, 1)[0];
                   return first ? (
                     <li key={i}>
@@ -205,7 +219,7 @@ export function PredictPanel({ game, fen, evaluation }: Props) {
                 })}
               </ol>
             ) : (
-              <p className="muted">{t.thinking}</p>
+              <p className="muted">{boardElsewhere ? t.engineElsewhere : t.thinking}</p>
             )}
             <p className="muted small">{t.engineNote}</p>
           </section>

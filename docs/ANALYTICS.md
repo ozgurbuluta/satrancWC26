@@ -113,6 +113,7 @@ credentials in paths and query strings and a browser that refuses storage.
 | `setting_change` | a setting changes | `setting`, `value` |
 | `outbound_click` | a link to another site | `link_domain` (host only) |
 | `feed_fallback` | the live feed dropped to polling (once per visit) | |
+| `analysis_start` | the viewer plays a first move of their own on the main board | `from`: `newest`, `earlier` |
 | `guess_mode` | guess mode is switched on or off | `on` |
 | `guess_result` | a guess is settled by the move that was played | `hit`, `quality` (currently always `unknown`) |
 | `puzzle_start` | a puzzle is shown | `source`: `daily`, `lichess`, `builtin`; `theme`: `mix`, `mateIn1`, `mateIn2`, `short`, `endgame` |

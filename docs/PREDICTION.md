@@ -35,9 +35,16 @@ and the page states that neither is a probability of the player's next move.
 
 ## Fairness and spoilers
 
-- Engine lines, the best-move arrow and the "only good move" note are held
-  back until the viewer has guessed. Choosing to look at the engine gives up
-  the guess for that move.
+- A prediction is made only in the Tahmin tab, by picking a move from the
+  list of legal moves or typing it. A move on the main board is the viewer's
+  own analysis and is never a prediction; picking a prediction moves nothing
+  on the board.
+- A prediction is about the newest visible position of the game, whatever
+  the board shows (an earlier move, a line of the viewer's own).
+- Inside the Tahmin tab, what masters played and what the engine prefers
+  are held back until the viewer has predicted, or has given the move up to
+  see them. Nothing outside that tab is hidden by guess mode: the engine
+  beside the board is the viewer's to look at.
 - A guess is settled only by the next move the viewer is shown. While the
   board is paused, moves already played but still hidden never settle it.
 - The other online-player database on Lichess would cover more positions,
