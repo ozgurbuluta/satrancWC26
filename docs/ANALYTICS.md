@@ -93,7 +93,8 @@ credentials in paths and query strings and a browser that refuses storage.
 |---|---|---|
 | `$pageview` | the page loads | |
 | `$pageleave` | leaving the page: time on page | |
-| `tab_open` | a tab is opened | `tab`: `analysis`, `similar`, `charts`, `match`, `settings` |
+| `view_open` | switching between the match and the puzzle corner | `view`: `live`, `puzzles` |
+| `tab_open` | a tab is opened | `tab`: `analysis`, `predict`, `similar`, `charts`, `match`, `settings` |
 | `game_select` | another game is opened | `how`: `manual` or `auto`, `game_no` (or `board` on tie-break days) |
 | `next_game_dismiss` | "Burada kal" on the next-game announcement | |
 | `move_browse` | first time earlier moves are browsed in a game | |
@@ -112,12 +113,19 @@ credentials in paths and query strings and a browser that refuses storage.
 | `setting_change` | a setting changes | `setting`, `value` |
 | `outbound_click` | a link to another site | `link_domain` (host only) |
 | `feed_fallback` | the live feed dropped to polling (once per visit) | |
+| `guess_mode` | guess mode is switched on or off | `on` |
+| `guess_result` | a guess is settled by the move that was played | `hit`, `quality` (currently always `unknown`) |
+| `puzzle_start` | a puzzle is shown | `source`: `daily`, `lichess`, `builtin`; `theme`: `mix`, `mateIn1`, `mateIn2`, `short`, `endgame` |
+| `puzzle_end` | a puzzle is finished or left | `result`: `first_try`, `solved`, `revealed`, `skipped`; `rating_band`; `hint_used` |
 
 ## Questions these answer
 
 - Where visitors come from: `$referring_domain` and `referrer_domain` on `$pageview`.
 - What they open: `tab_open`, `game_select`, `stream_select`.
 - What they use: the `pause_*` events, `sync_delay_set`, `similar_*`,
-  `chart_jump`, `setting_change`.
+  `chart_jump`, `setting_change`, `guess_*`, `puzzle_*`.
+
+Moves, positions and puzzle ids are never part of an event: a guess is
+recorded as right or wrong, a puzzle as its rating band and how it ended.
 - How long they stay: `$pageleave`, split by `game_state`.
 - Whether the live feed holds up: `feed_fallback` against `$pageview`.

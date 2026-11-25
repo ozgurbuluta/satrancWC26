@@ -13,6 +13,8 @@ bağımsız bir hayran sitesi.
 - **Grafikler:** değerlendirme grafiği, kritik anlar ve hamle başına düşünme süresi.
 - **Kim kazanır?** motor değerlendirmesinden kazanma/beraberlik tahmini ve hamle kalitesi (yanlışlık, hata, büyük hata).
 
+- **Hamleyi tahmin et:** tahmin modunda sıradaki hamleyi tahtada yap ya da yaz; hamle oynanınca tuttu mu görürsün. Tahmin edene kadar motor önerileri gizlenir. Yanında iki ayrı bilgi durur: usta partilerinde o pozisyonda neyin kaç kez oynandığı ve motorun en güçlü bulduğu hamleler. İkisi de olasılık değildir; sayfada insan hamlesi tahmin eden bir model yoktur.
+- **Bulmaca köşesi:** Lichess bulmacaları (günün bulmacası, karışık, 1 ve 2 hamlede mat, kısa, oyun sonu). Yalnızca kurallı hamleler oynanır; ipucu, çözümü göster, baştan ve skor vardır. Lichess'e ulaşılamazsa hazır bulmacalar gösterilir.
 - **Maçı kendi takip eder:** yeni parti başlayınca kısa bir duyurudan sonra o partiye geçer; her günün yayınını kanalın canlı yayın listesinden kendi bulur.
 
 ## İstatistik
@@ -20,6 +22,16 @@ bağımsız bir hayran sitesi.
 Site, hangi özelliklerin kullanıldığını görmek için çerezsiz ve anonim istatistik tutabilir (PostHog, AB sunucuları).
 `VITE_POSTHOG_KEY` tanımlı değilse hiçbir şey yüklenmez ve gönderilmez. Kurulum, gönderilen olaylar ve gizlilik ayrıntıları:
 [docs/ANALYTICS.md](docs/ANALYTICS.md).
+
+## Testler
+
+```bash
+npm test
+```
+
+Tarayıcıda elle çalıştırılan denemeler `tests/e2e/` altında, sonuçları [docs/TEST-EVIDENCE.md](docs/TEST-EVIDENCE.md) içinde.
+Barındırma ve `ozgurakanay.com/satranc/` sayfası: [docs/INTEGRATION.md](docs/INTEGRATION.md).
+Tahmin panelinin ne gösterip ne göstermediği: [docs/PREDICTION.md](docs/PREDICTION.md).
 
 ## Geliştirme
 

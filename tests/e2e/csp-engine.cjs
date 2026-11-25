@@ -20,10 +20,10 @@ const { chromium } = require('playwright');
   for (let i = 0; i < 40 && !/Yerel|Local/.test(src || ''); i++) { await p.waitForTimeout(500); src = await p.locator('.engine-src').innerText().catch(() => null); }
   console.log('engine source:', src, '| eval:', await p.locator('.eval-big').innerText().catch(() => null));
   console.log('engine lines:', await p.locator('.pv-list li').count());
-  await p.locator('.tabs button').nth(1).click();
+  await p.locator('.tabs button', { hasText: 'Benzer' }).click();
   await p.waitForTimeout(5000);
   console.log('similar tab:', (await p.locator('.similar').innerText()).replace(/\n+/g, ' | ').slice(0, 160));
-  await p.locator('.tabs button').nth(2).click();
+  await p.locator('.tabs button', { hasText: 'Grafik' }).click();
   await p.waitForTimeout(6000);
   console.log('charts tab head:', (await p.locator('.charts section').first().innerText()).replace(/\n+/g, ' | ').slice(0, 120));
   console.log('CSP violations:', violations.length ? violations : 'none');
