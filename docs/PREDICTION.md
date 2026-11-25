@@ -62,41 +62,161 @@ percentage is not a prediction of a person, and neither is a count from old
 games. If one is ever shown, it gets its own block, its own name and its own
 measured accuracy next to it.
 
-### Candidates
+### Candidates: what is verified and what is not
 
-| Candidate | Licence | What is known | Open questions |
-|---|---|---|---|
-| Maia-2 (CSSLab) | MIT | one model for all rating levels; a community port to ONNX exists (`IndieFoundry/maia2-onnx`, for onnxruntime-web, model files of about 23 to 42 MB) | accuracy on elite classical games: it was trained on online games on Lichess, where almost every player is far below the level of this match |
-| Maia-3 | AGPL-3.0 | newer | the licence needs a careful read first (AGPL adds a duty to offer the source to everyone who uses a hosted copy); size and browser support unknown |
-| Maia-1 | GPL (weights for lc0) | one network per rating band, up to 1900 | needs an lc0 build for the browser; rating bands far below this match |
-| Viewers' guesses | own data | the share of viewers who picked each move is a real distribution of human predictions | needs a small backend, a minimum number of guesses before anything is shown, and protection against one person voting many times |
-| Kibitz | not open | see the top of this page | not available to use; a reference only |
+Checked on 25 November 2026 in the repositories and pages linked. "Code
+licence" is what the repository's licence file says. Permission to use or
+republish the **weights**, or a file **converted** from them, is a separate
+question and is listed separately. None of this is legal advice.
 
-Accuracy by rating level for the Maia models was looked for and not found in
-a form that could be quoted here. It has to be measured (below), not assumed.
+**Maia-2**
 
-### What has to be measured before anything is shown
+- Code licence, verified: MIT. `LICENSE` in https://github.com/CSSLab/maia2
+  (commit `67bee6c`); the README says "Maia-2 is released under the MIT
+  License".
+- Weights: two checkpoints, rapid and blitz. The package downloads them from
+  two Google Drive links listed in `maia2/model.py`. No licence statement of
+  their own was found for these files in the repository; the files
+  themselves were not inspected. Whether the repository's MIT licence covers
+  them is an assumption until the authors say so.
+- Converted file for the browser: none is published. The third-party project
+  https://github.com/IndieFoundry/maia2-onnx (code licence, verified: MIT,
+  commit `abe12b1`) contains an export script and checksums, not model
+  files. An ONNX file would be our own conversion of the Maia-2 weights, and
+  serving it from this site would republish a derivative of them. That needs
+  the same permission as the weights.
+- Training data: rated rapid and blitz games from the Lichess database, May
+  2018 to November 2023 (README, "Data"). That database is published under
+  CC0 (https://database.lichess.org/).
+- Rating groups: under 1100, hundred-point groups up to 1999, and one group
+  for 2000 and above (`maia2/utils.py`). It has no way to tell a 2000 from a
+  2780.
+- Paper: https://arxiv.org/abs/2409.20553.
+- Size and speed: the port's README reports converted files of 27 to 85 MB
+  depending on precision, and 14.2 MB (3.7 MB compressed) for the ONNX
+  runtime's WebAssembly file. Those are its figures, not measured here.
 
-On a held-out set: classical games between players rated 2700 and above
-from 2024 to 2026, none of them from this match, positions after move 10,
-forced recaptures and only-legal moves removed.
+**Maia-3**
 
-- **Top-1 and top-3 accuracy**: how often the played move is the model's
-  first choice, or among its first three.
-- **Log loss and Brier score** over the moves: whether the percentages mean
-  anything, not only the ranking.
-- **Calibration**: a reliability table (of the moves given 60 to 70 %, how
-  many were played) and the expected calibration error.
-- **Two baselines on the same positions**: "the engine's first move" and
-  "the most played move in the masters database, where there is one".
-- **By phase**: opening, middlegame, endgame, and time trouble if clock data
-  allows.
+- Code licence, verified: AGPL-3.0. `LICENSE` in
+  https://github.com/CSSLab/maia3 (commit `1e13597`). The repository is
+  Python inference code that runs the weights as a UCI engine.
+- Weights: on Hugging Face as `UofTCSSLab/Maia3-5M`, `Maia3-23M` and
+  `Maia3-79M`. Their pages state no licence (the licence field was empty
+  when checked). Permission is unknown.
+- Converted file for the browser: none known.
+- Paper: https://arxiv.org/abs/2605.19091. Its training range has to be read
+  from the paper before any test set is fixed.
 
-A model is worth showing only if it beats both baselines on top-1 accuracy
-and log loss, and its percentages are calibrated to within a few points.
-The numbers go on the page next to the predictions, with the size of the
-test set. If it does not pass, the site stays as it is and this page says
-what was measured.
+**Maia-1**
+
+- Code licence, verified: GPL-3.0. `LICENSE` in
+  https://github.com/CSSLab/maia-chess (commit `749204c`).
+- Weights: nine networks for ratings 1100 to 1900, published in the same
+  repository (`maia_weights/`) and as its release files, with no separate
+  terms stated.
+- They run in lc0. No browser build of that is known, and the rating bands
+  are far below this match.
+- Training data: Lichess games, January 2017 to November 2019 (README).
+- Paper: https://arxiv.org/abs/2006.01855.
+
+**Viewers' guesses.** Own data: the share of viewers who picked each move is
+a real distribution of human predictions. It needs a small backend, a
+minimum number of guesses before anything is shown, and protection against
+one person voting many times.
+
+**Kibitz.** Not open; a reference only (see the top of this page).
+
+Before any weights or converted file are served from this site, the authors
+are asked in writing whether that is allowed and under which terms, and
+their answer is linked here. Without an answer, evaluation can still be run
+offline with the weights fetched by the authors' own package, and nothing is
+republished.
+
+Accuracy by rating level for these models was looked for and not found in a
+form that could be quoted here. It has to be measured, not assumed.
+
+### Data for the evaluation
+
+- **Source:** the Lichess broadcast database
+  (https://database.lichess.org/#broadcasts), monthly PGN files of official
+  broadcasts, released under CC BY-SA 4.0. Anything published from it (a
+  test set, a list of game ids) carries that licence and credits Lichess.
+- **Games:** classical time controls, both players rated 2700 or above.
+  Nothing from this match.
+- **Positions:** every position of those games in which there is more than
+  one legal move.
+
+### Splitting without leakage
+
+- **By game.** All positions of a game are in the same set, and all games of
+  an event are in the same set.
+- **By time.** Two sets, in order:
+  - a *fitting set* of games that ended before a cut-off date. It is used
+    only to fit the few constants below.
+  - a *test set* of games that started after a later date, with a gap of at
+    least a month between the two.
+- **After the model's own training data.** The test set starts after the
+  last month of training data of every model evaluated on it. For Maia-2
+  that is after November 2023. A model whose training range cannot be
+  established is not compared on it.
+- **The frequency baseline must not see the future.** For a test position
+  the masters counts are taken only from games of earlier years than the
+  test game, so neither that game nor anything after it counts toward its
+  own prediction. (The explorer's date filter works in whole years; this is
+  to be confirmed when the script is written.)
+- **Repeated positions.** Opening positions recur. A test position that
+  also occurs in the fitting set is marked, and results are given for all
+  positions and for the unmarked ones.
+- **Used once.** The test set is fixed before any model is run on it, and
+  the list of its game ids and the script are published with the numbers.
+
+### Probabilities for every method
+
+Log loss needs a probability for the move that was played. A method that
+puts everything on one move scores infinitely badly the first time the
+player chooses another, so no method is evaluated that way. Each one gives
+a distribution over the legal moves that sums to 1, with a small floor so
+that every legal move has some probability:
+p(m) = (1 − ε) · q(m) + ε / n, with n legal moves and ε = 0.01 for all
+methods alike.
+
+| Method | q(m) before the floor |
+|---|---|
+| Uniform | 1 / n. The level everything has to beat; its log loss is ln n. |
+| Engine | Every legal move evaluated at the same fixed node count, turned into an expected score w(m) between 0 and 1. q(m) ∝ exp((w(m) − w(best)) / τ). τ is fitted on the fitting set. |
+| Masters frequency | (c(m) + α / n) / (N + α), with N earlier games in the position and c(m) of them continuing with m. α is fitted on the fitting set. With no games it is the uniform, so it is defined for every position. |
+| Model | Its output restricted to the legal moves and renormalised. Reported as published, and again with one temperature fitted on the fitting set. |
+
+The constants τ, α and the model's temperature are fitted by minimising log
+loss on the fitting set and are then frozen. Top-1 and top-3 accuracy do
+not depend on them.
+
+### What is reported
+
+- **Top-1 and top-3 accuracy.**
+- **Log loss:** the mean of −ln p(played move).
+- **Brier score:** the mean over positions of the sum over legal moves of
+  (p − y)², with y = 1 for the played move.
+- **Calibration:** a reliability table of the first-choice probability in
+  ten equal bins with the number of positions in each, and the expected
+  calibration error.
+- **Split** by opening, middlegame and endgame, for all positions and for
+  those with at least 20 earlier games in the masters database.
+- **Uncertainty:** 95 % intervals from resampling whole games, since
+  positions of one game are not independent. Differences between methods
+  are computed position by position.
+
+### The bar
+
+A model is worth showing only if, on the test set, it beats both the engine
+and the masters-frequency baseline on log loss and on top-1 accuracy, with
+the 95 % interval of each difference clear of zero, and its expected
+calibration error is at most 3 points with no more than the one fitted
+temperature. The numbers
+go on the page next to the predictions, with the size of the test set. If
+it does not pass, the site stays as it is and this page says what was
+measured.
 
 ### Hosting and cost
 
@@ -104,7 +224,8 @@ what was measured.
   on page load. Budget: at most about 25 MB to download, cached after the
   first time, under 300 ms a position on a mid-range phone, in a worker so
   the board never stutters. The content security policy already allows
-  WebAssembly; the model files would be served from this site's own origin.
+  WebAssembly; the model files would be served from this site's own origin,
+  which is why the permission above comes first.
 - **On a server.** Not proposed: it would be a service to run and pay for,
   and every prediction would depend on it being up.
 - **Privacy.** Positions come from the public broadcast. Nothing about the
@@ -112,10 +233,10 @@ what was measured.
 
 ### Order of work
 
-1. Build the test set and the two baselines; publish the script and the
-   baseline numbers.
-2. Run Maia-2 through the ONNX port on the test set, offline; publish its
-   numbers in this page.
-3. If it passes: measure size and speed in real browsers, then propose the
-   interface in a pull request of its own.
-4. Separately, decide whether a viewers' poll is worth a backend.
+1. Fix the fitting and test sets and publish their definition.
+2. Build the three baselines and publish their numbers.
+3. Run Maia-2 offline on the test set; publish its numbers here.
+4. Ask the authors about serving the weights or a conversion.
+5. If it passes and permission is given: measure size and speed in real
+   browsers, then propose the interface in a pull request of its own.
+6. Separately, decide whether a viewers' poll is worth a backend.
