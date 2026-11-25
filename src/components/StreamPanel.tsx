@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { IS_MATCH, STREAM_PRESETS } from '../config';
 import { useT } from '../hooks';
 import { track, trackOutbound } from '../lib/analytics';
+import { embedHosts } from '../lib/embed';
 import { pickVideo } from '../lib/streams';
 import { selectRoundNo, useStore } from '../store';
 import { CatchUpBar } from './CatchUpBar';
@@ -11,11 +12,13 @@ interface Embed {
   url: string;
 }
 
-const host = () => window.location.hostname || 'localhost';
-
 const youtubeChannel = (id: string): string => `https://www.youtube.com/embed/live_stream?channel=${id}`;
 const youtubeVideo = (id: string): string => `https://www.youtube.com/embed/${id}?rel=0`;
-const twitch = (name: string): string => `https://player.twitch.tv/?channel=${name}&parent=${host()}&autoplay=false`;
+// Twitch needs every embedding site named: this one and, when framed, the pages around it.
+const twitch = (name: string): string =>
+  `https://player.twitch.tv/?channel=${name}${embedHosts()
+    .map(h => `&parent=${encodeURIComponent(h)}`)
+    .join('')}&autoplay=false`;
 const kick = (name: string): string => `https://player.kick.com/${name}`;
 
 /** Turns a pasted YouTube/Twitch/Kick link into an embeddable player URL. */
@@ -72,8 +75,7 @@ export function StreamPanel() {
       : { src: youtubeChannel(p.channelId), url: p.url };
   }, [streamId, customStream, preset, roundNo, round, feeds]);
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = () => {
     const parsed = parseStreamLink(draft);
     setBad(!parsed);
     if (!parsed) return;
@@ -115,7 +117,7 @@ export function StreamPanel() {
             rel="noreferrer"
             title={t.openInTab}
             aria-label={t.openInTab}
-            onClick={() => (streamId === 'custom' ? track('outbound_click', { link_domain: new URL(embed.url).hostname.replace(/^www\./, ''), outbound: true }) : trackOutbound(embed.url))}
+            onClick={() => trackOutbound(embed.url)}
           >
             ↗
           </a>
@@ -126,25 +128,35 @@ export function StreamPanel() {
       </div>
 
       {showPaste && (
-        <form className="paste" onSubmit={submit}>
+        <div className="paste" role="group" aria-label={t.pasteLink}>
           <input
             value={draft}
             onChange={e => {
               setDraft(e.target.value);
               setBad(false);
             }}
+            onKeyDown={e => {
+              if (e.key === 'Enter') submit();
+            }}
             placeholder={t.pasteLink}
+            aria-label={t.pasteLink}
             inputMode="url"
             autoCapitalize="off"
             autoCorrect="off"
             spellCheck={false}
             aria-invalid={bad}
           />
-          <button type="submit" className="btn">
+          <button type="button" className="btn" onClick={submit}>
             {t.open}
           </button>
-          {bad ? <p className="error">{t.badLink}</p> : <p className="muted small hint">{t.streamHint}</p>}
-        </form>
+          {bad ? (
+            <p className="error" role="alert">
+              {t.badLink}
+            </p>
+          ) : (
+            <p className="muted small hint">{t.streamHint}</p>
+          )}
+        </div>
       )}
 
       {!hidden && (

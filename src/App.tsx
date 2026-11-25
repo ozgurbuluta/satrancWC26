@@ -10,7 +10,7 @@ import { PlayerBar } from './components/PlayerBar';
 import { SettingsPanel } from './components/SettingsPanel';
 import { StreamPanel } from './components/StreamPanel';
 import { useEval, useIsMobile, useNow, useT } from './hooks';
-import { setContext, track } from './lib/analytics';
+import { setContext, track, trackOutbound } from './lib/analytics';
 import { displayName, firstMoveSquares, materialFromFen, shortName } from './lib/format';
 import { seedGameScores } from './lib/quality';
 import { unlockAudio } from './lib/sound';
@@ -320,7 +320,7 @@ export default function App() {
       </main>
       <footer className="foot">
         {t.footer}{' '}
-        <a href={REPO_URL} target="_blank" rel="noreferrer" onClick={() => track('outbound_click', { link_url: REPO_URL, link_domain: 'github.com', outbound: true })}>
+        <a href={REPO_URL} target="_blank" rel="noreferrer" onClick={() => trackOutbound(REPO_URL)}>
           {t.source}
         </a>
       </footer>

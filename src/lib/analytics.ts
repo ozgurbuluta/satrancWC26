@@ -1,37 +1,225 @@
 /* ============================================================
-   analytics.ts — PostHog, cookieless.
+   analytics.ts — PostHog, cookieless, with a narrow privacy contract.
 
-   Same approach as ozgurakanay.com, writing to this site's OWN PostHog
-   project (the key comes from VITE_POSTHOG_KEY, never from another site):
-   - PostHog Cloud EU, reached through /olay on this site (vercel.json
-     rewrites it to PostHog's EU ingestion host).
-   - No analytics cookies and no PostHog persistence in the browser:
-     cookieless_mode 'always' counts visitors with a daily hash on PostHog's
-     servers (the project setting "cookieless tracking" must be on), and no
-     person profiles are made.
-   - Only the named events below leave the page. Autocapture, rage and dead
-     clicks, heatmaps, exceptions, web vitals, session replay, surveys,
-     product tours, feature flags and any script from PostHog are off.
-   - The library is the slim build, bundled with this site and loaded after
-     the page is interactive, so it never delays the board.
+   Writes to this site's OWN PostHog project (the key comes from
+   VITE_POSTHOG_KEY; the personal site's project and key are never used).
 
-   Whether a page counts:
-   - no key (local dev, previews without the variable): nothing is sent;
+   The contract, enforced twice (when an event is recorded and again in
+   before_send, the last step before anything leaves the page):
+   - Only the events in EVENTS exist. Each lists the properties it may
+     carry, and every property has a bounded type: one of a fixed set of
+     words, a whole number in a range, true/false, or a bare hostname.
+     Anything else is dropped: unknown events, unknown properties, values
+     outside their bounds.
+   - No URL ever leaves except this page's own address without its query
+     string and fragment. A referrer and a clicked link are reduced to
+     their origin; paths and query values (campaign tags included) go nowhere.
+   - Nothing a visitor types or pastes is sent: no stream link, no move
+     text, no position, no game notation.
+   - PostHog's own properties are an explicit short list (SYSTEM_KEYS).
+     The page title, language list, screen size and the rest are removed.
+   - No person data: $set and $set_once are deleted.
+
+   Loading:
+   - no key: nothing is loaded or sent (the library is not in the build);
    - VITE_ANALYTICS_HOST set: only that host counts, unless the tab was
      opened with ?posthog=test (events then carry traffic_type=test);
-   - a visitor who turned statistics off in Settings sends nothing;
+   - a visitor who turned statistics off sends nothing;
    - ?internal=1 marks this browser's events traffic_type=internal.
+   Cookieless mode, no person profiles, and autocapture, replay, heatmaps,
+   exceptions, web vitals, surveys and flags are all off.
    ============================================================ */
 
+import { STREAM_PRESETS } from '../config';
+
 export type EventProps = Record<string, string | number | boolean | null | undefined>;
+
+type Rule = { oneOf: readonly string[] } | { int: readonly [number, number] } | { bool: true } | { hostname: true };
+type Schema = Record<string, Rule>;
+
+const oneOf = (...values: string[]): Rule => ({ oneOf: values });
+const int = (min: number, max: number): Rule => ({ int: [min, max] });
+const bool: Rule = { bool: true };
+const hostname: Rule = { hostname: true };
+
+/** Every event this site can record, with every property it may carry. */
+export const EVENTS: Record<string, Schema> = {
+  view_open: { view: oneOf('live', 'puzzles') },
+  tab_open: { tab: oneOf('analysis', 'predict', 'similar', 'charts', 'match', 'settings') },
+  game_select: { how: oneOf('manual', 'auto'), game_no: int(1, 40), board: int(1, 20) },
+  next_game_dismiss: {},
+  move_browse: {},
+  stream_select: { stream: oneOf('custom', ...STREAM_PRESETS.map(p => p.id)) },
+  stream_link_paste: { platform: oneOf('youtube', 'twitch', 'kick') },
+  stream_toggle: { hidden: bool },
+  stream_uncover: {},
+  sync_delay_set: { seconds: int(0, 90) },
+  pause_start: { at_move: int(0, 400), game_over: bool },
+  pause_autoplay: { interval_ms: int(0, 60000) },
+  pause_restart: {},
+  pause_end: { reason: oneOf('go_live', 'caught_up'), moves_revealed: int(0, 1000) },
+  similar_game_open: { year: int(1800, 2100) },
+  similar_preview: {},
+  chart_jump: {
+    chart: oneOf('eval', 'time', 'key_moment', 'longest_think'),
+    quality: oneOf('best', 'good', 'inaccuracy', 'mistake', 'blunder'),
+  },
+  setting_change: {
+    setting: oneOf('lang', 'notation', 'sound', 'engine', 'arrow', 'spoilerShield'),
+    value: oneOf('tr', 'en', 'true', 'false'),
+  },
+  outbound_click: { link_domain: hostname },
+  feed_fallback: {},
+  guess_mode: { on: bool },
+  guess_result: { hit: bool, quality: oneOf('best', 'good', 'inaccuracy', 'mistake', 'blunder', 'unknown') },
+  puzzle_start: { source: oneOf('daily', 'lichess', 'builtin'), theme: oneOf('mix', 'mateIn1', 'mateIn2', 'short', 'endgame') },
+  puzzle_end: {
+    result: oneOf('first_try', 'solved', 'revealed', 'skipped'),
+    rating_band: oneOf('under_1200', '1200_1599', '1600_1999', '2000_plus', 'unknown'),
+    hint_used: bool,
+  },
+};
+
+/** Properties that ride on every event. */
+export const CONTEXT: Schema = {
+  page_lang: oneOf('tr', 'en'),
+  layout: oneOf('phone', 'desktop'),
+  view: oneOf('live', 'puzzles'),
+  game_no: int(1, 40),
+  game_state: oneOf('upcoming', 'live', 'finished', 'paused'),
+  traffic_type: oneOf('internal', 'test'),
+  embed: oneOf('framed', 'direct'),
+  referrer_domain: hostname,
+};
+
+/**
+ * The only PostHog properties that are sent. $raw_user_agent, $host and
+ * $timezone stay because PostHog's cookieless counting is computed from them
+ * on its servers; without them it cannot count visitors.
+ */
+export const SYSTEM_KEYS: readonly string[] = [
+  'token',
+  'distinct_id',
+  '$device_id',
+  '$insert_id',
+  '$time',
+  '$lib',
+  '$lib_version',
+  '$cookieless_mode',
+  '$process_person_profile',
+  '$is_identified',
+  '$pageview_id',
+  '$host',
+  '$pathname',
+  '$raw_user_agent',
+  '$timezone',
+  '$os',
+  '$os_version',
+  '$browser',
+  '$browser_version',
+  '$device_type',
+  '$viewport_height',
+  '$viewport_width',
+  '$prev_pageview_id',
+  '$prev_pageview_pathname',
+  '$prev_pageview_duration',
+];
+
+const HOSTNAME = /^(?=.{1,80}$)[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+
+const pass = (rule: Rule, value: unknown): string | number | boolean | undefined => {
+  if ('oneOf' in rule) return typeof value === 'string' && rule.oneOf.includes(value) ? value : undefined;
+  if ('int' in rule) return typeof value === 'number' && Number.isInteger(value) && value >= rule.int[0] && value <= rule.int[1] ? value : undefined;
+  if ('bool' in rule) return typeof value === 'boolean' ? value : undefined;
+  return typeof value === 'string' && HOSTNAME.test(value) ? value : undefined;
+};
+
+/** Keeps only the properties a schema names, and only values inside their bounds. */
+export const sanitize = (schema: Schema, props: Record<string, unknown> | undefined): EventProps => {
+  const out: EventProps = {};
+  if (!props) return out;
+  for (const key of Object.keys(schema)) {
+    const v = pass(schema[key], props[key]);
+    if (v !== undefined) out[key] = v;
+  }
+  return out;
+};
+
+/** Reduces a web address to its origin: credentials, path, query string and fragment are dropped. Not a web address: undefined. */
+export const originOf = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  try {
+    const u = new URL(value);
+    return /^https?:$/.test(u.protocol) ? u.origin : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/** The bare, lower-case host of a web address ("www." removed), or undefined. */
+export const hostOf = (value: unknown): string | undefined => {
+  if (typeof value !== 'string' || /[\s@]/.test(value)) return undefined; // no credentials, no mail addresses
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(value)?.[1]?.toLowerCase();
+  if (scheme && scheme !== 'http' && scheme !== 'https') return undefined;
+  try {
+    const u = new URL(scheme ? value : `https://${value}`);
+    const host = u.hostname.toLowerCase().replace(/^www\./, '');
+    return HOSTNAME.test(host) ? host : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+interface OutgoingEvent {
+  event?: string;
+  properties?: Record<string, unknown>;
+  $set?: unknown;
+  $set_once?: unknown;
+}
+
+/**
+ * The last gate before an event leaves the page. Rebuilds the property bag
+ * from the allowlists, so nothing PostHog or a future code change adds can
+ * slip through. Returns null to drop an event that is not in the contract.
+ */
+export const gate = <T extends OutgoingEvent | null | undefined>(event: T, page: { origin: string; pathname: string } = window.location): T | null => {
+  if (!event || typeof event.event !== 'string') return null;
+  const name = event.event;
+  const pageEvent = name === '$pageview' || name === '$pageleave';
+  if (!pageEvent && !Object.hasOwn(EVENTS, name)) return null;
+
+  const before = event.properties ?? {};
+  const props: Record<string, unknown> = {};
+  for (const key of SYSTEM_KEYS) if (before[key] !== undefined) props[key] = before[key];
+
+  // This page's own address, never its query string or fragment.
+  props.$current_url = page.origin + page.pathname;
+  props.$pathname = page.pathname;
+  if (typeof props.$prev_pageview_pathname === 'string') props.$prev_pageview_pathname = page.pathname;
+  // A referrer is reduced to its origin: paths and queries can hold what someone searched for or a token.
+  const referrer = originOf(before.$referrer);
+  props.$referrer = referrer ?? '$direct';
+  props.$referring_domain = referrer ? new URL(referrer).hostname : '$direct';
+
+  Object.assign(props, sanitize(CONTEXT, before), pageEvent ? {} : sanitize(EVENTS[name], before));
+
+  event.properties = props;
+  delete event.$set;
+  delete event.$set_once;
+  return event;
+};
+
+// ---- whether this page counts ----
 
 const KEY = (import.meta.env.VITE_POSTHOG_KEY as string | undefined)?.trim();
 const API_HOST = (import.meta.env.VITE_POSTHOG_HOST as string | undefined)?.trim() || '/olay';
 const PROD_HOST = (import.meta.env.VITE_ANALYTICS_HOST as string | undefined)?.trim();
 
-const OFF_KEY = 'analytics-off';
-const INTERNAL_KEY = 'analytics-internal';
-const TEST_KEY = 'posthog-test';
+// Namespaced, so nothing here collides with another site's keys if both are
+// ever served from one origin.
+const OFF_KEY = 'satranc:analytics-off';
+const INTERNAL_KEY = 'satranc:analytics-internal';
+const TEST_KEY = 'satranc:posthog-test';
 
 const local = {
   get: (k: string) => {
@@ -62,105 +250,34 @@ export const setOptedOut = (off: boolean) => {
   window.location.reload();
 };
 
-// ---- what leaves the page ----
-
-const OWN = [window.location.hostname];
-// query parameters kept on this site's own URLs: campaign tags and the broadcast being viewed
-const KEEP = /^(utm_(source|medium|campaign|content|term)|tour|round)$/;
-// removed from links to other sites: credentials, ad-click and share ids
-const SECRET = /^(token|access_token|id_token|auth|key|api_key|apikey|sig|signature|password|secret|sessionid|email|si|gclid|gbraid|wbraid|dclid|fbclid|msclkid|ttclid|twclid|li_fat_id|igshid|mc_eid|_hsenc|_hsmi)$/i;
-const EMAIL = /[^\s@/?#&=:;,]+@[^\s@/?#&=:;,]+\.[a-z]{2,}/i;
-const REDACTED = '[redacted]';
-const decoded = (s: string) => {
-  try {
-    return decodeURIComponent(s);
-  } catch {
-    return s;
-  }
-};
-const hasEmail = (s: string) => EMAIL.test(decoded(s));
-
-/** kind: 'page' for this site's own URLs, 'referrer', or 'link' for a link to another site. */
-const cleanUrl = (value: string, kind: 'page' | 'referrer' | 'link'): string => {
-  let u: URL;
-  try {
-    u = new URL(value, window.location.href);
-  } catch {
-    return hasEmail(value) ? REDACTED : value;
-  }
-  if (!/^https?:$/.test(u.protocol)) return hasEmail(value) ? REDACTED : value; // "$direct", mailto:
-  const before = u.href;
-  u.username = '';
-  u.password = '';
-  if (OWN.includes(u.hostname)) {
-    for (const k of [...u.searchParams.keys()]) {
-      if (!KEEP.test(k)) u.searchParams.delete(k);
-      else if (hasEmail(u.searchParams.get(k) ?? '')) u.searchParams.set(k, REDACTED);
-    }
-    u.hash = '';
-  } else if (kind === 'link') {
-    for (const k of [...u.searchParams.keys()]) {
-      if (SECRET.test(k)) u.searchParams.delete(k);
-      else if (hasEmail(u.searchParams.get(k) ?? '')) u.searchParams.set(k, REDACTED);
-    }
-    u.hash = '';
-  } else {
-    // a referrer from another site keeps only its address and path
-    u.search = '';
-    u.hash = '';
-  }
-  return u.href === before ? value : u.href;
-};
-
-const clean = (key: string, v: unknown, depth: number): unknown => {
-  if (typeof v === 'string') {
-    if (/referrer$/i.test(key)) return cleanUrl(v, 'referrer');
-    if (key.startsWith('$') && /^https?:\/\//i.test(v)) return cleanUrl(v, 'page');
-    if (key === 'link_url' || /^https?:\/\//i.test(v)) return cleanUrl(v, 'link');
-    return hasEmail(v) ? REDACTED : v;
-  }
-  if (v && typeof v === 'object' && depth < 5) {
-    const bag = v as Record<string, unknown>;
-    for (const k in bag) bag[k] = clean(Array.isArray(v) ? key : k, bag[k], depth + 1);
-  }
-  return v;
-};
-
-/** Cleans every property of an event, nested ones included, before it is sent. */
-const scrub = <T>(event: T): T => {
-  if (!event) return event;
-  const e = event as unknown as Record<string, unknown>;
-  for (const bag of ['properties', '$set', '$set_once']) {
-    if (e[bag]) clean(bag, e[bag], 0);
-  }
-  return event;
-};
-
-// ---- loading ----
+// ---- recording ----
 
 let enabled = false;
 let started = false;
-let send: ((name: string, props?: EventProps) => void) | undefined;
+let send: ((name: string, props: EventProps) => void) | undefined;
 let register: ((props: EventProps) => void) | undefined;
-const queue: [string, EventProps | undefined][] = [];
-const context: EventProps = {};
+const queue: [string, EventProps][] = [];
+let context: EventProps = {};
 
-/** Records one named event. A no-op when analytics is off for this page. */
-export const track = (name: string, props?: EventProps) => {
+/** Records one event from the contract. Unknown events and out-of-bounds values are dropped here already. */
+export const track = (name: string, props?: Record<string, unknown>) => {
   if (!enabled) return;
-  if (send) send(name, props);
-  else if (queue.length < 200) queue.push([name, props]);
+  if (!Object.hasOwn(EVENTS, name)) {
+    if (import.meta.env.DEV) console.warn(`[analytics] "${name}" is not in the contract and was not recorded`);
+    return;
+  }
+  const clean = sanitize(EVENTS[name], props);
+  if (send) send(name, clean);
+  else if (queue.length < 200) queue.push([name, clean]);
 };
 
 /** Properties that ride on every later event (game number, language, layout…). */
-export const setContext = (props: EventProps) => {
-  let changed = false;
-  for (const k in props) {
-    if (context[k] !== props[k]) {
-      context[k] = props[k];
-      changed = true;
-    }
-  }
+export const setContext = (props: Record<string, unknown>) => {
+  const next = { ...context, ...sanitize(CONTEXT, props) };
+  // a property set back to nothing (game number before the schedule loads) is removed
+  for (const key of Object.keys(props)) if (props[key] === undefined) delete next[key];
+  const changed = JSON.stringify(next) !== JSON.stringify(context);
+  context = next;
   if (changed && register) register({ ...context });
 };
 
@@ -184,8 +301,19 @@ export const initAnalytics = () => {
   const onProdHost = !PROD_HOST || window.location.hostname === PROD_HOST;
   if (!KEY || isOptedOut() || !(onProdHost || test)) return;
   enabled = true;
-  if (test) context.traffic_type = 'test';
-  else if (local.get(INTERNAL_KEY) === '1') context.traffic_type = 'internal';
+
+  let framed = false;
+  try {
+    framed = window.top !== window.self;
+  } catch {
+    framed = true;
+  }
+  setContext({
+    embed: framed ? 'framed' : 'direct',
+    // When the site is shown inside a page of another site, that page can pass on where the visitor came from (host only).
+    referrer_domain: hostOf(params.get('ref') ?? ''),
+    traffic_type: test ? 'test' : local.get(INTERNAL_KEY) === '1' ? 'internal' : undefined,
+  });
 
   const load = async () => {
     try {
@@ -211,7 +339,7 @@ export const initAnalytics = () => {
         advanced_disable_flags: true,
         disable_external_dependency_loading: true,
         mask_personal_data_properties: true,
-        before_send: scrub,
+        before_send: event => gate(event),
       });
       posthog.register({ ...context });
       posthog.capture('$pageview');
@@ -232,12 +360,8 @@ export const initAnalytics = () => {
   }, 2000);
 };
 
-/** A link to another site: keeps the destination, drops tracking ids. */
+/** A link to another site: only its host is recorded. */
 export const trackOutbound = (href: string) => {
-  try {
-    const u = new URL(href);
-    track('outbound_click', { link_url: href, link_domain: u.hostname.replace(/^www\./, ''), outbound: true });
-  } catch {
-    // not a URL
-  }
+  const link_domain = hostOf(href);
+  if (link_domain) track('outbound_click', { link_domain });
 };
