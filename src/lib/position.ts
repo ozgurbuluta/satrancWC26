@@ -38,6 +38,26 @@ export const legalDests = (fen: string): Map<string, string[]> => {
 
 export const sideToMove = (fen: string): 'white' | 'black' => (fen.split(' ')[1] === 'b' ? 'black' : 'white');
 
+const squaresOf = (fen: string): string =>
+  fen
+    .split(' ')[0]
+    .replace(/\d/g, d => '.'.repeat(Number(d)))
+    .replace(/\//g, '');
+
+/**
+ * On how many squares two positions differ. One move changes two squares,
+ * three when taking en passant, four when castling; the board uses this to
+ * tell a move from a jump. A position that cannot be read counts as far away.
+ */
+export const squaresChanged = (a: string, b: string): number => {
+  const x = squaresOf(a);
+  const y = squaresOf(b);
+  if (x.length !== 64 || y.length !== 64) return 64;
+  let n = 0;
+  for (let i = 0; i < 64; i++) if (x[i] !== y[i]) n++;
+  return n;
+};
+
 /** True when moving from `from` to `to` is a pawn reaching the last rank, so a piece must be chosen. */
 export const isPromotion = (fen: string, from: string, to: string): boolean => {
   const pos = positionOf(fen);

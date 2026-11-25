@@ -1940,6 +1940,10 @@ button.move:hover {
 
 /* ---------- interactive board, promotion, typed moves ---------- */
 
+.board-wrap cg-board {
+  cursor: default;
+}
+
 .board-wrap.is-interactive cg-board {
   cursor: pointer;
 }
