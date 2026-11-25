@@ -70,7 +70,6 @@ export function TimePanel({ game, shown }: Props) {
   const flag = (p: PlayerInfo) => fedFlag(p.fideId ? (feds[p.fideId] ?? KNOWN_PLAYERS[p.fideId]?.fed) : undefined);
 
   const known = spent.filter((v): v is number => v !== undefined);
-  const unknown = spent.length - known.length;
   const longest = (side: 'left' | 'right') => {
     let best: { i: number; v: number } | undefined;
     spent.forEach((v, i) => {
@@ -229,7 +228,6 @@ export function TimePanel({ game, shown }: Props) {
               </div>
             )}
           </div>
-          {unknown > 0 && <p className="muted small">{t.timeUnknown.replace('{n}', String(unknown))}</p>}
           <h3 className="eyebrow think-title">{t.longestThink}</h3>
           <div className="think-row">
             {summary(left, longestLeft, 'left')}

@@ -13,7 +13,6 @@ export function Header({ squares = false }: { squares?: boolean }) {
   const revealed = useStore(s => s.revealed);
   const resultVisible = useStore(s => s.resultVisible);
   const feed = useStore(s => s.feed);
-  const delaySec = useStore(s => s.settings.delaySec);
   const paused = useStore(s => s.paused);
   const view = useStore(s => s.view);
   const setView = useStore(s => s.setView);
@@ -64,7 +63,6 @@ export function Header({ squares = false }: { squares?: boolean }) {
       </nav>
 
       <div className="top-right">
-        {delaySec > 0 && !paused && <span className="pill delay">{t.boardDelayed.replace('{n}', String(delaySec))}</span>}
         {status}
         <span
           className={`feed-dot ${feed}`}

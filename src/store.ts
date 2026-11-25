@@ -578,7 +578,8 @@ export const useStore = create<State>((set, get) => {
     movesWhenLeft: -1, // unknown until the viewer switches views themselves
     followLatest: true,
     nextUp: null,
-    settings: { ...DEFAULTS, ...readJson<Partial<Settings>>(SETTINGS_KEY, {}) },
+    // Stream synchronization was removed. Old saved delays must not silently hold back the board.
+    settings: { ...DEFAULTS, ...readJson<Partial<Settings>>(SETTINGS_KEY, {}), delaySec: 0 },
 
     init: () => {
       if (started) return;

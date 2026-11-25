@@ -3199,6 +3199,11 @@ body {
   color: var(--text);
 }
 
+.live-state.scheduled {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .live-state.on .pulse {
   color: var(--danger);
 }

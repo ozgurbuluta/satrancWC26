@@ -149,6 +149,15 @@ describe('spoiler-free pause', () => {
 });
 
 describe('board sync delay', () => {
+  it('clears the retired saved delay without changing other preferences', async () => {
+    localStorage.setItem('wcc26:settings', JSON.stringify({ delaySec: 45, sound: false, notation: 'en' }));
+    const { useStore } = await boot();
+    expect(useStore.getState().settings).toMatchObject({ delaySec: 0, sound: false, notation: 'en' });
+    push(R1, live(4));
+    push(R1, live(5));
+    expect(useStore.getState().revealed).toBe(5);
+  });
+
   it('holds a new move back by the chosen number of seconds', async () => {
     const { useStore } = await boot();
     push(R1, live(4));

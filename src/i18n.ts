@@ -145,7 +145,6 @@ const tr = {
   whiteAdv: 'Beyaz üstün',
   blackAdv: 'Siyah üstün',
   noClock: 'Bu oyun için saat bilgisi yok.',
-  approx: 'Hızlı analizle bulunur; derin analiz farklı sonuç verebilir.',
   move: 'Hamle',
   // --- sharing ---
   share: 'Paylaş',
@@ -200,7 +199,6 @@ const tr = {
   timePerMove: 'Hamle süreleri',
   longestThink: 'En uzun düşünme',
   hoursShort: 'sa',
-  timeUnknown: '{n} hamlenin süresi bilinmiyor; bu hamleler için çubuk çizilmedi.',
   timeUnknownOne: 'süre bilinmiyor',
   liveShort: 'Canlı',
   customStreamOption: 'Kendi bağlantım',
@@ -428,7 +426,6 @@ const en: typeof tr = {
   whiteAdv: 'White better',
   blackAdv: 'Black better',
   noClock: 'No clock data for this game.',
-  approx: 'Found with a quick analysis; a deep analysis can differ.',
   move: 'Move',
   // --- sharing ---
   share: 'Share',
@@ -483,7 +480,6 @@ const en: typeof tr = {
   timePerMove: 'Time per move',
   longestThink: 'Longest think',
   hoursShort: 'h',
-  timeUnknown: 'The time of {n} moves is not known; no bar is drawn for them.',
   timeUnknownOne: 'time not known',
   liveShort: 'Live',
   customStreamOption: 'My own link',
