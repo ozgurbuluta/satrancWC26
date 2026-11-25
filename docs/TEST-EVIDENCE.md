@@ -120,3 +120,20 @@ match had not started.
 - The production deployment framed by the real `/satranc/` page.
 - Events arriving in the PostHog project (no key is set yet).
 - Twitch playing inside the frame (needs the real hostnames).
+
+## Independent integration review (25 November 2026)
+
+Codex ran the full suite locally on Node 22.23.5: **113 tests passed**,
+with a clean type check, production build, and full-history secret scan.
+Five added regression cases cover delayed puzzle fetches, cancellation of
+already scheduled replies, promotion dismissal on puzzle changes/resets,
+and pending guesses/engine peeks when switching zero-move games or rounds.
+The live Lichess daily-puzzle response was also checked: it includes the
+`fen`, `lastMove`, and `solution` fields used by the importer.
+
+The personal-site wrapper in ozgurbuluta/ozgurakanay.com PR #8 passes four
+URL privacy/deep-link tests and its Astro production build. Its Vercel preview
+loaded the current production board, analysis, and nested YouTube player in
+the in-app browser. Final Safari and hardened production frame checks remain
+pending because native app control stopped responding. Analytics is still
+disabled until the production variables are configured and ingestion verified.

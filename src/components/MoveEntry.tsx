@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useT } from '../hooks';
 import { localizeSan } from '../lib/format';
 import { isPromotion, legalSans, moveBySquares, moveByText, type PlayedMove, type Promotion } from '../lib/position';
@@ -16,11 +16,14 @@ const PIECES: { role: Promotion; glyph: string; tr: string; en: string }[] = [
  * pawn becomes when it reaches the last rank. `pending` is the promotion
  * waiting for that answer.
  */
-export const usePromotion = (fen: string, onMove: (move: PlayedMove) => void, onRejected: () => void) => {
-  const [pending, setPending] = useState<{ from: string; to: string } | null>(null);
+export const usePromotion = (fen: string, onMove: (move: PlayedMove) => void, onRejected: () => void, contextKey: string = fen) => {
+  const [request, setPending] = useState<{ from: string; to: string; fen: string; contextKey: string } | null>(null);
+  // A promotion belongs to the exact board on which it was started.
+  const pending = request?.fen === fen && request.contextKey === contextKey ? request : null;
+  useEffect(() => setPending(null), [fen, contextKey]);
   const squares = (from: string, to: string) => {
     if (isPromotion(fen, from, to) && moveBySquares(fen, from, to, 'queen')) {
-      setPending({ from, to });
+      setPending({ from, to, fen, contextKey });
       return;
     }
     const move = moveBySquares(fen, from, to);

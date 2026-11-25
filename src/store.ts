@@ -374,7 +374,7 @@ export const useStore = create<State>((set, get) => {
     const idx = s.gameOrder.indexOf(s.gameId);
     const next = s.gameOrder.slice(idx + 1).find(id => s.games[id].result === '*' && s.games[id].plies.length > 0);
     if (!next) return;
-    set({ gameId: next, viewPly: null, revealed: 0, resultVisible: false, preview: null, ...pauseFor(next) });
+    set({ gameId: next, guess: null, peekedPly: null, viewPly: null, revealed: 0, resultVisible: false, preview: null, ...pauseFor(next) });
     recomputeReveal();
     track('game_select', { how: 'auto', board: s.gameOrder.indexOf(next) + 1 });
   };
@@ -391,6 +391,8 @@ export const useStore = create<State>((set, get) => {
       games: {},
       gameOrder: [],
       gameId: undefined,
+      guess: null,
+      peekedPly: null,
       revealed: 0,
       resultVisible: false,
       viewPly: null,
@@ -568,7 +570,7 @@ export const useStore = create<State>((set, get) => {
     selectGame: id => {
       stopAutoplay();
       boardChosenByHand = true;
-      set({ gameId: id, viewPly: null, revealed: 0, resultVisible: false, preview: null, ...pauseFor(id) });
+      set({ gameId: id, guess: null, peekedPly: null, viewPly: null, revealed: 0, resultVisible: false, preview: null, ...pauseFor(id) });
       recomputeReveal();
     },
 
@@ -730,7 +732,7 @@ export const canGuess = (s: State): boolean => {
 };
 
 /** The engine is held back while a prediction is still open for the move on the board. */
-export const engineHeldBack = (s: State): boolean => canGuess(s) && !(s.guess && s.guess.forPly === s.revealed + 1);
+export const engineHeldBack = (s: State): boolean => canGuess(s) && !(s.guess && s.guess.gameId === s.gameId && s.guess.forPly === s.revealed + 1);
 
 /** Ply currently shown on the board. */
 export const selectShownPly = (s: State): number => Math.min(s.viewPly ?? s.revealed, s.revealed);
