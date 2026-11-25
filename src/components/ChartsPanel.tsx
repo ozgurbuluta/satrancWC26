@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CHAMPION_FIDE_ID } from '../config';
 import { useScoresVersion, useT } from '../hooks';
 import { track } from '../lib/analytics';
+import { moveTimes } from '../lib/clock';
 import { fillScores, scoreOf, stopFillScores, winningChances } from '../lib/engine';
 import { formatClock, formatEval, localizeSan, shortName } from '../lib/format';
 import type { GameData } from '../lib/pgn';
@@ -167,19 +168,8 @@ function TimeChart({ game, shown, revealed }: ChartProps) {
   const [ref, width] = useWidth();
   const [hover, setHover] = useState<number | null>(null);
 
-  // seconds spent on each ply, from consecutive clock readings of the same player
-  const spent = useMemo(() => {
-    const out: (number | undefined)[] = [];
-    const last: (number | undefined)[] = [game.initialClock, game.initialClock];
-    for (let i = 0; i < revealed; i++) {
-      const p = game.plies[i];
-      const side = i % 2;
-      if (p.clk === undefined || last[side] === undefined) out.push(undefined);
-      else out.push(Math.max(0, last[side]! - p.clk));
-      if (p.clk !== undefined) last[side] = p.clk;
-    }
-    return out;
-  }, [game, revealed]);
+  // seconds spent on each ply; unknown where the clock readings or the time control do not say
+  const spent = useMemo(() => moveTimes(game, revealed), [game, revealed]);
 
   const hasData = spent.some(v => v !== undefined);
   // Colour follows the player, not the piece colour, so it stays the same from game to game.

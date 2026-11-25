@@ -1,4 +1,5 @@
 import { castlingSide } from 'chessops/chess';
+import { parseTimeControl } from './clock';
 import { makeFen } from 'chessops/fen';
 import { parseComment, parsePgn, startingPosition } from 'chessops/pgn';
 import { makeSanAndPlay, parseSan } from 'chessops/san';
@@ -49,18 +50,15 @@ export interface GameData {
   initialFen: string;
   /** Starting time per player in seconds, from the TimeControl tag. */
   initialClock?: number;
+  /** The TimeControl tag as it came, e.g. "40/7200:20/3600:900+30". */
+  timeControl?: string;
   plies: Ply[];
 }
 
 const clean = (v: string | undefined): string | undefined => (v && v !== '?' ? v : undefined);
 
-const initialClockFrom = (tc: string | undefined): number | undefined => {
-  if (!tc) return undefined;
-  // "40/7200:20/3600:900+30" or "5400+30"
-  const first = tc.split(':')[0];
-  const m = first.match(/(?:\d+\/)?(\d+)/);
-  return m ? Number(m[1]) : undefined;
-};
+/** Time each player starts with. Unknown when the tag cannot be read: no number is guessed from it. */
+const initialClockFrom = (tc: string | undefined): number | undefined => parseTimeControl(tc)?.[0].seconds;
 
 /** Splits a multi-game PGN blob into single-game chunks. */
 export const splitGames = (pgn: string): string[] =>
@@ -151,6 +149,7 @@ export const parseGame = (pgn: string, prev: GameData | undefined, stamp: number
     opening: clean(h.get('Opening')),
     initialFen,
     initialClock: initialClockFrom(h.get('TimeControl')),
+    timeControl: clean(h.get('TimeControl')),
     plies,
   };
 };
