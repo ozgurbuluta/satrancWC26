@@ -2205,6 +2205,194 @@ cg-board square.selected {
   line-height: 1.7;
 }
 
+/* ---------- guess the move ---------- */
+
+.banner.guess {
+  background: #1f3a2a;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.engine-card.held p {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.predict {
+  padding: 4px 12px 12px;
+}
+
+.predict section {
+  margin: 14px 0;
+}
+
+.predict h3 {
+  margin: 0 0 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.predict .block {
+  display: block;
+  font-weight: 400;
+  margin-top: 2px;
+  max-width: 34ch;
+}
+
+.predict .setting {
+  align-items: flex-start;
+  flex-wrap: nowrap;
+}
+
+.guess-card {
+  padding: 12px;
+  border-radius: var(--radius);
+  background: var(--panel-2);
+}
+
+.guess-card p {
+  margin: 0 0 8px;
+}
+
+.guess-card p:last-child {
+  margin-bottom: 0;
+}
+
+.guess-card .link {
+  margin-left: 8px;
+}
+
+.guess-card .move-input + .link {
+  display: inline-block;
+  margin: 10px 0 0;
+}
+
+.guess-move {
+  font-size: 16px;
+}
+
+.guess-result {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.guess-result.hit {
+  background: #2c4a1c;
+  color: #d3f0b3;
+}
+
+.guess-result.miss {
+  background: var(--panel-2);
+}
+
+.guess-score {
+  margin: 8px 0 0;
+  font-weight: 600;
+}
+
+.freq {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.freq caption {
+  text-align: left;
+  padding-bottom: 4px;
+}
+
+.freq th {
+  text-align: left;
+  font-weight: 700;
+  padding: 4px 8px 4px 0;
+  white-space: nowrap;
+  width: 1%;
+}
+
+.freq td.num {
+  text-align: right;
+  padding: 4px 8px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  width: 1%;
+}
+
+.freq td.bar i {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: #8a8780;
+}
+
+.engine-first {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.engine-first li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-size: 14px;
+}
+
+.engine-first .muted {
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.honest {
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.guess-rows li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 2px;
+  font-size: 13.5px;
+}
+
+.mark {
+  width: 18px;
+  flex: none;
+  text-align: center;
+  font-weight: 800;
+}
+
+.mark.hit {
+  color: #9fd66b;
+}
+
+.mark.miss {
+  color: var(--muted);
+}
+
+.tabs {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tabs button {
+  white-space: nowrap;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
 /* ---------- footer ---------- */
 
 .foot {

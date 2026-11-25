@@ -1,29 +1,31 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { REPO_URL } from './config';
 import { AnalysisPanel } from './components/AnalysisPanel';
-import { Board } from './components/Board';
+import { Board, type BoardShape } from './components/Board';
 import { CatchUpBar } from './components/CatchUpBar';
 import { EvalBar } from './components/EvalBar';
 import { Header } from './components/Header';
 import { MatchPanel } from './components/MatchPanel';
+import { PromotionPicker, usePromotion } from './components/MoveEntry';
 import { PlayerBar } from './components/PlayerBar';
 import { SettingsPanel } from './components/SettingsPanel';
 import { StreamPanel } from './components/StreamPanel';
 import { useEval, useIsMobile, useNow, useT } from './hooks';
 import { setContext, track, trackOutbound } from './lib/analytics';
-import { displayName, firstMoveSquares, materialFromFen, shortName } from './lib/format';
+import { displayName, firstMoveSquares, localizeSan, materialFromFen, shortName } from './lib/format';
 import { seedGameScores } from './lib/quality';
 import { unlockAudio } from './lib/sound';
-import { AUTO_SWITCH_SEC, selectGameData, selectRoundNo, selectShownPly, useStore } from './store';
+import { AUTO_SWITCH_SEC, canGuess, engineHeldBack, selectGameData, selectRoundNo, selectShownPly, useStore } from './store';
 
 // Loaded on first use, so the first paint only carries the board and the analysis tab.
 const SimilarPanel = lazy(() => import('./components/SimilarPanel').then(m => ({ default: m.SimilarPanel })));
 const ChartsPanel = lazy(() => import('./components/ChartsPanel').then(m => ({ default: m.ChartsPanel })));
+const PredictPanel = lazy(() => import('./components/PredictPanel').then(m => ({ default: m.PredictPanel })));
 const PuzzleBoard = lazy(() => import('./components/PuzzleView').then(m => ({ default: m.PuzzleBoard })));
 const PuzzlePanel = lazy(() => import('./components/PuzzleView').then(m => ({ default: m.PuzzlePanel })));
 
-type Tab = 'analysis' | 'similar' | 'charts' | 'match' | 'settings';
-const TABS: Tab[] = ['analysis', 'similar', 'charts', 'match', 'settings'];
+type Tab = 'analysis' | 'predict' | 'similar' | 'charts' | 'match' | 'settings';
+const TABS: Tab[] = ['analysis', 'predict', 'similar', 'charts', 'match', 'settings'];
 
 export default function App() {
   const t = useT();
@@ -57,6 +59,12 @@ export default function App() {
   const view = useStore(s => s.view);
   const setView = useStore(s => s.setView);
   const movesWhenLeft = useStore(s => s.movesWhenLeft);
+  const guessing = useStore(canGuess);
+  const held = useStore(engineHeldBack);
+  const guess = useStore(s => s.guess);
+  const makeGuess = useStore(s => s.makeGuess);
+  const peekEngine = useStore(s => s.peekEngine);
+  const [boardSync, setBoardSync] = useState(0);
   const [tab, setTabState] = useState<Tab>('analysis');
   const setTab = (id: Tab) => {
     setTabState(id);
@@ -120,10 +128,22 @@ export default function App() {
   const atLiveEdge = viewPly === null;
   const evaluation = useEval(fen, settings.engine && !!game && view === 'live');
   const material = useMemo(() => (fen ? materialFromFen(fen) : undefined), [fen]);
+  // No best-move arrow while the viewer is still guessing this move.
   const arrow = useMemo(
-    () => (settings.arrow && fen && evaluation ? firstMoveSquares(fen, evaluation.pvs[0]?.moves[0]) : undefined),
-    [settings.arrow, fen, evaluation],
+    () => (settings.arrow && !held && fen && evaluation ? firstMoveSquares(fen, evaluation.pvs[0]?.moves[0]) : undefined),
+    [settings.arrow, held, fen, evaluation],
   );
+  // A guess is drawn as an arrow; the pieces themselves do not move.
+  const promo = usePromotion(
+    fen ?? '',
+    move => {
+      makeGuess(move);
+      setBoardSync(n => n + 1);
+    },
+    () => setBoardSync(n => n + 1),
+  );
+  const guessOpen = !!guess && !!game && guess.gameId === game.id && guess.forPly === revealed + 1 && atLiveEdge && !preview;
+  const guessShapes = useMemo<BoardShape[]>(() => (guessOpen && guess ? [{ from: guess.from, to: guess.to, brush: 'green' }] : []), [guessOpen, guess]);
   const lastMove = useMemo<[string, string] | undefined>(
     () => (preview ? preview.lastMove : ply ? [ply.from, ply.to] : undefined),
     [preview, ply],
@@ -181,6 +201,17 @@ export default function App() {
     );
   };
 
+  // Guess mode: say that the board is waiting for a move, or show the guess that was made.
+  const guessStrip = () => {
+    if (!game || !guessing || preview) return null;
+    const mover = (fen ?? '').split(' ')[1] === 'b' ? game.black : game.white;
+    return (
+      <div className="banner guess" role="status">
+        {guessOpen && guess ? `${t.yourGuess} ${localizeSan(guess.san, settings.notation)}` : t.guessStrip.replace('{player}', shortName(mover))}
+      </div>
+    );
+  };
+
   // A later game is live or about to start. Unless the viewer declines, the page opens it by itself.
   const nextUpBanner = () => {
     if (!nextUp || !nextUpRound || preview) return null;
@@ -208,7 +239,7 @@ export default function App() {
   };
 
   const tabLabel = (id: Tab) =>
-    ({ analysis: t.tabAnalysis, similar: t.tabSimilar, charts: t.tabCharts, match: t.tabMatch, settings: t.tabSettings })[id];
+    ({ analysis: t.tabAnalysis, predict: t.tabPredict, similar: t.tabSimilar, charts: t.tabCharts, match: t.tabMatch, settings: t.tabSettings })[id];
 
   const boardColumn = (
     <section className="board-col">
@@ -237,7 +268,17 @@ export default function App() {
           />
           <div className="board-row">
             <EvalBar evaluation={settings.engine ? evaluation : undefined} orientation={orientation} />
-            <Board fen={fen} lastMove={lastMove} check={!preview && !!ply?.check} orientation={orientation} arrow={arrow} />
+            <Board
+              fen={fen}
+              lastMove={lastMove}
+              check={!preview && !!ply?.check}
+              orientation={orientation}
+              arrow={arrow}
+              shapes={guessShapes}
+              onMove={guessing && !promo.pending ? promo.squares : undefined}
+              syncToken={boardSync}
+            />
+            {promo.pending && <PromotionPicker onChoose={promo.choose} />}
           </div>
           <PlayerBar
             game={game}
@@ -287,7 +328,7 @@ export default function App() {
             </div>
           )}
           {paused && !preview && (settings.streamHidden || streamUncovered) && <CatchUpBar />}
-          {nextUpBanner() ?? resultBanner()}
+          {nextUpBanner() ?? resultBanner() ?? guessStrip()}
           {revealed === 0 && !resultVisible && !paused && !preview && <div className="banner">{t.notStarted}</div>}
         </>
       ) : (
@@ -316,8 +357,11 @@ export default function App() {
         ))}
       </div>
       <div className="tab-body">
-        {tab === 'analysis' && game && fen && <AnalysisPanel game={game} fen={fen} shown={shown} evaluation={evaluation} />}
+        {tab === 'analysis' && game && fen && (
+          <AnalysisPanel game={game} fen={fen} shown={shown} evaluation={evaluation} held={held} onShowEngine={peekEngine} />
+        )}
         <Suspense fallback={<p className="muted pad">{t.loading}</p>}>
+          {tab === 'predict' && game && gameFen && <PredictPanel game={game} fen={gameFen} evaluation={evaluation} />}
           {tab === 'similar' && game && gameFen && <SimilarPanel game={game} fen={gameFen} shown={shown} />}
           {tab === 'charts' && game && <ChartsPanel game={game} shown={shown} />}
         </Suspense>

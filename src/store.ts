@@ -13,6 +13,7 @@ import {
   type TournamentInfo,
 } from './lib/lichess';
 import { parseGame, splitGames, type GameData, type PlayerInfo } from './lib/pgn';
+import { moveByUci, type PlayedMove } from './lib/position';
 import { playMove } from './lib/sound';
 import { readJson, writeJson } from './lib/storage';
 import { fetchStreamFeeds, type StreamFeeds } from './lib/streams';
@@ -32,6 +33,8 @@ export interface Settings {
   sideWidth: number;
   /** Open every game paused at the last move you saw, so nothing is spoiled. */
   spoilerShield: boolean;
+  /** Guess the next move before it is shown; engine suggestions wait until you have guessed. */
+  guessMode: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -46,11 +49,13 @@ const DEFAULTS: Settings = {
   streamHidden: false,
   sideWidth: 0,
   spoilerShield: false,
+  guessMode: false,
 };
 
 const SETTINGS_KEY = 'wcc26:settings';
 const PAUSE_KEY = 'wcc26:pause';
 const SEEN_KEY = 'wcc26:seen';
+const GUESS_KEY = 'satranc:guesses';
 
 /** Paused ply per game id, so a pause survives closing the tab. */
 const pauses = readJson<Record<string, number>>(PAUSE_KEY, {});
@@ -66,6 +71,30 @@ export interface MatchGame {
   moves: string[];
   sans: string[];
   opening?: string;
+}
+
+/** The viewer's prediction for the move that has not been shown yet. */
+export interface Guess {
+  gameId: string;
+  /** 1-based half-move the guess is for. */
+  forPly: number;
+  uci: string;
+  san: string;
+  from: string;
+  to: string;
+  /** Position if the guess were played, for the engine's opinion of it. */
+  fenAfter: string;
+}
+
+/** A prediction once the real move is known. */
+export interface GuessEntry {
+  ply: number;
+  guess: string;
+  played: string;
+  hit: boolean;
+  /** Position before the move, and after the guessed move. */
+  fenBefore: string;
+  fenAfterGuess: string;
 }
 
 /** A position from another game shown on the board for comparison. */
@@ -100,6 +129,12 @@ interface State {
   /** Auto-reveal interval in ms while paused (0 = off). */
   autoplayMs: number;
   preview: Preview | null;
+  /** Prediction waiting for the next move. */
+  guess: Guess | null;
+  /** Past predictions per game id. */
+  guessLog: Record<string, GuessEntry[]>;
+  /** Half-move for which the viewer looked at the engine instead of guessing. */
+  peekedPly: number | null;
   /** The viewer chose to see the video even though the board is paused. */
   streamUncovered: boolean;
   /** The live match, or the puzzle corner. The match keeps running underneath either way. */
@@ -123,6 +158,10 @@ interface State {
   restart: () => void;
   setAutoplay: (ms: number) => void;
   setPreview: (p: Preview | null) => void;
+  makeGuess: (move: PlayedMove) => void;
+  clearGuess: () => void;
+  /** Show the engine for the current move; that move can then no longer be guessed. */
+  peekEngine: () => void;
   setStreamUncovered: (v: boolean) => void;
   setView: (v: 'live' | 'puzzles') => void;
   /** Open the game announced in `nextUp` (or any round) and keep following the match. */
@@ -220,11 +259,34 @@ export const useStore = create<State>((set, get) => {
 
     if (n !== s.revealed || resultVisible !== s.resultVisible) {
       if (n === s.revealed + 1 && s.viewPly === null && s.settings.sound) playMove(g.plies[n - 1].capture);
-      set({
+      const patch: Partial<State> = {
         revealed: n,
         resultVisible,
         viewPly: s.viewPly !== null && s.viewPly >= n ? null : s.viewPly,
-      });
+      };
+      if (n !== s.revealed) {
+        // A prediction is settled by the first move shown after it, and only by that one.
+        const guess = s.guess;
+        if (guess && guess.gameId === g.id && n > s.revealed && guess.forPly === s.revealed + 1) {
+          const played = g.plies[s.revealed];
+          const entry: GuessEntry = {
+            ply: guess.forPly,
+            guess: guess.san,
+            played: played.san,
+            hit: played.uci === guess.uci,
+            fenBefore: s.revealed === 0 ? g.initialFen : g.plies[s.revealed - 1].fen,
+            fenAfterGuess: guess.fenAfter,
+          };
+          const guessLog = { ...s.guessLog, [g.id]: [...(s.guessLog[g.id] ?? []).filter(e => e.ply !== entry.ply), entry] };
+          writeJson(GUESS_KEY, guessLog);
+          patch.guessLog = guessLog;
+          track('guess_result', { hit: entry.hit, quality: 'unknown' });
+        }
+        patch.guess = null;
+        patch.peekedPly = null;
+      }
+      if (resultVisible) patch.guess = null; // the game ended (a draw was agreed, someone resigned): nothing left to predict
+      set(patch);
     }
     if (n > (seen[g.id] ?? 0)) {
       seen[g.id] = n;
@@ -464,6 +526,9 @@ export const useStore = create<State>((set, get) => {
     pausePly: 0,
     autoplayMs: 0,
     preview: null,
+    guess: null,
+    guessLog: readJson<Record<string, GuessEntry[]>>(GUESS_KEY, {}),
+    peekedPly: null,
     streamUncovered: false,
     view: window.location.hash === '#bulmaca' ? 'puzzles' : 'live',
     movesWhenLeft: -1, // unknown until the viewer switches views themselves
@@ -594,6 +659,21 @@ export const useStore = create<State>((set, get) => {
       }
     },
 
+    makeGuess: move => {
+      const s = get();
+      const g = selectGameData(s);
+      if (!g || !canGuess(s)) return;
+      // Checked again here: only a legal move in the position on the board can be a prediction.
+      const fen = s.revealed === 0 ? g.initialFen : g.plies[s.revealed - 1].fen;
+      const legal = moveByUci(fen, move.uci);
+      if (!legal) return;
+      set({ guess: { gameId: g.id, forPly: s.revealed + 1, uci: legal.uci, san: legal.san, from: legal.from, to: legal.to, fenAfter: legal.fen } });
+    },
+
+    clearGuess: () => set({ guess: null }),
+
+    peekEngine: () => set(s => ({ peekedPly: s.revealed, guess: null })),
+
     setPreview: p => {
       set({ preview: p });
       if (p) track('similar_preview');
@@ -625,6 +705,9 @@ export const useStore = create<State>((set, get) => {
         // the slider fires on every step; record where it comes to rest
         window.clearTimeout(delayTrackTimer);
         delayTrackTimer = window.setTimeout(() => track('sync_delay_set', { seconds: get().settings.delaySec }), 1500);
+      } else if (key === 'guessMode') {
+        if (!value) set({ guess: null, peekedPly: null });
+        track('guess_mode', { on: !!value });
       } else if (key === 'streamId') track('stream_select', { stream: String(value) });
       else if (key === 'streamHidden') track('stream_toggle', { hidden: !!value });
       else if (key !== 'customStream' && key !== 'sideWidth') track('setting_change', { setting: key, value: String(value) });
@@ -633,6 +716,21 @@ export const useStore = create<State>((set, get) => {
 });
 
 export const selectGameData = (s: State): GameData | undefined => (s.gameId ? s.games[s.gameId] : undefined);
+
+/**
+ * Whether the move after the newest visible one can be predicted now: guess
+ * mode on, the viewer at the newest visible move of the live view, the game
+ * not known to be over, and the engine not already consulted for this move.
+ */
+export const canGuess = (s: State): boolean => {
+  const g = selectGameData(s);
+  return (
+    !!g && s.settings.guessMode && s.view === 'live' && s.viewPly === null && !s.preview && !s.resultVisible && s.peekedPly !== s.revealed
+  );
+};
+
+/** The engine is held back while a prediction is still open for the move on the board. */
+export const engineHeldBack = (s: State): boolean => canGuess(s) && !(s.guess && s.guess.forPly === s.revealed + 1);
 
 /** Ply currently shown on the board. */
 export const selectShownPly = (s: State): number => Math.min(s.viewPly ?? s.revealed, s.revealed);

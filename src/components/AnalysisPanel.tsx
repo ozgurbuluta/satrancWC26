@@ -28,12 +28,16 @@ interface Props {
   fen: string;
   shown: number;
   evaluation?: EvalResult;
+  /** Guess mode: engine suggestions wait until the viewer has guessed this move. */
+  held?: boolean;
+  onShowEngine?: () => void;
 }
 
-export function AnalysisPanel({ game, fen, shown, evaluation }: Props) {
+export function AnalysisPanel({ game, fen, shown, evaluation, held = false, onShowEngine }: Props) {
   const t = useT();
   const notation = useStore(s => s.settings.notation);
-  const engineOn = useStore(s => s.settings.engine);
+  const engineSetting = useStore(s => s.settings.engine);
+  const engineOn = engineSetting && !held;
   const revealed = useStore(s => s.revealed);
   const setViewPly = useStore(s => s.setViewPly);
   const paused = useStore(s => s.paused);
@@ -88,7 +92,15 @@ export function AnalysisPanel({ game, fen, shown, evaluation }: Props) {
 
   return (
     <div className="analysis">
-      <div className="engine-card">
+      {held && engineSetting && (
+        <div className="engine-card held">
+          <p>{t.engineHidden}</p>
+          <button className="link small" onClick={onShowEngine}>
+            {t.showEngine}
+          </button>
+        </div>
+      )}
+      <div className="engine-card" hidden={held && engineSetting}>
         <div className="engine-head">
           <div className={`eval-big ${best && (best.mate ?? best.cp ?? 0) < 0 ? 'black-ahead' : ''}`}>
             {engineOn ? (best ? formatEval(best) : '…') : '–'}
