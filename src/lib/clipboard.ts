@@ -15,22 +15,29 @@ export const copyText = async (text: string): Promise<boolean> => {
   } catch {
     // refused (frame without permission, no user gesture, old browser): try the older way
   }
+  const previous = document.activeElement as HTMLElement | null;
+  let area: HTMLTextAreaElement | undefined;
   try {
-    const area = document.createElement('textarea');
+    area = document.createElement('textarea');
     area.value = text;
     area.setAttribute('readonly', '');
     area.setAttribute('aria-hidden', 'true');
     // on screen but invisible: some browsers will not copy from a hidden or off-screen field
     area.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;border:0;opacity:0;';
     document.body.appendChild(area);
-    const previous = document.activeElement as HTMLElement | null;
+    area.focus({ preventScroll: true });
     area.select();
     area.setSelectionRange(0, text.length);
-    const ok = document.execCommand('copy');
-    area.remove();
-    previous?.focus?.();
-    return ok;
+    return document.execCommand('copy') === true;
   } catch {
-    return false;
+    return false; // the copy command is missing or threw
+  } finally {
+    // Whatever happened, the helper field goes and focus returns to where it was.
+    area?.remove();
+    try {
+      previous?.focus?.();
+    } catch {
+      // focus is a courtesy; the result above stands
+    }
   }
 };
