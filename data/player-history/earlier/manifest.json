@@ -21,7 +21,7 @@
     "faster than classical by its first clock readings": 496
   },
   "nameWithoutMatchingFideId": 925,
-  "nameWithoutMatchingFideIdNote": "Games whose White or Black tag contains \"Gukesh\" or \"Sindarov\" but which carry neither FIDE ID. Counted only, never used: broadcasts before 2023 have no FIDE IDs, and a name does not tell one Sindarov from another.",
+  "nameWithoutMatchingFideIdNote": "Games whose White or Black tag contains \"Gukesh\" or \"Sindarov\" but which carry neither FIDE ID. Counted only, never used: no game before 2023 carries either of the two IDs (few broadcasts carried FIDE IDs at all then), and a name does not tell one Sindarov from another.",
   "corpusSha256": "a36ea69c64954881cb849017f4704affdae89f7e016c4540bf4069762d9d6c5d",
   "sources": [
     {

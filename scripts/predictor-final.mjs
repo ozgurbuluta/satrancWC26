@@ -5,7 +5,7 @@
 //
 // Written before any holdout result existed: every table of the report is
 // laid out here, and the numbers go in as they come.
-import { writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
 export const writeFinal = async ctx => {
   const { publishedV1, v1, round, FEATURES, K, PLAYERS, AS_OF, PRIOR_PLIES, CLOCK_FULL_SECONDS, STAKES_MAX, CLASSICAL_SECONDS, selection, models, measure, uniform, ownOf, tournaments, history, sample, selectionCounts, yearsBetween, log } = ctx;
@@ -69,7 +69,7 @@ export const writeFinal = async ctx => {
       .map(([uci, m]) => [uci, ...m.map(x => round(x, 3))])
       // a move only others played is of no use when others count for nothing
       .filter(([, g, s, o]) => g > 0 || s > 0 || ((chosen === 'A' || B.others > 0) && o > 0))
-      .sort((a, b) => a[0].localeCompare(b[0]));
+      .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
     if (!kept.length) continue;
     entries += kept.length;
     priors[key] = kept.map(([uci, g, s, o]) => (chosen === 'A' || B.others > 0 ? `${uci} ${g} ${s} ${o}` : `${uci} ${g} ${s}`)).join('|');
@@ -145,6 +145,21 @@ export const writeFinal = async ctx => {
   const yes = b => (b ? 'yes' : 'no');
   const SET = { fit: 'Fit', selection: 'Selection', holdout: 'Untouched holdout', benchmark: 'Reused benchmark' };
   const S = selection.onSelection;
+  // an extra calibration step tried on the selection games (scripts/predictor-calibration-check.mjs), if its record is there
+  const check = existsSync('data/predictor-v2/calibration-check.json') ? JSON.parse(readFileSync('data/predictor-v2/calibration-check.json', 'utf8')) : undefined;
+  const checkText = check
+    ? `### One more calibration step, tried and not ${check.adopted ? 'left out' : 'adopted'}
+
+The table above shows the second version a little too sure between 50 and 100 % and a little too unsure below 20 %, on the very games it was chosen on. One temperature cannot correct both ends, so a second, flatter temperature mixed into the base model was tried, on the selection games only (\`node scripts/train-predictor.mjs --calibration-check\`, ${check.candidates.length} combinations, every other setting searched again for each). The rule was to adopt it only if the selection log loss fell by at least ${check.rule.match(/[\d.]+$/)[0]}; that threshold was set before the comparison was run, but was not published before it.
+
+| | Log loss | Calibration error | Given 70 % or more | said | played |
+|---|---|---|---|---|---|
+| As selected | ${check.selected.logLoss.toFixed(4)} | ${pct(check.selected.calibrationError)} | ${check.selected.sure70.n} | ${pct(check.selected.sure70.said)} | ${pct(check.selected.sure70.happened)} |
+| Best with two temperatures (share ${check.best.rho} at temperature ${check.best.T2}) | ${check.best.logLoss.toFixed(4)} | ${pct(check.best.calibrationError)} | ${check.best.sure70.n} | ${pct(check.best.sure70.said)} | ${pct(check.best.sure70.happened)} |
+
+The gain is ${check.gain.toFixed(4)}. ${check.adopted ? 'It was adopted.' : 'It was not adopted, and the model is as selected above. The remaining gap between said and played is left as it is and reported, not tuned away.'}
+`
+    : '';
   const blend = chosen === 'B' ? `Temperature ${B.temperature}, κ ${B.kappa}, weight of others' moves ${B.others}, half-life ${B.halfLife === null ? 'none' : `${B.halfLife} years`}, ε ${B.epsilon}; per-player corrections: ${B.players ? `yes, penalty ${B.penaltyPlayers}` : 'none'}; clock correction penalty ${B.penaltyClock}.` : `Penalties ${A.penaltyShared} (shared) and ${A.penaltyOwn} (corrections), temperature ${A.temperature}.`;
 
   const report = `# Move predictor, second version: what was measured
@@ -210,6 +225,7 @@ ${binTable('The second version on the selection games: when it gave its first ch
 
 These are the games the choices were made on, so these numbers flatter the model. They are here to show what was seen when choosing.
 
+${checkText}
 ## Untouched holdout: a blind measurement
 
 ${sample.holdout.games} games of January to August 2026, ${sample.holdout.decisions} decisions. No choice was made on these games, and they were scored once. The published first version was fitted on these very games, so it is not measured here; family ${other}, fitted on the same earlier games as the second version, stands beside it instead.

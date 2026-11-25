@@ -36,8 +36,9 @@ CC BY-SA 4.0. All 82 monthly archives from January 2020 to October 2026 were
 downloaded (767 MB compressed) and scanned.
 
 - **Players by exact FIDE ID only**: 46616543 (Gukesh D) and 14205483
-  (Javokhir Sindarov), in `WhiteFideId` or `BlackFideId`. Broadcasts carry
-  no FIDE IDs before 2023, so there are no matches in 2020 to 2022. Games
+  (Javokhir Sindarov), in `WhiteFideId` or `BlackFideId`. No game before
+  2023 carries either ID (few broadcasts carried FIDE IDs at all then), so
+  there are no matches in 2020 to 2022. Games
   that match only by name (18, 302, 331, 235, 1, 38 and 7 for 2020 to 2026)
   are not used: a name does not tell Javokhir Sindarov from Islombek
   Sindarov. They are counted in the manifest and left out.
@@ -80,7 +81,9 @@ handled per tournament, with bounds that err on the safe side.
   written as `YYYY.MM.DD` or `YYYY-MM-DD`, and used only if it falls in the
   game's archive month or the two months before it.
 - **Start** of a tournament, a lower bound: its earliest such date; if it
-  has none, the first day of its earliest archive month.
+  has none, or if that date is in a later month than its earliest archive
+  month (an early round without a date of its own), the first day of its
+  earliest archive month.
 - **End** of a tournament, an upper bound: **the last day of its latest
   archive month**, for every tournament. Date tags are not used for the
   end, because a tournament stamped with its first day would look finished
@@ -160,8 +163,9 @@ family B.
    is weighted by age, `0.5 ^ (years since that tournament ended / h)`.
 3. A final mix with "every legal move equally likely": `(1 − ε) · p + ε / n`.
 
-With few earlier games the estimate falls back on the base model; with many
-it approaches the share actually played, and never beyond it.
+The estimate always lies between the base model's probability and the share
+actually played: close to the base model with few earlier games, close to
+the played share with many.
 
 The match-score rule of v1 (0.35 × urgency taken from even trades) stays a
 written rule on the base model's scores. Nothing here measures it.
@@ -265,6 +269,21 @@ No model had been fitted or measured on any game when these were made.
 
 The split by end date comes out the same under the amended rule: 233, 118,
 83 and 21 games.
+
+After review of the training code (commit `728035a`), three corrections of
+wording and one guard, none of which changes a number: no tournament in the
+corpus is affected by the guard.
+
+5. **Start of a tournament**: where the earliest usable date is in a later
+   month than the earliest archive month, the first day of that archive
+   month is the start. An undated early round could otherwise let in a
+   tournament that ended after it was played.
+6. The first version of this page said broadcasts carry no FIDE IDs before
+   2023. Some do; what is true is that no game before 2023 carries either
+   of the two players' IDs.
+7. The first version said the back-off estimate approaches the played share
+   "and never beyond it". That is wrong where the base model gives a move
+   more than its played share. The estimate lies between the two.
 
 ## Limits accepted in advance
 

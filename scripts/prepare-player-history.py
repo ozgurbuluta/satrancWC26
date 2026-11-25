@@ -211,7 +211,7 @@ def earlier():
         'matchedByFideId': total('matchedByFideId'),
         'leftOut': {reason: left_out[reason] for reason in reasons if left_out[reason]},
         'nameWithoutMatchingFideId': total('nameWithoutMatchingFideId'),
-        'nameWithoutMatchingFideIdNote': 'Games whose White or Black tag contains "Gukesh" or "Sindarov" but which carry neither FIDE ID. Counted only, never used: broadcasts before 2023 have no FIDE IDs, and a name does not tell one Sindarov from another.',
+        'nameWithoutMatchingFideIdNote': 'Games whose White or Black tag contains "Gukesh" or "Sindarov" but which carry neither FIDE ID. Counted only, never used: no game before 2023 carries either of the two IDs (few broadcasts carried FIDE IDs at all then), and a name does not tell one Sindarov from another.',
         'corpusSha256': hashlib.sha256(corpus.encode()).hexdigest(),
         'sources': sources,
     }

@@ -1,6 +1,6 @@
 # Move predictor: what was measured
 
-Written by `scripts/train-predictor.mjs`. Do not edit by hand; run the script.
+Written by `scripts/train-predictor-v1.mjs`. Do not edit by hand; run the script. This is the first version of the model; the one the site uses now is in [PREDICTOR-REPORT.md](PREDICTOR-REPORT.md).
 
 Corpus: `data/player-history/games.pgn` (SHA-256 `ad14048d7fa6308d3752e7cdfed7ed629073f34c919bae4786c3e48b4e74e555`), from the Lichess broadcast database, CC BY-SA 4.0.
 

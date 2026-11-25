@@ -1,7 +1,8 @@
 // Fits, selects and measures the move predictor, second version.
 //
-//   node scripts/train-predictor.mjs            the selection stage
-//   node scripts/train-predictor.mjs --final    the selection stage again, then the final measurement
+//   node scripts/train-predictor.mjs                       the selection stage
+//   node scripts/train-predictor.mjs --final               the selection stage again, then the final measurement
+//   node scripts/train-predictor.mjs --calibration-check   one more calibration step, tried on the selection games and not adopted
 //
 // The protocol this follows was written down before any fitting:
 // docs/PREDICTOR-V2-PROTOCOL.md. In short:
@@ -66,6 +67,8 @@ const REP_ANY = FEATURES.indexOf('repAny');
 const YEAR_MS = 365.25 * 86400e3;
 const sha256 = path => createHash('sha256').update(readFileSync(path)).digest('hex');
 const round = (x, d = 4) => Math.round(x * 10 ** d) / 10 ** d;
+/** Order by the text itself, character code by character code. localeCompare would order by the machine's language settings, and the files this writes have to come out the same everywhere. */
+const byText = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const log = (...a) => console.log(`[${((Date.now() - startedAt) / 1000).toFixed(0).padStart(4)} s]`, ...a);
 const startedAt = Date.now();
 
@@ -143,13 +146,17 @@ const tournaments = [];
   const byName = new Map();
   for (const g of games) (byName.get(g.name) ?? byName.set(g.name, []).get(g.name)).push(g);
   for (const [name, list] of byName) {
-    list.sort((a, b) => a.archive.localeCompare(b.archive));
+    list.sort((a, b) => byText(a.archive, b.archive));
     let current = [];
     const close = () => {
       const dates = current.map(g => g.date).filter(Boolean).sort();
       const months = current.map(g => g.archive).sort();
-      // a lower bound for the start, an upper bound for the end
-      const t = { name, start: dates[0] ?? `${months[0]}-01`, end: lastDayOf(months.at(-1)), games: current.length, gukesh: 0, sindarov: 0, months: [...new Set(months)] };
+      // A lower bound for the start, an upper bound for the end. The start is the earliest usable date, unless that
+      // date is in a later month than the earliest archive month: then an early round has no date of its own, and
+      // the first day of that archive month is taken, so that an undated round cannot let in a tournament that
+      // ended after it was played.
+      const start = dates[0] && dates[0].slice(0, 7) <= months[0] ? dates[0] : `${months[0]}-01`;
+      const t = { name, start, end: lastDayOf(months.at(-1)), games: current.length, gukesh: 0, sindarov: 0, months: [...new Set(months)] };
       for (const g of current) {
         g.tournament = t;
         for (const p of [g.white, g.black]) if (p) t[p]++;
@@ -166,10 +173,10 @@ const tournaments = [];
     }
     close();
   }
-  tournaments.sort((a, b) => a.start.localeCompare(b.start) || a.name.localeCompare(b.name));
+  tournaments.sort((a, b) => byText(a.start, b.start) || byText(a.name, b.name));
   tournaments.forEach((t, i) => (t.index = i));
 }
-games.sort((a, b) => a.tournament.index - b.tournament.index || a.archive.localeCompare(b.archive) || a.game.id.localeCompare(b.game.id));
+games.sort((a, b) => a.tournament.index - b.tournament.index || byText(a.archive, b.archive) || byText(a.game.id, b.game.id));
 games.forEach((g, i) => (g.index = i));
 /** Tournament X is over before tournament E starts. Where that cannot be shown from the data, it is not. */
 const earlier = (x, e) => x.end < e.start;
@@ -435,7 +442,7 @@ const STATS = 5 + 6 * BINS;
  * The moves in the order the site shows them: by probability, and exactly
  * equal ones by their UCI text, as predict() does in the browser.
  */
-const ranked = (p, r) => Array.from(p, (x, i) => [x, i]).sort((a, b) => b[0] - a[0] || r.ucis[a[1]].localeCompare(r.ucis[b[1]]));
+const ranked = (p, r) => Array.from(p, (x, i) => [x, i]).sort((a, b) => b[0] - a[0] || byText(r.ucis[a[1]], r.ucis[b[1]]));
 /**
  * What a model did on each game, as sums that can be added up over any set
  * of games: decisions, log loss, Brier, first choice right, in the first
@@ -573,6 +580,15 @@ const measure = (data, probs, { expected = false, against } = {}) => {
   }
   if (again.n !== published.n) throw new Error('the benchmark is not the decisions of the first report');
   log(`published first version reproduced on the benchmark: first ${(100 * again.top1).toFixed(1)} %, three ${(100 * again.top3).toFixed(1)} %, log loss ${again.logLoss.toFixed(3)}`);
+}
+
+// ---------- an extra calibration step that was tried on the selection games and not adopted: to reproduce that decision
+if (process.argv.includes('--calibration-check')) {
+  const { calibrationCheck } = await import('./predictor-calibration-check.mjs');
+  const frozen = JSON.parse(readFileSync(SELECTION, 'utf8')).families.B;
+  calibrationCheck({ rows: ownOf('selection'), theta: Float64Array.from(frozen.theta), chosen: frozen, grid: frozen.grid, scoresOf, softmaxInto, logLoss, searchTemperature, measure, BOARD, round, log });
+  await vite.close();
+  process.exit(0);
 }
 
 // ---------- 5. every choice, on the selection games only
