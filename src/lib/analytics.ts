@@ -284,9 +284,17 @@ export const setContext = (props: Record<string, unknown>) => {
 };
 
 const load = async () => {
-  if (!KEY) return;
+  // The visitor may have turned statistics off while this was waiting to run.
+  if (!KEY || optedOut) {
+    loading = false;
+    return;
+  }
   try {
     const { default: posthog } = await import('posthog-js/dist/module.slim');
+    if (optedOut) {
+      loading = false; // turned off while the library was downloading: do not start it
+      return;
+    }
     posthog.init(KEY, {
       api_host: API_HOST,
       ui_host: 'https://eu.posthog.com',
@@ -313,7 +321,10 @@ const load = async () => {
     posthog.register({ ...context });
     posthog.capture('$pageview');
     register = props => posthog.register(props);
-    send = (name, props) => posthog.capture(name, props);
+    // Checked again at the moment of sending, besides the gate in before_send.
+    send = (name, props) => {
+      if (!optedOut) posthog.capture(name, props);
+    };
     queue.splice(0).forEach(([name, props]) => send!(name, props));
   } catch {
     enabled = false; // blocked or offline: the site works the same without it

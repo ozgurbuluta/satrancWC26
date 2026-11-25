@@ -87,3 +87,73 @@ describe('when storage works', () => {
     expect(second.gate({ event: 'tab_open', properties: { tab: 'match' } }, { origin: 'https://x.example', pathname: '/' })).toBeNull();
   });
 });
+
+/** A stand-in for the PostHog library that records what the site asks of it. */
+const fakePostHog = () => {
+  const calls = { init: 0, captured: [] as string[], beforeSend: undefined as undefined | ((e: unknown) => unknown) };
+  vi.doMock('posthog-js/dist/module.slim', () => ({
+    default: {
+      init: (_key: string, config: { before_send?: (e: unknown) => unknown }) => {
+        calls.init++;
+        calls.beforeSend = config.before_send;
+      },
+      register: () => undefined,
+      capture: (name: string) => {
+        calls.captured.push(name);
+      },
+    },
+  }));
+  return calls;
+};
+
+describe('the statistics switch and the delayed start of PostHog', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubEnv('VITE_POSTHOG_KEY', 'phc_test_only');
+  });
+
+  it('turning statistics off before PostHog has started means it never starts', async () => {
+    denyStorage();
+    const posthog = fakePostHog();
+    const analytics = await import('../src/lib/analytics');
+    analytics.initAnalytics();
+    analytics.track('tab_open', { tab: 'match' }); // waits in the queue for the library
+    analytics.setOptedOut(true); // within the two seconds before loading begins
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(posthog.init).toBe(0);
+    expect(posthog.captured).toEqual([]);
+  });
+
+  it('turning statistics off after it started stops custom events and the page-leave PostHog sends itself', async () => {
+    denyStorage();
+    const posthog = fakePostHog();
+    const analytics = await import('../src/lib/analytics');
+    analytics.initAnalytics();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(posthog.init).toBe(1);
+    expect(posthog.captured).toEqual(['$pageview']);
+    analytics.track('tab_open', { tab: 'match' });
+    expect(posthog.captured).toEqual(['$pageview', 'tab_open']);
+
+    expect(analytics.setOptedOut(true).persisted).toBe(false);
+    analytics.track('tab_open', { tab: 'charts' });
+    expect(posthog.captured).toEqual(['$pageview', 'tab_open']); // nothing new was handed to the library
+    // and whatever the library tries on its own is stopped at the gate
+    expect(posthog.beforeSend!({ event: '$pageleave', properties: {} })).toBeNull();
+    expect(posthog.beforeSend!({ event: 'tab_open', properties: { tab: 'charts' } })).toBeNull();
+  });
+
+  it('turning statistics back on starts PostHog if it had never started', async () => {
+    localStorage.setItem('satranc:analytics-off', '1');
+    const posthog = fakePostHog();
+    const analytics = await import('../src/lib/analytics');
+    analytics.initAnalytics();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(posthog.init).toBe(0);
+
+    analytics.setOptedOut(false);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(posthog.init).toBe(1);
+    expect(posthog.captured).toEqual(['$pageview']);
+  });
+});
