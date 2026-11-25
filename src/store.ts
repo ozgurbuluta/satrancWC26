@@ -740,6 +740,18 @@ export const selectShownPly = (s: State): number => Math.min(s.viewPly ?? s.reve
 /** 1-based game number of the selected round. */
 export const selectRoundNo = (s: State): number => s.rounds.findIndex(r => r.id === s.roundId) + 1;
 
+/**
+ * Whether the position on the board can be linked. A link names a game of the
+ * match by its round number and a half-move, and nothing says which board, so
+ * it only leads to the right game when the round has exactly one. On a day
+ * with several boards (tie-breaks) there is no share action for the match.
+ */
+export const canSharePosition = (s: State): boolean => {
+  if (!IS_MATCH || selectRoundNo(s) < 1 || !s.gameId) return false;
+  const known = Object.keys(s.games);
+  return known.length === 1 && known[0] === s.gameId;
+};
+
 export interface ClockView {
   white?: number;
   black?: number;

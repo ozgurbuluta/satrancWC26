@@ -128,6 +128,59 @@ describe('share button', () => {
     expect(copied).toHaveLength(2);
   });
 
+  it('when the copy command throws, nothing is left in the page and the link is still shown selected', async () => {
+    clipboard(async () => {
+      throw new DOMException('Write permission denied.', 'NotAllowedError');
+    });
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      writable: true,
+      value: () => {
+        throw new DOMException('The operation is insecure.', 'SecurityError');
+      },
+    });
+    try {
+      const button = await mount({ view: 'live', gameNo: 2, ply: 31 });
+      await act(async () => button.click());
+      expect(document.querySelectorAll('textarea')).toHaveLength(0);
+      expect(status()).toMatch(/kopyalanamadı/);
+      const input = field()!;
+      expect(input.value).toBe('https://ozgurakanay.com/satranc/?parti=2&hamle=31');
+      expect(document.activeElement).toBe(input);
+      expect(input.selectionEnd).toBe(input.value.length);
+    } finally {
+      Object.defineProperty(document, 'execCommand', { configurable: true, writable: true, value: undefined });
+    }
+  });
+
+  it('when the share action goes away, its open panel goes with it', async () => {
+    // the panel is shown in a slot elsewhere on the page, as under the board controls
+    const slot = document.createElement('div');
+    document.body.append(slot);
+    clipboard(async () => undefined);
+    vi.resetModules();
+    const { ShareButton } = await import('../src/components/ShareButton');
+    const Controls = ({ shareable, gameId }: { shareable: boolean; gameId: string }) => (
+      <div>{shareable && <ShareButton key={gameId} panelHost={slot} target={{ view: 'live', gameNo: 15, ply: 10 }} describe="15. parti, 5. hamle" />}</div>
+    );
+    await act(() => root.render(<Controls shareable gameId="tb1" />));
+    await act(async () => host.querySelector<HTMLButtonElement>('.share-btn')!.click());
+    expect(slot.querySelector('.share-panel input')).not.toBeNull();
+
+    // another game of the same round: the button stays, the old link does not
+    await act(() => root.render(<Controls shareable gameId="tb2" />));
+    expect(host.querySelector('.share-btn')).not.toBeNull();
+    expect(slot.querySelector('.share-panel')).toBeNull();
+
+    // a second board appears, so the position can no longer be linked
+    await act(async () => host.querySelector<HTMLButtonElement>('.share-btn')!.click());
+    expect(slot.querySelector('.share-panel')).not.toBeNull();
+    await act(() => root.render(<Controls shareable={false} gameId="tb2" />));
+    expect(host.querySelector('.share-btn')).toBeNull();
+    expect(slot.querySelector('.share-panel')).toBeNull();
+    slot.remove();
+  });
+
   it('the copy button in the panel tries again', async () => {
     let allow = false;
     const copied: string[] = [];

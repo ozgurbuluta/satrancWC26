@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { IS_MATCH, REPO_URL } from './config';
+import { REPO_URL } from './config';
 import { AnalysisPanel } from './components/AnalysisPanel';
 import { Board, type BoardShape } from './components/Board';
 import { CatchUpBar } from './components/CatchUpBar';
@@ -16,7 +16,7 @@ import { setContext, track, trackOutbound } from './lib/analytics';
 import { displayName, firstMoveSquares, localizeSan, materialFromFen, shortName } from './lib/format';
 import { seedGameScores } from './lib/quality';
 import { unlockAudio } from './lib/sound';
-import { AUTO_SWITCH_SEC, canGuess, engineHeldBack, selectGameData, selectRoundNo, selectShownPly, useStore } from './store';
+import { AUTO_SWITCH_SEC, canGuess, canSharePosition, engineHeldBack, selectGameData, selectRoundNo, selectShownPly, useStore } from './store';
 
 // Loaded on first use, so the first paint only carries the board and the analysis tab.
 const SimilarPanel = lazy(() => import('./components/SimilarPanel').then(m => ({ default: m.SimilarPanel })));
@@ -53,6 +53,7 @@ export default function App() {
   const setPreview = useStore(s => s.setPreview);
   const rounds = useStore(s => s.rounds);
   const roundNo = useStore(selectRoundNo);
+  const shareable = useStore(canSharePosition);
   const nextUp = useStore(s => s.nextUp);
   const followLatest = useStore(s => s.followLatest);
   const goToRound = useStore(s => s.goToRound);
@@ -318,8 +319,10 @@ export default function App() {
               <button onClick={toggleFlip} aria-label={t.flip} title={t.flip}>
                 ⇅
               </button>
-              {IS_MATCH && roundNo > 0 && (
+              {shareable && game && (
                 <ShareButton
+                  // a new game starts with no panel: a link copied for another game is not left on screen
+                  key={game.id}
                   compact={isMobile}
                   panelHost={shareSlot}
                   // the position on the board, which is never beyond what this viewer has been shown
