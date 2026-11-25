@@ -13,11 +13,15 @@ https://kibitzchess.app/.
 This site is an independent fan project. It is not Kibitz, does not use it,
 and is not affiliated with FIDE, with Vidit Gujrathi or with Lichess.
 
-## What this site does instead
+## What this site does
 
-There is no model here that predicts human moves, so the site does not show
-predicted probabilities. Making them up would be worse than not having them.
-What it offers:
+The site has an experimental model of its own for the next move of the two
+players. It is described in [PREDICTOR.md](PREDICTOR.md), with everything
+that was measured in [PREDICTOR-REPORT.md](PREDICTOR-REPORT.md). It is not
+Kibitz, uses no engine and no third-party weights, and its accuracy is
+modest and stated.
+
+The Tahmin tab keeps four things apart:
 
 1. **The viewer's own guess.** With guess mode on, the viewer picks the move
    they expect, and when the real move is shown it is a hit or a miss.
@@ -29,9 +33,14 @@ What it offers:
    shows no numbers.
 3. **What the engine prefers.** The strongest moves according to the engine.
    This is about quality, not about what a person will choose.
+4. **The model estimate.** At the bottom of the tab: three legal moves with a
+   share each and the rest as "other", labelled experimental, with its
+   measured accuracy one click away.
 
-The second and third are labelled as different things, next to each other,
-and the page states that neither is a probability of the player's next move.
+The second and third are not probabilities of the player's next move, and
+the page says so. Only the fourth is an estimate of that, and it is never
+built from the other two: an engine score is not renamed a probability, and
+neither is a count from the masters database.
 
 ## Fairness and spoilers
 
@@ -51,6 +60,12 @@ and the page states that neither is a probability of the player's next move.
   but it now requires a login, so it is not used.
 
 ## Research plan: a real human-move predictor
+
+*Background.* This plan was written before the site had a model of its own,
+and looked at third-party models. The site now ships its own experimental
+model instead ([PREDICTOR.md](PREDICTOR.md)). The survey of third-party
+models and their licences below stays as it was written; none of them is
+used.
 
 Nothing in this section is built. It is the plan for finding out whether a
 real predictor can be added honestly, and what it would have to show first.

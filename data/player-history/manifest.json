@@ -1,0 +1,79 @@
+{
+  "source": "Lichess official broadcasts",
+  "sourcePage": "https://database.lichess.org/#broadcasts",
+  "license": "CC-BY-SA-4.0",
+  "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "modifications": "Filtered by exact FIDE IDs, valid 2026 dates before November, and duplicate game removal; original PGN retained. Includes mixed time controls; trainer must filter and report its selection.",
+  "players": {
+    "46616543": "Gukesh D",
+    "14205483": "Sindarov, Javokhir"
+  },
+  "games": 331,
+  "gamesByPlayer": {
+    "14205483": 217,
+    "46616543": 118
+  },
+  "corpusSha256": "ad14048d7fa6308d3752e7cdfed7ed629073f34c919bae4786c3e48b4e74e555",
+  "sources": [
+    {
+      "month": "2026-01",
+      "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-01.pgn.zst",
+      "sha256": "9abf10d106a8bf5ecd41359825b3bf55c2f124c8a790a380cb98844c2cca5dca",
+      "selectedUniqueGames": 23
+    },
+    {
+      "month": "2026-02",
+      "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-02.pgn.zst",
+      "sha256": "ea977569917718b33940ba5379db2adad77d58876c29084294d357f15fe6a31b",
+      "selectedUniqueGames": 20
+    },
+    {
+      "month": "2026-03",
+      "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-03.pgn.zst",
+      "sha256": "1a5ad83fc9f440dcdadde17b11cc81a953f4895aaf8b8588470b3078209dc7fc",
+      "selectedUniqueGames": 8
+    },
+    {
+      "month": "2026-04",
+      "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-04.pgn.zst",
+      "sha256": "97b036f3a3639ae3be59c1508b1e18c76ac1b2e8fada4587d1b5c5a93c438d5d",
+      "selectedUniqueGames": 27
+    },
+    {
+      "month": "2026-05",
+      "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-05.pgn.zst",
+      "sha256": "d212987f7972a70268809ff6c726acff8bf0987161aacd7647b160f8564f6a53",
+      "selectedUniqueGames": 69
+    },
+    {
+      "month": "2026-06",
+      "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-06.pgn.zst",
+      "sha256": "65905d611c0d78d90ab57cd9edd3821f4119b46c22b5489fd7e265a74c6767b3",
+      "selectedUniqueGames": 34
+    },
+    {
+      "month": "2026-07",
+      "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-07.pgn.zst",
+      "sha256": "714d0eb99f99fca8d791142038b6c59b5ca6a51b3339bd3891a92f4bdffcbf0c",
+      "selectedUniqueGames": 63
+    },
+    {
+      "month": "2026-08",
+      "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-08.pgn.zst",
+      "sha256": "e227c35c3207ebade754849c1825982e2717ae82c013013d896778e27be77724",
+      "selectedUniqueGames": 36
+    },
+    {
+      "month": "2026-09",
+      "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-09.pgn.zst",
+      "sha256": "27a39d035767a30901b89602f33f2a7b27d4ab5025842071165fa079f8fff1df",
+      "selectedUniqueGames": 33
+    },
+    {
+      "month": "2026-10",
+      "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-10.pgn.zst",
+      "sha256": "d9c0c78c7ed8cd200723c9972b01a1cd35fd8568dd4b6324fbcc3ee7c07374c9",
+      "selectedUniqueGames": 18
+    }
+  ]
+}

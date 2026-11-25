@@ -13,7 +13,8 @@ bağımsız bir hayran sitesi.
 - **Kim kazanır?** motor değerlendirmesinden kazanma/beraberlik tahmini ve hamle kalitesi (yanlışlık, hata, büyük hata).
 
 - **Tahtada kendi hamlelerin:** ana tahtada, canlı konumdan ya da önceki bir hamleden, kurallı her hamleyi deneyebilirsin. Motor senin konumunu izler, oyun arkada devam eder. "Canlı konuma dön", son hamle düğmesi ya da yukarı ok seni canlı konuma geri getirir.
-- **Hamleyi tahmin et:** tahmin yalnızca Tahmin sekmesinde yapılır: sıradaki hamleyi listeden seç ya da yaz; hamle oynanınca tuttu mu görürsün. Tahtada yaptığın hamleler analizdir, tahmin sayılmaz. Tahmin edene kadar o sekmedeki usta ve motor bilgileri gizlenir. Bu bilgiler iki ayrı şeydir: usta oyunlarında o pozisyonda neyin kaç kez oynandığı ve motorun en güçlü bulduğu hamleler. İkisi de olasılık değildir; sayfada insan hamlesi tahmin eden bir model yoktur.
+- **Hamleyi tahmin et:** tahmin yalnızca Tahmin sekmesinde yapılır: sıradaki hamleyi listeden seç ya da yaz; hamle oynanınca tuttu mu görürsün. Tahtada yaptığın hamleler analizdir, tahmin sayılmaz. Tahmin edene kadar o sekmedeki usta ve motor bilgileri gizlenir. Bu bilgiler iki ayrı şeydir: usta oyunlarında o pozisyonda neyin kaç kez oynandığı ve motorun en güçlü bulduğu hamleler. İkisi de olasılık değildir.
+- **Model tahmini (deneysel):** Tahmin sekmesinin en altında sitenin kendi modeli, sıradaki oyuncunun en olası bulduğu üç hamleyi yüzdeleriyle, geri kalanını "Diğer hamleler" olarak gösterir; dördü birlikte 100 eder. Payı yüzde birin altında kalan hamle "0" değil "<1 %" olarak yazılır. Model, Gukesh ve Sindarov'un 2026'daki 104 klasik oyunundan öğrenir, motor kullanmaz. Ayrı tutulan 21 oyunun 963 hamlesinde ilk tercihi yüzde 29, ilk üç tercihi yüzde 54 tuttu; emin göründüğü hamlelerde fazla emindir ve oyuncuya özel stil düzeltmeleri bu testte ölçülebilir bir fark yaratmadı. Maç durumu öğrenilmiş değil, yazılı bir kuraldır. Tahmin modu açıkken, sen tahmin edene ya da "Tahmin etmeden göster" diyene kadar gizli kalır.
 - **Bulmaca köşesi:** Lichess bulmacaları (günün bulmacası, karışık, 1 ve 2 hamlede mat, kısa, oyun sonu). Yalnızca kurallı hamleler oynanır; ipucu, çözümü göster, baştan ve skor vardır. Lichess'e ulaşılamazsa hazır bulmacalar gösterilir.
 - **Paylaş:** tahtanın altındaki düğme, ekrandaki oyunun o hamlesine giden bağlantıyı kopyalar (`?parti=3&hamle=24`; adresteki `parti` adı eski bağlantılar çalışsın diye aynı kalır). Bulmaca köşesinin bağlantısı `#bulmaca` ile biter. Bağlantıda bunlardan başka hiçbir şey olmaz. Tarayıcı kopyalamaya izin vermezse bağlantı seçili olarak gösterilir, elle kopyalarsın. Aynı turda birden çok tahta olan günlerde (eşitlik bozma) bağlantı hangi tahtayı gösterdiğini söyleyemeyeceği için düğme gösterilmez.
 - **Maçı kendi takip eder:** yeni oyun başlayınca kısa bir duyurudan sonra o oyuna geçer (sen tahtada kendi hamlelerine bakarken geçmez); her günün yayınını kanalın canlı yayın listesinden kendi bulur. Üstteki şeritte maç skoru ve her oyun için bir kare vardır; tüm oyunların listesi bir düğme uzaklıktadır.
@@ -33,7 +34,8 @@ npm test
 
 Tarayıcıda elle çalıştırılan denemeler `tests/e2e/` altında, sonuçları [docs/TEST-EVIDENCE.md](docs/TEST-EVIDENCE.md) içinde.
 Barındırma ve `ozgurakanay.com/satranc/` sayfası: [docs/INTEGRATION.md](docs/INTEGRATION.md).
-Tahmin panelinin ne gösterip ne göstermediği ve insan hamlesi tahmini için araştırma planı: [docs/PREDICTION.md](docs/PREDICTION.md).
+Tahmin panelinin ne gösterip ne göstermediği: [docs/PREDICTION.md](docs/PREDICTION.md).
+Model tahmini, verisi, yöntemi ve sınırları: [docs/PREDICTOR.md](docs/PREDICTOR.md); ölçümlerin tamamı: [docs/PREDICTOR-REPORT.md](docs/PREDICTOR-REPORT.md). Modeli yeniden kurmak için `node scripts/train-predictor.mjs` (yaklaşık 8 dakika).
 Tasarım yönü: [.impeccable.md](.impeccable.md).
 Canlı akış, Lichess'in istek sınırları ve reddedilen bağlantılar için öneri: [docs/LIVE-FEED.md](docs/LIVE-FEED.md).
 
