@@ -17,6 +17,8 @@ export function Header() {
   const feds = useStore(s => s.feds);
   const delaySec = useStore(s => s.settings.delaySec);
   const paused = useStore(s => s.paused);
+  const view = useStore(s => s.view);
+  const setView = useStore(s => s.setView);
   const score = useStore(useShallow(selectScore));
 
   const roundIdx = rounds.findIndex(r => r.id === roundId);
@@ -59,6 +61,15 @@ export function Header() {
           </p>
         </div>
       </div>
+
+      <nav className="viewnav" aria-label={t.title}>
+        <button className={view === 'live' ? 'active' : ''} aria-current={view === 'live' ? 'page' : undefined} onClick={() => setView('live')}>
+          {t.viewLive}
+        </button>
+        <button className={view === 'puzzles' ? 'active' : ''} aria-current={view === 'puzzles' ? 'page' : undefined} onClick={() => setView('puzzles')}>
+          {t.viewPuzzles}
+        </button>
+      </nav>
 
       {score && (
         <div className="scoreline" aria-label="score">

@@ -10,6 +10,15 @@ export const IS_MATCH = TOUR_ID === DEFAULT_TOUR_ID;
 /** Optional `?round=` forces a specific round id. */
 export const FORCED_ROUND_ID = params.get('round');
 
+const wholeNumber = (value: string | null, min: number, max: number): number | undefined => {
+  if (!value || !/^\d{1,3}$/.test(value)) return undefined;
+  const n = Number(value);
+  return n >= min && n <= max ? n : undefined;
+};
+/** Deep link: `?parti=3` opens game 3, `&hamle=24` shows the position after 24 half-moves. */
+export const LINKED_GAME_NO = wholeNumber(params.get('parti'), 1, 40);
+export const LINKED_PLY = wholeNumber(params.get('hamle'), 0, 600);
+
 export const LICHESS = 'https://lichess.org';
 export const GAMES_IN_MATCH = 14;
 export const POINTS_TO_WIN = 7.5;

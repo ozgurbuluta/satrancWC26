@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly VITE_POSTHOG_HOST?: string;
   /** Production hostname. When set, other hosts (previews) do not count. */
   readonly VITE_ANALYTICS_HOST?: string;
+  /** Address visitors should see and share, when the site is shown inside a page of another site. */
+  readonly VITE_PUBLIC_URL?: string;
 }
 
 interface ImportMeta {

@@ -4,3 +4,8 @@ public/engine
 .vercel
 *.log
 .DS_Store
+
+# local settings and secrets never belong in this public repository
+.env
+.env.*
+!.env.example

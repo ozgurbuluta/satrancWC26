@@ -2,49 +2,15 @@ import { useMemo, useState } from 'react';
 import { IS_MATCH, STREAM_PRESETS } from '../config';
 import { useT } from '../hooks';
 import { track, trackOutbound } from '../lib/analytics';
+import { parseStreamLink, youtubeChannel, youtubeVideo, type Embed } from '../lib/streamLinks';
 import { pickVideo } from '../lib/streams';
 import { selectRoundNo, useStore } from '../store';
 import { CatchUpBar } from './CatchUpBar';
 
-interface Embed {
-  src: string;
-  url: string;
-}
-
-const host = () => window.location.hostname || 'localhost';
-
-const youtubeChannel = (id: string): string => `https://www.youtube.com/embed/live_stream?channel=${id}`;
-const youtubeVideo = (id: string): string => `https://www.youtube.com/embed/${id}?rel=0`;
-const twitch = (name: string): string => `https://player.twitch.tv/?channel=${name}&parent=${host()}&autoplay=false`;
-const kick = (name: string): string => `https://player.kick.com/${name}`;
-
-/** Turns a pasted YouTube/Twitch/Kick link into an embeddable player URL. */
-export const parseStreamLink = (input: string): Embed | undefined => {
-  let u: URL;
-  try {
-    u = new URL(/^https?:\/\//i.test(input.trim()) ? input.trim() : `https://${input.trim()}`);
-  } catch {
-    return undefined;
-  }
-  const h = u.hostname.replace(/^(www|m)\./, '');
-  const parts = u.pathname.split('/').filter(Boolean);
-  const okId = (s: string | null | undefined): s is string => !!s && /^[\w-]{6,}$/.test(s);
-  if (h === 'youtu.be' && okId(parts[0])) return { src: youtubeVideo(parts[0]), url: u.href };
-  if (h === 'youtube.com' || h === 'youtube-nocookie.com') {
-    const v = u.searchParams.get('v');
-    if (okId(v)) return { src: youtubeVideo(v), url: u.href };
-    if (['live', 'embed', 'shorts'].includes(parts[0]) && okId(parts[1])) return { src: youtubeVideo(parts[1]), url: u.href };
-    if (parts[0] === 'channel' && /^UC[\w-]{22}$/.test(parts[1] ?? '')) return { src: youtubeChannel(parts[1]), url: u.href };
-    return undefined;
-  }
-  if (h === 'twitch.tv' && parts[0] && /^\w+$/.test(parts[0])) return { src: twitch(parts[0]), url: u.href };
-  if (h === 'kick.com' && parts[0] && /^[\w-]+$/.test(parts[0])) return { src: kick(parts[0]), url: u.href };
-  return undefined;
-};
-
 const DELAY_STEPS = [0, 5, 10, 15, 20, 30, 45];
 
-export function StreamPanel() {
+/** `live` is false in the puzzle corner: the video stays, the controls that act on the live board go. */
+export function StreamPanel({ live = true }: { live?: boolean }) {
   const t = useT();
   const streamId = useStore(s => s.settings.streamId);
   const customStream = useStore(s => s.settings.customStream);
@@ -72,8 +38,7 @@ export function StreamPanel() {
       : { src: youtubeChannel(p.channelId), url: p.url };
   }, [streamId, customStream, preset, roundNo, round, feeds]);
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = () => {
     const parsed = parseStreamLink(draft);
     setBad(!parsed);
     if (!parsed) return;
@@ -115,7 +80,7 @@ export function StreamPanel() {
             rel="noreferrer"
             title={t.openInTab}
             aria-label={t.openInTab}
-            onClick={() => (streamId === 'custom' ? track('outbound_click', { link_domain: new URL(embed.url).hostname.replace(/^www\./, ''), outbound: true }) : trackOutbound(embed.url))}
+            onClick={() => trackOutbound(embed.url)}
           >
             ↗
           </a>
@@ -126,32 +91,42 @@ export function StreamPanel() {
       </div>
 
       {showPaste && (
-        <form className="paste" onSubmit={submit}>
+        <div className="paste" role="group" aria-label={t.pasteLink}>
           <input
             value={draft}
             onChange={e => {
               setDraft(e.target.value);
               setBad(false);
             }}
+            onKeyDown={e => {
+              if (e.key === 'Enter') submit();
+            }}
             placeholder={t.pasteLink}
+            aria-label={t.pasteLink}
             inputMode="url"
             autoCapitalize="off"
             autoCorrect="off"
             spellCheck={false}
             aria-invalid={bad}
           />
-          <button type="submit" className="btn">
+          <button type="button" className="btn" onClick={submit}>
             {t.open}
           </button>
-          {bad ? <p className="error">{t.badLink}</p> : <p className="muted small hint">{t.streamHint}</p>}
-        </form>
+          {bad ? (
+            <p className="error" role="alert">
+              {t.badLink}
+            </p>
+          ) : (
+            <p className="muted small hint">{t.streamHint}</p>
+          )}
+        </div>
       )}
 
       {!hidden && (
         <div className={`player ${covered ? 'covered' : ''}`}>
           {covered ? (
             <div className="cover">
-              <CatchUpBar embedded />
+              {live && <CatchUpBar embedded />}
               <p className="cover-note">
                 {t.streamCovered}{' '}
                 <button className="link" onClick={() => setUncovered(true)}>
@@ -174,7 +149,7 @@ export function StreamPanel() {
         </div>
       )}
 
-      {!paused && (
+      {!paused && live && (
         <div className="sync" title={t.syncHelp}>
           <div className="sync-head">
             <strong>{t.syncTitle}</strong>
