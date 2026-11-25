@@ -199,6 +199,23 @@ describe('the status under the board', () => {
   });
 });
 
+describe('the win chance card', () => {
+  it('does not give a winning side 100 %: it shows how such positions ended', async () => {
+    const mod = await boot();
+    await act(async () => push(R1, game({ round: 1, id: 'g1', sans: [] })));
+    const { WinChance } = await import('../src/components/EnginePanel');
+    const g = mod.selectGameData(mod.useStore.getState())!;
+    // Black (Gukesh in this game) is four and a half pawns up
+    const evaluation = { fen: g.initialFen, depth: 24, source: 'local' as const, pvs: [{ cp: -456, moves: ['e2e4'] }] };
+    await act(() => root.render(<WinChance game={g} evaluation={evaluation} />));
+    const numbers = [...host.querySelectorAll('.wc b')].map(b => b.textContent);
+    expect(numbers).toEqual(['1%', '6%', '93%']);
+    expect(host.textContent).not.toContain('100');
+    expect(host.querySelector('.wdl-bar')!.getAttribute('aria-label')).toBe('Sindarov 1%, Berabere 6%, Gukesh 93%');
+    expect(host.textContent).toContain('Benzer değerlendirmeli üst düzey oyunların sonuçlarına göre');
+  });
+});
+
 describe('what the engine card says about the choice of move', () => {
   const card = async (cps: number[]) => {
     const mod = await boot();
@@ -240,6 +257,21 @@ describe('what the engine card says about the choice of move', () => {
 
   it('has nothing to compare with a single line', async () => {
     expect(await card([150])).toBe('');
+  });
+
+  it('says who is winning, by name, in place of anything about the choice', async () => {
+    // White (Sindarov here) to move and far ahead, with several moves that keep it
+    expect(await card([456, 365, 298])).toBe('Sindarov kazanıyor.');
+    expect(host.textContent).not.toContain('yanlışlık');
+    expect(host.textContent).not.toContain('Sakin');
+  });
+
+  it('names the winner when it is the other side that is to move', async () => {
+    expect(await card([-456, -500, -600])).toBe('Gukesh kazanıyor.');
+  });
+
+  it('adds the move when only one keeps the win', async () => {
+    expect(await card([456, 100, 50])).toBe('Sindarov kazanıyor. Kazancı yalnızca e4 koruyor.');
   });
 });
 

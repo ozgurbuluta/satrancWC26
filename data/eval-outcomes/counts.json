@@ -1,0 +1,1356 @@
+{
+ "source": "Lichess official broadcasts",
+ "sourcePage": "https://database.lichess.org/#broadcasts",
+ "license": "CC-BY-SA-4.0",
+ "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
+ "about": "For classical games between two players rated 2600 or more: how the game ended (White won, draw, Black won) from positions with a given evaluation. Counts only. Evaluations are from the archive, from White's side, grouped by centipawns.",
+ "rule": {
+  "minimumRating": 2600,
+  "classicalSeconds": 2700,
+  "minimumEvaluations": 20,
+  "stepCentipawns": 25,
+  "limitCentipawns": 1000
+ },
+ "games": {
+  "earlier": {
+   "whiteWon": 2231,
+   "draw": 5415,
+   "blackWon": 1108
+  },
+  "2026": {
+   "whiteWon": 441,
+   "draw": 948,
+   "blackWon": 168
+  }
+ },
+ "positions": {
+  "earlier": {
+   "mateBlack": [
+    2,
+    22,
+    1102
+   ],
+   "-1000": [
+    4,
+    19,
+    1113
+   ],
+   "-975": [
+    0,
+    0,
+    77
+   ],
+   "-950": [
+    0,
+    2,
+    97
+   ],
+   "-925": [
+    0,
+    3,
+    117
+   ],
+   "-900": [
+    0,
+    3,
+    151
+   ],
+   "-875": [
+    0,
+    0,
+    156
+   ],
+   "-850": [
+    1,
+    3,
+    199
+   ],
+   "-825": [
+    0,
+    2,
+    243
+   ],
+   "-800": [
+    0,
+    3,
+    293
+   ],
+   "-775": [
+    1,
+    2,
+    322
+   ],
+   "-750": [
+    0,
+    7,
+    469
+   ],
+   "-725": [
+    0,
+    7,
+    538
+   ],
+   "-700": [
+    1,
+    7,
+    574
+   ],
+   "-675": [
+    1,
+    13,
+    606
+   ],
+   "-650": [
+    0,
+    9,
+    696
+   ],
+   "-625": [
+    1,
+    16,
+    761
+   ],
+   "-600": [
+    0,
+    18,
+    819
+   ],
+   "-575": [
+    1,
+    28,
+    915
+   ],
+   "-550": [
+    7,
+    51,
+    1148
+   ],
+   "-525": [
+    2,
+    52,
+    1414
+   ],
+   "-500": [
+    4,
+    99,
+    1497
+   ],
+   "-475": [
+    2,
+    92,
+    1504
+   ],
+   "-450": [
+    11,
+    109,
+    1569
+   ],
+   "-425": [
+    8,
+    121,
+    1635
+   ],
+   "-400": [
+    20,
+    126,
+    1566
+   ],
+   "-375": [
+    29,
+    123,
+    1737
+   ],
+   "-350": [
+    36,
+    191,
+    1794
+   ],
+   "-325": [
+    44,
+    287,
+    1847
+   ],
+   "-300": [
+    64,
+    259,
+    1773
+   ],
+   "-275": [
+    57,
+    330,
+    1715
+   ],
+   "-250": [
+    72,
+    397,
+    1837
+   ],
+   "-225": [
+    62,
+    649,
+    1851
+   ],
+   "-200": [
+    143,
+    699,
+    1858
+   ],
+   "-175": [
+    136,
+    937,
+    1977
+   ],
+   "-150": [
+    142,
+    1242,
+    2218
+   ],
+   "-125": [
+    268,
+    1911,
+    2548
+   ],
+   "-100": [
+    429,
+    3593,
+    3083
+   ],
+   "-75": [
+    671,
+    5704,
+    3613
+   ],
+   "-50": [
+    1380,
+    9139,
+    4464
+   ],
+   "-25": [
+    3377,
+    21893,
+    6666
+   ],
+   "0": [
+    26681,
+    179705,
+    18717
+   ],
+   "25": [
+    40504,
+    125610,
+    18547
+   ],
+   "50": [
+    19678,
+    48381,
+    6728
+   ],
+   "75": [
+    14083,
+    26435,
+    2338
+   ],
+   "100": [
+    17654,
+    19739,
+    1113
+   ],
+   "125": [
+    13010,
+    7605,
+    641
+   ],
+   "150": [
+    9009,
+    3597,
+    428
+   ],
+   "175": [
+    7194,
+    2446,
+    285
+   ],
+   "200": [
+    5850,
+    1798,
+    225
+   ],
+   "225": [
+    5350,
+    1493,
+    184
+   ],
+   "250": [
+    5038,
+    1051,
+    120
+   ],
+   "275": [
+    4672,
+    815,
+    88
+   ],
+   "300": [
+    4414,
+    608,
+    80
+   ],
+   "325": [
+    4043,
+    489,
+    77
+   ],
+   "350": [
+    4046,
+    414,
+    72
+   ],
+   "375": [
+    3812,
+    296,
+    51
+   ],
+   "400": [
+    3572,
+    287,
+    35
+   ],
+   "425": [
+    3682,
+    182,
+    37
+   ],
+   "450": [
+    3582,
+    152,
+    27
+   ],
+   "475": [
+    3229,
+    140,
+    16
+   ],
+   "500": [
+    3015,
+    120,
+    10
+   ],
+   "525": [
+    2629,
+    98,
+    13
+   ],
+   "550": [
+    2397,
+    69,
+    5
+   ],
+   "575": [
+    2007,
+    32,
+    7
+   ],
+   "600": [
+    1678,
+    26,
+    0
+   ],
+   "625": [
+    1491,
+    29,
+    2
+   ],
+   "650": [
+    1276,
+    31,
+    1
+   ],
+   "675": [
+    1254,
+    15,
+    0
+   ],
+   "700": [
+    1125,
+    24,
+    0
+   ],
+   "725": [
+    1005,
+    16,
+    1
+   ],
+   "750": [
+    873,
+    19,
+    0
+   ],
+   "775": [
+    723,
+    14,
+    1
+   ],
+   "800": [
+    679,
+    7,
+    0
+   ],
+   "825": [
+    566,
+    4,
+    1
+   ],
+   "850": [
+    461,
+    2,
+    0
+   ],
+   "875": [
+    375,
+    2,
+    2
+   ],
+   "900": [
+    311,
+    2,
+    0
+   ],
+   "925": [
+    278,
+    0,
+    0
+   ],
+   "950": [
+    274,
+    0,
+    0
+   ],
+   "975": [
+    184,
+    3,
+    0
+   ],
+   "1000": [
+    2675,
+    30,
+    2
+   ],
+   "mateWhite": [
+    6115,
+    33,
+    0
+   ]
+  },
+  "2026": {
+   "mateBlack": [
+    0,
+    1,
+    194
+   ],
+   "-1000": [
+    0,
+    4,
+    144
+   ],
+   "-975": [
+    0,
+    0,
+    12
+   ],
+   "-950": [
+    0,
+    0,
+    17
+   ],
+   "-925": [
+    0,
+    0,
+    9
+   ],
+   "-900": [
+    0,
+    1,
+    16
+   ],
+   "-875": [
+    0,
+    1,
+    21
+   ],
+   "-850": [
+    0,
+    2,
+    30
+   ],
+   "-825": [
+    0,
+    0,
+    29
+   ],
+   "-800": [
+    0,
+    0,
+    26
+   ],
+   "-775": [
+    1,
+    3,
+    46
+   ],
+   "-750": [
+    0,
+    1,
+    52
+   ],
+   "-725": [
+    0,
+    3,
+    57
+   ],
+   "-700": [
+    0,
+    1,
+    93
+   ],
+   "-675": [
+    0,
+    4,
+    99
+   ],
+   "-650": [
+    0,
+    7,
+    131
+   ],
+   "-625": [
+    0,
+    9,
+    147
+   ],
+   "-600": [
+    0,
+    14,
+    176
+   ],
+   "-575": [
+    0,
+    22,
+    142
+   ],
+   "-550": [
+    0,
+    26,
+    165
+   ],
+   "-525": [
+    0,
+    16,
+    213
+   ],
+   "-500": [
+    3,
+    28,
+    202
+   ],
+   "-475": [
+    1,
+    25,
+    259
+   ],
+   "-450": [
+    5,
+    45,
+    214
+   ],
+   "-425": [
+    1,
+    33,
+    257
+   ],
+   "-400": [
+    2,
+    28,
+    235
+   ],
+   "-375": [
+    4,
+    28,
+    285
+   ],
+   "-350": [
+    0,
+    35,
+    245
+   ],
+   "-325": [
+    2,
+    40,
+    268
+   ],
+   "-300": [
+    11,
+    45,
+    285
+   ],
+   "-275": [
+    16,
+    51,
+    297
+   ],
+   "-250": [
+    10,
+    57,
+    271
+   ],
+   "-225": [
+    12,
+    84,
+    278
+   ],
+   "-200": [
+    9,
+    84,
+    297
+   ],
+   "-175": [
+    13,
+    138,
+    307
+   ],
+   "-150": [
+    31,
+    179,
+    234
+   ],
+   "-125": [
+    51,
+    256,
+    282
+   ],
+   "-100": [
+    64,
+    324,
+    378
+   ],
+   "-75": [
+    109,
+    492,
+    421
+   ],
+   "-50": [
+    185,
+    863,
+    613
+   ],
+   "-25": [
+    448,
+    2515,
+    1096
+   ],
+   "0": [
+    6250,
+    39666,
+    3385
+   ],
+   "25": [
+    7830,
+    21016,
+    2891
+   ],
+   "50": [
+    3043,
+    6759,
+    684
+   ],
+   "75": [
+    2027,
+    5342,
+    264
+   ],
+   "100": [
+    5037,
+    6606,
+    156
+   ],
+   "125": [
+    3687,
+    1468,
+    87
+   ],
+   "150": [
+    2348,
+    411,
+    65
+   ],
+   "175": [
+    1851,
+    277,
+    34
+   ],
+   "200": [
+    1332,
+    189,
+    40
+   ],
+   "225": [
+    1199,
+    153,
+    30
+   ],
+   "250": [
+    1126,
+    111,
+    12
+   ],
+   "275": [
+    985,
+    86,
+    18
+   ],
+   "300": [
+    930,
+    84,
+    13
+   ],
+   "325": [
+    920,
+    73,
+    12
+   ],
+   "350": [
+    843,
+    39,
+    16
+   ],
+   "375": [
+    852,
+    40,
+    16
+   ],
+   "400": [
+    864,
+    48,
+    21
+   ],
+   "425": [
+    822,
+    39,
+    15
+   ],
+   "450": [
+    837,
+    41,
+    12
+   ],
+   "475": [
+    759,
+    32,
+    5
+   ],
+   "500": [
+    767,
+    21,
+    3
+   ],
+   "525": [
+    590,
+    20,
+    3
+   ],
+   "550": [
+    575,
+    6,
+    2
+   ],
+   "575": [
+    517,
+    5,
+    2
+   ],
+   "600": [
+    440,
+    3,
+    4
+   ],
+   "625": [
+    394,
+    4,
+    1
+   ],
+   "650": [
+    356,
+    8,
+    0
+   ],
+   "675": [
+    308,
+    1,
+    0
+   ],
+   "700": [
+    271,
+    1,
+    0
+   ],
+   "725": [
+    260,
+    0,
+    0
+   ],
+   "750": [
+    231,
+    1,
+    0
+   ],
+   "775": [
+    189,
+    2,
+    0
+   ],
+   "800": [
+    159,
+    2,
+    0
+   ],
+   "825": [
+    136,
+    2,
+    0
+   ],
+   "850": [
+    127,
+    0,
+    0
+   ],
+   "875": [
+    125,
+    0,
+    0
+   ],
+   "900": [
+    101,
+    0,
+    0
+   ],
+   "925": [
+    101,
+    0,
+    0
+   ],
+   "950": [
+    73,
+    0,
+    0
+   ],
+   "975": [
+    67,
+    0,
+    0
+   ],
+   "1000": [
+    875,
+    5,
+    0
+   ],
+   "mateWhite": [
+    3260,
+    10,
+    0
+   ]
+  }
+ },
+ "sources": [
+  {
+   "month": "2020-01",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2020-01.pgn.zst",
+   "sha256": "9461382d6933dedfbe7bb3de2ac139066d8d8657f2070cb11d59c7686f00f47e",
+   "games": 156
+  },
+  {
+   "month": "2020-02",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2020-02.pgn.zst",
+   "sha256": "013411015df5a2c07f6005de16cc956b846b1aef36ee56643fb0a909d4a3feb6",
+   "games": 69
+  },
+  {
+   "month": "2020-03",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2020-03.pgn.zst",
+   "sha256": "51adf1be8b7dc69cb317093ab06aba50131e056d1aa69f849a3c2ca9e1e3babc",
+   "games": 0
+  },
+  {
+   "month": "2020-04",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2020-04.pgn.zst",
+   "sha256": "8c39dfedff509c36a37a017d2be5dd066b1e1dbb9e62a6bf63b16c018d496725",
+   "games": 0
+  },
+  {
+   "month": "2020-05",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2020-05.pgn.zst",
+   "sha256": "1e791e6578e434b5e35df1f0780e3e9ddff6b22d047579dba8230ab5c1f7ea7d",
+   "games": 0
+  },
+  {
+   "month": "2020-06",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2020-06.pgn.zst",
+   "sha256": "2cb57e6681cdaaa18142f3287d0cdb057210638f519b2e65a90374a78acf7cdd",
+   "games": 0
+  },
+  {
+   "month": "2020-07",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2020-07.pgn.zst",
+   "sha256": "d2d12d73ea2721122a50622ec669ab8a50324fb97faf2a3721d292a9824353e4",
+   "games": 15
+  },
+  {
+   "month": "2020-08",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2020-08.pgn.zst",
+   "sha256": "bfc3216b85ccdc63b7ffd6261d826347f5b294006ba222e82585433d8fb7fe18",
+   "games": 0
+  },
+  {
+   "month": "2020-09",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2020-09.pgn.zst",
+   "sha256": "69169589e509b1717faabaa8ff03067af10869642d156b6500f421e2775a798e",
+   "games": 34
+  },
+  {
+   "month": "2020-10",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2020-10.pgn.zst",
+   "sha256": "23c6f9726b7f50af1297442316dba364c7a19fb2ab5c5cecdb9526a69e6f1664",
+   "games": 18
+  },
+  {
+   "month": "2020-11",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2020-11.pgn.zst",
+   "sha256": "61a489bba13af03271c0eaa3fc08cda6054bc94e07c82a933810767e63b55e88",
+   "games": 3
+  },
+  {
+   "month": "2020-12",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2020-12.pgn.zst",
+   "sha256": "91b4ad4576ee1e53aeff3492ccacd25a0e58112befe8058016fff5fb62c32369",
+   "games": 0
+  },
+  {
+   "month": "2021-01",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2021-01.pgn.zst",
+   "sha256": "48159f1a55c61dca8addf1e37f555ac4a10f129851b0ae5331afbd70b53b7b8f",
+   "games": 66
+  },
+  {
+   "month": "2021-02",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2021-02.pgn.zst",
+   "sha256": "d68fb32b9a895e2b1acb420ea50414c81ca95a8dca83223cc44e871958113ca2",
+   "games": 0
+  },
+  {
+   "month": "2021-03",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2021-03.pgn.zst",
+   "sha256": "c8610ce7a1e03093236f8e3ffd6f18642bafc8706f42cc61d48214dc1810432b",
+   "games": 0
+  },
+  {
+   "month": "2021-04",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2021-04.pgn.zst",
+   "sha256": "ca86c70aff854377423a6cfedd17290e377b47a594bf5f263211441d4f23a42b",
+   "games": 12
+  },
+  {
+   "month": "2021-05",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2021-05.pgn.zst",
+   "sha256": "4bd8733d23c1318207a1f492e10d176edd1e3a505c637e0442ff82ecd00c7370",
+   "games": 89
+  },
+  {
+   "month": "2021-06",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2021-06.pgn.zst",
+   "sha256": "99c37b910da4be0d9d8aa1491456c7e08a6e9932e54244cb17b41b7afd754ee6",
+   "games": 77
+  },
+  {
+   "month": "2021-07",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2021-07.pgn.zst",
+   "sha256": "facfbdeff07d7f36cdcf14bd342ef7b663dcb6cb5c643af920aa3f3076d7861a",
+   "games": 227
+  },
+  {
+   "month": "2021-08",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2021-08.pgn.zst",
+   "sha256": "da11a29ce22c92e6ad87bc33e005b69e91040bc99ee981db39b99ea50a05f38b",
+   "games": 129
+  },
+  {
+   "month": "2021-09",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2021-09.pgn.zst",
+   "sha256": "4d21b63b49b1ff458f6011033bb242f3d95138b6ddb5ccc01b0a24213cb92711",
+   "games": 99
+  },
+  {
+   "month": "2021-10",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2021-10.pgn.zst",
+   "sha256": "22a23de4e16713846452c3a7c2f9071501f3046d2d5f7e54348a3d33551459f3",
+   "games": 399
+  },
+  {
+   "month": "2021-11",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2021-11.pgn.zst",
+   "sha256": "23b4b06d4309ab726349a89040493cdb0bf1cca524a7ddbf480f41fa7bacf8f9",
+   "games": 376
+  },
+  {
+   "month": "2021-12",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2021-12.pgn.zst",
+   "sha256": "a88ce4bb96ec670f52716e108743bb629fa70e3fe0dd3d892c042d4c68a799a7",
+   "games": 47
+  },
+  {
+   "month": "2022-01",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2022-01.pgn.zst",
+   "sha256": "b66e0af21df09713bb7093cac853ef04527d589963e0bcbd39620cf03f20303f",
+   "games": 110
+  },
+  {
+   "month": "2022-02",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2022-02.pgn.zst",
+   "sha256": "fcca15bd3d0060bade81a799fb42ecfdbaf70bcc8746488b7ad623b45431b805",
+   "games": 55
+  },
+  {
+   "month": "2022-03",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2022-03.pgn.zst",
+   "sha256": "b5ab992f88d28ed9a225f1fe64ab74485de9811483fbd66edfb9095aac2aa408",
+   "games": 129
+  },
+  {
+   "month": "2022-04",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2022-04.pgn.zst",
+   "sha256": "c0b2607462be962125535ad4afdce21f362a0d4113aa4db3c6daddacd3ea03f3",
+   "games": 95
+  },
+  {
+   "month": "2022-05",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2022-05.pgn.zst",
+   "sha256": "752168d1f620544e12e6974d92e1974655687055049b59b86bd98bf99aa3ab72",
+   "games": 221
+  },
+  {
+   "month": "2022-06",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2022-06.pgn.zst",
+   "sha256": "517cf19858c8fb43f17fa4375f1bb8c6a52a5f21599232e5b62e81341056fc96",
+   "games": 144
+  },
+  {
+   "month": "2022-07",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2022-07.pgn.zst",
+   "sha256": "fcee46c674066941d46531938511fc7a7de45a5153fc115465dde7f8032a5b96",
+   "games": 122
+  },
+  {
+   "month": "2022-08",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2022-08.pgn.zst",
+   "sha256": "2cdc93fe77ab43e534214ae6a44462d261bebb10c47ad61d1c4d02b67d313461",
+   "games": 172
+  },
+  {
+   "month": "2022-09",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2022-09.pgn.zst",
+   "sha256": "e1a80febd895ac08f9be0c405d5c788381084a49af8a991b9a5a4a070ef448a0",
+   "games": 96
+  },
+  {
+   "month": "2022-10",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2022-10.pgn.zst",
+   "sha256": "316cca64cce9ebf1b31c2f646a63e9ff8122eb18da5c2830a37276d9f829871d",
+   "games": 133
+  },
+  {
+   "month": "2022-11",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2022-11.pgn.zst",
+   "sha256": "fba1b54c418521dd803e854560dc5c5d338bf815da98ebf82e547e544f118102",
+   "games": 58
+  },
+  {
+   "month": "2022-12",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2022-12.pgn.zst",
+   "sha256": "698ada93a6474d7c8036759454e4903b86d5d79965ee61f271275e5f58179033",
+   "games": 33
+  },
+  {
+   "month": "2023-01",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2023-01.pgn.zst",
+   "sha256": "4bb223a574c148a75eccd260bb89c1d748c2ee505e594ad1578cfc1a0b97fe3e",
+   "games": 133
+  },
+  {
+   "month": "2023-02",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2023-02.pgn.zst",
+   "sha256": "bcb758ec420c5e38a9aedceff21b20b80451e3418ee6893fa10398386981b964",
+   "games": 81
+  },
+  {
+   "month": "2023-03",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2023-03.pgn.zst",
+   "sha256": "3c4fa359993716557123ca4f6ba9c73c098a407646fbc909e08f4378db15a910",
+   "games": 62
+  },
+  {
+   "month": "2023-04",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2023-04.pgn.zst",
+   "sha256": "74174b6a3bd4981ac0366cf26258f62f252aabfc790affc35792b16ab04461f8",
+   "games": 90
+  },
+  {
+   "month": "2023-05",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2023-05.pgn.zst",
+   "sha256": "1a6c0bba0cced51feb50b9e62a85f5713ba4ad957334e056f9713db94f423450",
+   "games": 106
+  },
+  {
+   "month": "2023-06",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2023-06.pgn.zst",
+   "sha256": "49cff44dcef9877a4b658118f887a954d67a6875a2da4595ad4b5c72cbb37302",
+   "games": 110
+  },
+  {
+   "month": "2023-07",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2023-07.pgn.zst",
+   "sha256": "895655258162edfbfaa7c81529e481772bfdb85495a2363a84f95c4aed55ddc7",
+   "games": 27
+  },
+  {
+   "month": "2023-08",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2023-08.pgn.zst",
+   "sha256": "db8fcee8390c2edbf959c197f9da89714ac565d00e10b221afcd769366ea7691",
+   "games": 193
+  },
+  {
+   "month": "2023-09",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2023-09.pgn.zst",
+   "sha256": "b11402dab04b8270942723660956f9258f51aeea687e4f4b95942bc801336be6",
+   "games": 118
+  },
+  {
+   "month": "2023-10",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2023-10.pgn.zst",
+   "sha256": "9589177b519c848236fe684d28ad3cc2afa80a360755a31376efd7767a247452",
+   "games": 276
+  },
+  {
+   "month": "2023-11",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2023-11.pgn.zst",
+   "sha256": "3390ad4bd2f2a5d6ad3a4475723fb591fe8f4bc16926ec9eb1854696f400399c",
+   "games": 313
+  },
+  {
+   "month": "2023-12",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2023-12.pgn.zst",
+   "sha256": "a2fa6ef6a6d3bc219c6acbbfded72df45f6aa24111a2cb314153e0b88caf0048",
+   "games": 81
+  },
+  {
+   "month": "2024-01",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2024-01.pgn.zst",
+   "sha256": "edd008e921e495e0f176967eb81434004692c52ae1cd1fe20e3d03bde37d24fb",
+   "games": 120
+  },
+  {
+   "month": "2024-02",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2024-02.pgn.zst",
+   "sha256": "5b363f1041d893c034f7e349bbe8b290c909b135eca116c0eb1a942bd1d08ae4",
+   "games": 76
+  },
+  {
+   "month": "2024-03",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2024-03.pgn.zst",
+   "sha256": "1174cfd7900603ab9f435a1f37f0447aa613c3d646e650e8828e0a6eb7766551",
+   "games": 106
+  },
+  {
+   "month": "2024-04",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2024-04.pgn.zst",
+   "sha256": "8f9081128c29713868e02f7a862cae50274f74f3dad1d9e3af0f6ef2c29f4fef",
+   "games": 108
+  },
+  {
+   "month": "2024-05",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2024-05.pgn.zst",
+   "sha256": "b367b00f0d594e6a5942947a8ca55fc243f9de5dbf4a16fc851ff8404c596fea",
+   "games": 105
+  },
+  {
+   "month": "2024-06",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2024-06.pgn.zst",
+   "sha256": "ea871988a15bb72c4e359ee935ceb18103eb978672c86983f5563139e9eefeb1",
+   "games": 224
+  },
+  {
+   "month": "2024-07",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2024-07.pgn.zst",
+   "sha256": "8b9d0e9f247363d799947232854bd2aee88c27faf80a6a3a2468d72bb6d2853e",
+   "games": 92
+  },
+  {
+   "month": "2024-08",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2024-08.pgn.zst",
+   "sha256": "1ad8ce6ab83688ff2813b62ae98b0962ab467756c3cf79641c4a7ce7e99f2137",
+   "games": 90
+  },
+  {
+   "month": "2024-09",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2024-09.pgn.zst",
+   "sha256": "e6b441d0c8994648be6b024e7d14feaaaba675567b76607decf6cc91cfeda447",
+   "games": 183
+  },
+  {
+   "month": "2024-10",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2024-10.pgn.zst",
+   "sha256": "7d2042e12bfd9e077402865dd4ca0c335d68da31d414a88f2c94842b48971603",
+   "games": 213
+  },
+  {
+   "month": "2024-11",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2024-11.pgn.zst",
+   "sha256": "354d96760609711ce471c131339a3a999d83929cb790615be4d76fb00bd3a89d",
+   "games": 159
+  },
+  {
+   "month": "2024-12",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2024-12.pgn.zst",
+   "sha256": "b2ae52c6cacfc078045760e2f4fd5e8e5ae3d24accf6d02fb8692d3fb5b02e9e",
+   "games": 420
+  },
+  {
+   "month": "2025-01",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2025-01.pgn.zst",
+   "sha256": "301bb574c3aca71d51a070ef7c43954434c10601e90869a262adf21c38801423",
+   "games": 117
+  },
+  {
+   "month": "2025-02",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2025-02.pgn.zst",
+   "sha256": "f92d0fea95e6c733898a920c0790a8c02f3f8a1e1c9ca0c42f15330cd5430434",
+   "games": 125
+  },
+  {
+   "month": "2025-03",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2025-03.pgn.zst",
+   "sha256": "840bdb7d640f82032f8373c86efcb69d0801c0d54cf3edf2152e4b8d25b8da87",
+   "games": 72
+  },
+  {
+   "month": "2025-04",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2025-04.pgn.zst",
+   "sha256": "6b6fd9e9e79a94e80d0f556fb323ad951922fdff1f42089fc18a348e65d79624",
+   "games": 43
+  },
+  {
+   "month": "2025-05",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2025-05.pgn.zst",
+   "sha256": "ed1b62de4c4f81e19d8e269a0ddbb4c5133361ff942439938f9d20f3d904795c",
+   "games": 192
+  },
+  {
+   "month": "2025-06",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2025-06.pgn.zst",
+   "sha256": "b226325f2798003e4811dca8ea9556dc91837ec9ae3493f00ba102b50a73a43c",
+   "games": 128
+  },
+  {
+   "month": "2025-07",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2025-07.pgn.zst",
+   "sha256": "1ffc6b775d27631ac988dd816a137b6dd0ec05561aeee8b45861e0c08dbcb10b",
+   "games": 54
+  },
+  {
+   "month": "2025-08",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2025-08.pgn.zst",
+   "sha256": "f925d1f3b494517c8eae223976a886bed77a7b8627b17ec287e50cdda766dae8",
+   "games": 471
+  },
+  {
+   "month": "2025-09",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2025-09.pgn.zst",
+   "sha256": "da3a261e926a2c0f5e79c393818e643d76448edf94cfdaefa3892258a6f9e7ba",
+   "games": 436
+  },
+  {
+   "month": "2025-10",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2025-10.pgn.zst",
+   "sha256": "77be4c998ca8d3b303928e1619f0f9dc2a03a71d5ab6a59d02d42291ae0524e3",
+   "games": 156
+  },
+  {
+   "month": "2025-11",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2025-11.pgn.zst",
+   "sha256": "39deb43faf6e2f4569a76f369ca0a3b87aa7787330c9e2ff87705c6f3bf32ff1",
+   "games": 204
+  },
+  {
+   "month": "2025-12",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2025-12.pgn.zst",
+   "sha256": "fadbe80ee65e9f8499578e934d7600ece69d09b1cf8abc75fdd3bd840f61e63f",
+   "games": 86
+  },
+  {
+   "month": "2026-01",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-01.pgn.zst",
+   "sha256": "9abf10d106a8bf5ecd41359825b3bf55c2f124c8a790a380cb98844c2cca5dca",
+   "games": 130
+  },
+  {
+   "month": "2026-02",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-02.pgn.zst",
+   "sha256": "ea977569917718b33940ba5379db2adad77d58876c29084294d357f15fe6a31b",
+   "games": 103
+  },
+  {
+   "month": "2026-03",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-03.pgn.zst",
+   "sha256": "1a5ad83fc9f440dcdadde17b11cc81a953f4895aaf8b8588470b3078209dc7fc",
+   "games": 347
+  },
+  {
+   "month": "2026-04",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-04.pgn.zst",
+   "sha256": "97b036f3a3639ae3be59c1508b1e18c76ac1b2e8fada4587d1b5c5a93c438d5d",
+   "games": 102
+  },
+  {
+   "month": "2026-05",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-05.pgn.zst",
+   "sha256": "d212987f7972a70268809ff6c726acff8bf0987161aacd7647b160f8564f6a53",
+   "games": 118
+  },
+  {
+   "month": "2026-06",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-06.pgn.zst",
+   "sha256": "65905d611c0d78d90ab57cd9edd3821f4119b46c22b5489fd7e265a74c6767b3",
+   "games": 200
+  },
+  {
+   "month": "2026-07",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-07.pgn.zst",
+   "sha256": "714d0eb99f99fca8d791142038b6c59b5ca6a51b3339bd3891a92f4bdffcbf0c",
+   "games": 66
+  },
+  {
+   "month": "2026-08",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-08.pgn.zst",
+   "sha256": "e227c35c3207ebade754849c1825982e2717ae82c013013d896778e27be77724",
+   "games": 184
+  },
+  {
+   "month": "2026-09",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-09.pgn.zst",
+   "sha256": "27a39d035767a30901b89602f33f2a7b27d4ab5025842071165fa079f8fff1df",
+   "games": 151
+  },
+  {
+   "month": "2026-10",
+   "url": "https://database.lichess.org/broadcast/lichess_db_broadcast_2026-10.pgn.zst",
+   "sha256": "d9c0c78c7ed8cd200723c9972b01a1cd35fd8568dd4b6324fbcc3ee7c07374c9",
+   "games": 156
+  }
+ ]
+}
