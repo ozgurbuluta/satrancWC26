@@ -65,22 +65,30 @@ downloaded (767 MB compressed) and scanned.
 
 Date tags are not reliable in this source. 263 of the 963 earlier matched
 games have none or a malformed one, and several broadcasts give every game
-the tournament's first day. So time is handled per tournament, not per game.
+the tournament's first day. The month of the archive a game is in is
+reliable: a game is in the archive of the month its round was played, and
+in the inventory no date tag is later than its archive month. So time is
+handled per tournament, with bounds that err on the safe side.
 
 - A **tournament** is the broadcast name up to the first ` | ` (so the
   rounds of the 2025 World Cup, published as separate broadcasts, are one
-  tournament). The `Event` tag is not used: some broadcasts put the pairing
-  there.
+  tournament). A new tournament begins when more than three months pass
+  without a game under that name, so a yearly event whose name carries no
+  year is not merged with its next edition. The `Event` tag is not used:
+  some broadcasts put the pairing there.
 - A game's date is its `Date` tag, or `UTCDate` where `Date` is missing,
   written as `YYYY.MM.DD` or `YYYY-MM-DD`, and used only if it falls in the
   game's archive month or the two months before it.
-- **Start** of a tournament: its earliest such date; if it has none, the
-  first day of its earliest archive month.
-- **End** of a tournament: its latest such date, but not earlier than the
-  first day of its latest archive month; if it has no usable date at all,
-  the last day of its latest archive month.
-- For the 2026 corpus, which has no `Archive` tag, the archive month is the
-  month of the `Date` tag.
+- **Start** of a tournament, a lower bound: its earliest such date; if it
+  has none, the first day of its earliest archive month.
+- **End** of a tournament, an upper bound: **the last day of its latest
+  archive month**, for every tournament. Date tags are not used for the
+  end, because a tournament stamped with its first day would look finished
+  while it was still being played.
+- The archive month of an earlier game is its `Archive` tag. The 2026
+  corpus has no such tag and is not changed; its archive months are in
+  `data/player-history/archive-months.json`, by `GameURL`, written by the
+  same script from the same archives.
 
 ## Split
 
@@ -108,23 +116,28 @@ duplicates are removed.
 ## What counts as "played before"
 
 For a decision in tournament E, the earlier games are the selected games of
-tournaments that **ended before E started**. Never a game of E itself, and
-never a game of a tournament still running when E began. This is how the
-tables are used in the match, whose own games are not in them.
+tournaments that **ended before E started**: the last day of their latest
+archive month is before E's start. Never a game of E itself, and never a
+game of a tournament that may still have been running when E began. This is
+how the tables are used in the match, whose own games are not in them.
 
 - It holds in every set. Selection, holdout and benchmark decisions see all
   earlier tournaments, including earlier ones of their own set: counting
   moves is not fitting.
 - Tables cover the first 40 half-moves of a game, as in v1.
-- Known approximation: where every date tag of a tournament is its first
-  day, its end is taken from its last archive month. Two pairs in the
-  inventory depend on this; one of them (a tournament with no dates at all)
-  is resolved by the last-day rule above.
+- The price of the safe bound: a tournament that ended in the same month in
+  which the next one started is not counted for that next one, although it
+  was over. Where the order cannot be proven from the data, the earlier
+  games are left out, never let in. The report lists the pairs this costs.
 
 ## Models
 
-**Published v1**, frozen: the weights, temperature and its own tables as
-released (main `4875b39`). Measured on the reused benchmark only.
+**Published v1**, frozen: the weights and the temperature as released (main
+`4875b39`). Measured on the reused benchmark only, with the tables its
+published numbers were measured with: the 74 fitting games of January to
+July 2026 and nothing else, rebuilt by v1's rule. The tables inside the
+released browser file count all 104 games, the benchmark's own 21 among
+them; they are never used to score the benchmark.
 
 **Family A, the v1 recipe fitted again**: v1's 29 features including
 `log(1 + count)` of the player's and of everyone's earlier moves, v1's
@@ -223,6 +236,29 @@ Comparisons:
 - "Calibrated" is not claimed. The label stays "Deneysel".
 - If v2 does not meet the first point, the report says so and the release
   decision is the reviewer's.
+
+## Amendments made before any fitting
+
+After review of the first version of this page (commit `0bbb24e`, review in
+https://github.com/ozgurbuluta/satrancWC26/issues/13#issuecomment-7170650506).
+No model had been fitted or measured on any game when these were made.
+
+1. **Published v1 on the benchmark** is scored with its fitting-only tables
+   (74 games), not with the tables of the released file, which contain the
+   benchmark's own games. The first version said "its own tables as
+   released", which was wrong.
+2. **A tournament's end** is the last day of its latest archive month, for
+   every tournament. The first version took the latest date tag, or the
+   first day of the latest archive month, which could make a tournament
+   stamped with its first day look finished while later rounds were still
+   to come. Archive months for the 2026 games come from a new side file
+   instead of from their date tags, for the same reason.
+3. **Tournament identity** also splits a name after a gap of more than
+   three months, so that a yearly broadcast name without a year stays one
+   tournament per edition.
+
+The split by end date comes out the same under the amended rule: 233, 118,
+83 and 21 games.
 
 ## Limits accepted in advance
 
