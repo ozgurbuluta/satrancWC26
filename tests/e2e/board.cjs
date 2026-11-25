@@ -233,6 +233,7 @@ const pgn = (round, id, sans, result, opts = {}) => {
     check('legal squares are marked for the piece picked up', (await page.locator('.board-col square.move-dest').count()) === 2);
     await click(page, 'd6');
     check('a second move, by two clicks, joins the line', /6\. ?d3 d6$/.test(await ownLine(page)), await ownLine(page));
+    await page.waitForTimeout(400); // let the pawn land: pieceAt below reads where a piece is, and a piece in flight is nowhere
 
     // the game goes on underneath
     world.plies = 12;
