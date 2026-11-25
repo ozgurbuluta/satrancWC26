@@ -16,10 +16,10 @@ and is not affiliated with FIDE, with Vidit Gujrathi or with Lichess.
 ## What this site does
 
 The site has an experimental model of its own for the next move of the two
-players. It is described in [PREDICTOR.md](PREDICTOR.md), with everything
-that was measured in [PREDICTOR-REPORT.md](PREDICTOR-REPORT.md). It is not
-Kibitz, uses no engine and no third-party weights, and its accuracy is
-modest and stated.
+players, now in its second version. It is described in
+[PREDICTOR.md](PREDICTOR.md), with everything that was measured in
+[PREDICTOR-REPORT.md](PREDICTOR-REPORT.md). It is not Kibitz, uses no engine
+and no third-party weights, and its accuracy is modest and stated.
 
 The Tahmin tab keeps four things apart:
 
