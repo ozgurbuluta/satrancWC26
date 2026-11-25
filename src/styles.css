@@ -3260,8 +3260,9 @@ body {
 
 .wc-row {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 8px;
+  /* the names share what room there is and shorten with an ellipsis; they never run into each other */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 10px;
   margin-top: 12px;
   align-items: end;
 }
@@ -3281,17 +3282,29 @@ body {
   justify-items: end;
 }
 
+.wc-name > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wc-name .dot {
+  flex: none;
+}
+
 .wc.mid {
   justify-items: center;
 }
 
 .wc-name {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
+  gap: 5px;
+  max-width: 100%;
+  min-width: 0;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
   white-space: nowrap;
@@ -3917,8 +3930,13 @@ body {
     flex: 1 1 0;
   }
 
+  .move-strip-moves {
+    padding: 1px 2px;
+  }
+
   .move-strip-moves .nav-btn {
     width: 40px;
+    min-height: 40px;
   }
 
   .move-strip-moves .nav-btn:first-child,
@@ -3944,6 +3962,7 @@ body {
   }
 
   .strip-track .move {
+    min-height: 40px;
     padding: 8px 8px;
   }
 

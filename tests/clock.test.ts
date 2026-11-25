@@ -210,6 +210,9 @@ describe('a game set up from a later position', () => {
     const game = { ...gameWith(MATCH_TAG, [3000, 2800, 2980, 2700]), initialFen: '6k1/5ppp/8/8/8/8/5PPP/6K1 w - - 0 41' } as GameData;
     // 41.(W) 41...(B) 42.(W) 42...(B): first readings are unknown, the second ones use the 30-second increment
     expect(moveTimes(game, 4)).toEqual([undefined, undefined, 50, 130]);
+    // a position that is not the initial one is a set-up even when its FEN says move 1
+    const moveOne = { ...game, initialFen: '6k1/5ppp/8/8/8/8/5PPP/6K1 w - - 0 1' } as GameData;
+    expect(moveTimes(moveOne, 2)).toEqual([undefined, undefined]);
     // read as if it began at move one, the same clocks would have given 4200 and 4400 seconds for the first two moves
     const wrong = { ...game, initialFen: START } as GameData;
     expect(moveTimes(wrong, 4)[0]).toBe(4200);

@@ -63,7 +63,8 @@ export function WinChance({ game, evaluation }: { game: GameData; evaluation?: E
       <div
         className={`wdl-bar ${best ? '' : 'empty'}`}
         role="img"
-        aria-label={best ? `${shortName(game.white)} ${pct(split.win)}%, ${t.draw} ${pct(split.draw)}%, ${shortName(game.black)} ${pct(split.loss)}%` : t.engineOff}
+        // while the engine is on but has not answered yet, this says so; "off" is only said when it is off
+        aria-label={best ? `${shortName(game.white)} ${pct(split.win)}%, ${t.draw} ${pct(split.draw)}%, ${shortName(game.black)} ${pct(split.loss)}%` : engineOn ? t.thinking : t.engineOff}
       >
         <i className="w" style={{ flexGrow: Math.max(split.win, 0.001) }} />
         <i className="d" style={{ flexGrow: Math.max(split.draw, 0.001) }} />

@@ -125,10 +125,16 @@ export const ambiguousAfterMove = (periods: Period[], moveNo: number): boolean =
   return here !== next || (moveNo === 1 && here > 0);
 };
 
-/** Whether a game starts at its first move, with White to play. A game set up from a later position does not. */
+const INITIAL_PLACEMENT = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR';
+
+/**
+ * Whether a game starts from the initial position, at its first move, with
+ * White to play. A game set up from any other position does not, whatever
+ * move number its FEN gives: what was on the clocks there is not known.
+ */
 export const startsAtFirstMove = (fen: string): boolean => {
   const fields = fen.trim().split(/\s+/);
-  return fields[1] !== 'b' && (fields[5] === undefined || fields[5] === '1');
+  return fields[0] === INITIAL_PLACEMENT && fields[1] !== 'b' && (fields[5] === undefined || fields[5] === '1');
 };
 
 /**
