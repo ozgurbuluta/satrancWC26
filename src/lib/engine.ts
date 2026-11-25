@@ -1,4 +1,6 @@
 import { LICHESS } from '../config';
+import { engineLineCount } from './engine-settings';
+import { legalSans } from './position';
 
 export interface PV {
   /** Centipawns from White's point of view. */
@@ -27,7 +29,6 @@ export interface Score {
 
 type Listener = (e: EvalResult) => void;
 
-const MULTI_PV = 3;
 const isSmallDevice = () =>
   (navigator.hardwareConcurrency || 4) <= 4 || window.matchMedia?.('(pointer: coarse)').matches;
 
@@ -36,8 +37,8 @@ class LocalEngine {
   private worker?: Worker;
   private ready = false;
   private searching = false;
-  private current?: { fen: string; cb: Listener; done?: () => void };
-  private queued?: { fen: string; cb: Listener; done?: () => void };
+  private current?: { fen: string; cb: Listener; done?: () => void; multiPv: number };
+  private queued?: { fen: string; cb: Listener; done?: () => void; multiPv: number };
   private lines = new Map<number, PV>();
   private depth = 0;
   private lastEmit = 0;
@@ -118,18 +119,19 @@ class LocalEngine {
     this.lines.clear();
     this.depth = 0;
     this.searching = true;
+    this.worker.postMessage(`setoption name MultiPV value ${this.current.multiPv}`);
     this.worker.postMessage(`position fen ${this.current.fen}`);
     this.worker.postMessage(this.goCommand());
   }
 
-  analyse(fen: string, cb: Listener, done?: () => void) {
+  analyse(fen: string, cb: Listener, done?: () => void, multiPv = this.multiPv) {
     this.boot();
     if (this.failed) {
       done?.();
       return;
     }
     this.queued?.done?.();
-    this.queued = { fen, cb, done };
+    this.queued = { fen, cb, done, multiPv };
     if (this.searching) this.worker?.postMessage('stop');
     else this.startQueued();
   }
@@ -142,8 +144,8 @@ class LocalEngine {
   }
 }
 
-/** Deep, three-line analysis of the position on the board. */
-const local = new LocalEngine(MULTI_PV, () => (isSmallDevice() ? 'go depth 18 movetime 12000' : 'go depth 24 movetime 30000'));
+/** Deep analysis of the position on the board, with the viewer's chosen line count. */
+const local = new LocalEngine(3, () => (isSmallDevice() ? 'go depth 18 movetime 12000' : 'go depth 24 movetime 30000'));
 /** Quick single-line scores for the whole game (graph and move quality). */
 const quick = new LocalEngine(1, () => (isSmallDevice() ? 'go depth 11' : 'go depth 13'));
 
@@ -173,7 +175,8 @@ export const subscribeScores = (fn: () => void) => {
 };
 export const scoresVersion = () => version;
 
-export const cachedEval = (fen: string) => cache.get(fen);
+const cacheKey = (fen: string, multiPv: number) => `${multiPv}:${fen}`;
+export const cachedEval = (fen: string, multiPv = 3) => cache.get(cacheKey(fen, engineLineCount(multiPv)));
 export const scoreOf = (fen: string): Score | undefined => scores.get(fen);
 
 const recordScore = (fen: string, s: Score) => {
@@ -191,8 +194,15 @@ const recordFromEval = (e: EvalResult) => {
 /** Scores that came with the feed (Lichess adds them after a game is analysed). */
 export const seedScore = (fen: string, s: Score) => recordScore(fen, s);
 
-const better = (a: EvalResult, b: EvalResult | undefined) =>
-  !b || a.depth > b.depth || (a.depth === b.depth && a.pvs.length >= b.pvs.length);
+const better = (a: EvalResult, b: EvalResult | undefined, needed: number) => {
+  if (!b) return true;
+  // A deep cloud entry may contain fewer lines than requested. Do not let it
+  // permanently hide the complete local result, or replace one with a partial answer.
+  const completeA = a.pvs.length >= needed;
+  const completeB = b.pvs.length >= needed;
+  if (completeA !== completeB) return completeA;
+  return a.depth > b.depth || (a.depth === b.depth && a.pvs.length >= b.pvs.length);
+};
 
 const fetchCloud = async (fen: string, multiPv: number, signal?: AbortSignal): Promise<EvalResult | undefined> => {
   if (Date.now() < cloudBlockedUntil) return undefined;
@@ -216,37 +226,43 @@ const fetchCloud = async (fen: string, multiPv: number, signal?: AbortSignal): P
  * the position is known), the in-browser engine otherwise. `onUpdate` fires
  * every time a better evaluation is available. Only one request is active.
  */
-export const requestEval = (fen: string, onUpdate: Listener, opts: { useLocal: boolean }) => {
+export const requestEval = (fen: string, onUpdate: Listener, opts: { useLocal: boolean; multiPv?: number }) => {
   cancelEval();
+  const multiPv = engineLineCount(opts.multiPv);
+  const needed = Math.min(multiPv, Math.max(1, legalSans(fen).length));
+  const key = cacheKey(fen, multiPv);
   const ctrl = new AbortController();
   const mine = { fen, ctrl, recheck: undefined as number | undefined };
   active = mine;
 
   const push = (e: EvalResult) => {
     if (active !== mine) return;
-    if (better(e, cache.get(fen))) cache.set(fen, e);
-    recordFromEval(cache.get(fen)!);
-    onUpdate(cache.get(fen)!);
+    const trimmed = { ...e, pvs: e.pvs.slice(0, multiPv) };
+    if (better(trimmed, cache.get(key), needed)) cache.set(key, trimmed);
+    recordFromEval(cache.get(key)!);
+    onUpdate(cache.get(key)!);
   };
 
-  const hit = cache.get(fen);
+  const hit = cache.get(key);
   if (hit) onUpdate(hit);
-  if (hit?.source === 'cloud') return;
+  if (hit?.source === 'cloud' && (hit.pvs.length >= needed || !opts.useLocal)) return;
 
   const tryCloud = async (startLocalOnMiss: boolean) => {
     let cloud: EvalResult | undefined;
     try {
-      cloud = await fetchCloud(fen, MULTI_PV, ctrl.signal);
+      cloud = await fetchCloud(fen, multiPv, ctrl.signal);
     } catch {
       cloud = undefined;
     }
     if (active !== mine) return;
     if (cloud) {
-      local.stop();
       push(cloud);
-      return;
+      if (cloud.pvs.length >= needed) {
+        local.stop();
+        return;
+      }
     }
-    if (startLocalOnMiss && opts.useLocal) local.analyse(fen, push);
+    if (startLocalOnMiss && opts.useLocal) local.analyse(fen, push, undefined, multiPv);
   };
 
   void tryCloud(true);
