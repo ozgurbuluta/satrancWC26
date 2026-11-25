@@ -248,6 +248,6 @@ calibration step that was tried on the selection games and not adopted.
 
 ## In the browser
 
-`src/data/predictor.json` (weights and tables, about 288 KB, 13,750 positions) is loaded
+`src/data/predictor.json` (weights and tables, about 303 KiB, 13,750 positions) is loaded
 with the Tahmin tab, not with the page. An estimate takes a few
 milliseconds and needs no network. Nothing about the viewer is used or sent.

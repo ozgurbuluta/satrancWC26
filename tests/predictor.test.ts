@@ -380,8 +380,8 @@ describe('the model that is shipped', () => {
     expect([...first.values()].reduce((sum, c) => sum + (c.sindarov ?? 0), 0)).toBeGreaterThan(5);
   });
 
-  it('is small enough to load with the tab: under 300 KB', () => {
-    expect(JSON.stringify(shipped).length).toBeLessThan(300 * 1024);
+  it('is small enough to load with the tab while preserving prior precision: under 310 KiB', () => {
+    expect(JSON.stringify(shipped).length).toBeLessThan(310 * 1024);
   });
 
   it('carries its own measurements: a blind one on the untouched holdout, and the reused benchmark', () => {

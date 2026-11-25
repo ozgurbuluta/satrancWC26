@@ -208,9 +208,19 @@ row).
 
 `share.cjs` 61 of 61 and `puzzles.cjs` 33 of 33 on the same build.
 
-The model file is 288 KB (159 KB compressed) and loads with the Tahmin tab;
-that tab's script is 310 KB (167 KB compressed) with it, against 147 KB
-(61 KB) with the first version.
+The final model file is 310,021 bytes (about 303 KiB; 160,473 bytes gzip)
+and loads with the Tahmin tab. That tab's script is 324.68 kB (170.37 kB
+gzip), against 147 kB (61 kB gzip) with the first version.
+
+Final independent review on 2026-11-25 restored the original three-decimal
+prior counts before compact encoding. All 13,750 positions and 14,307
+move entries decode exactly to the independently reproduced, audited
+artifact; all model parameters are unchanged. The generated file also
+matches a separately encoded reference byte for byte (SHA-256
+`46d5b119bc2561bed8c0bf4243f9b5c855c05dc5224bf799ebc3350f1261bb99`).
+`--measure-frozen` reproduces the measurements without fitting or selecting
+again. The full 272-test suite, TypeScript/production build, and full-history
+secret scan pass after this precision fix.
 
 Not covered: real Safari, a real phone, and the estimate against the
 production feed.

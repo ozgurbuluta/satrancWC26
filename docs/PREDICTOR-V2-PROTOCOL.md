@@ -294,3 +294,12 @@ corpus is affected by the guard.
 - Tournaments, not matches: nothing teaches match strategy.
 - The match's own earlier games are not in the tables.
 - The browser file should stay small: the target is under 300 KB.
+
+## Release-size note (after measurement, 2026-11-25)
+
+The final compact artifact is 310,021 bytes (about 303 KiB), slightly above
+the original soft target. Keeping the audited three-decimal prior counts
+costs only about 2.8 kB more gzip than rounding them to two decimals. The
+release preserves that precision and every position; the loading-budget
+test allows 310 KiB. No weights, parameters, measurements, or model-selection
+decisions changed for this encoding adjustment.

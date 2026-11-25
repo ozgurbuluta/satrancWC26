@@ -55,12 +55,12 @@ export const writeFinal = async ctx => {
 
   // ---------- the tables that ship: every selected game, aged as of AS_OF
   // One text, "key=move,move;key=move": a move is its UCI followed by a letter and a count for each column that
-  // has one, to two decimals ("e2e4g2.5x1"). Written this way the tables take two thirds of the room of a JSON object.
+  // has one, to three decimals ("e2e4g2.5x1"). Preserve the audited prior precision while compacting the encoding.
   const useOthers = chosen === 'A' || B.others > 0;
   const priorColumns = useOthers ? { g: 'gukesh', s: 'sindarov', x: 'others' } : { g: 'gukesh', s: 'sindarov' };
   const ageing = t => (B.halfLife === null ? 1 : 0.5 ** (yearsBetween(t.end, AS_OF) / B.halfLife));
   const short = x => {
-    const text = x.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+    const text = x.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
     return text.startsWith('0.') ? text.slice(1) : text;
   };
   const parts = [];
@@ -76,7 +76,7 @@ export const writeFinal = async ctx => {
       m[e.mover === 1 ? 0 : e.mover === 2 ? 1 : 2] += chosen === 'B' ? ageing(e.t) : 1;
     }
     const kept = [...moves.entries()]
-      .map(([uci, m]) => [uci, m.map(x => round(x, 2))])
+      .map(([uci, m]) => [uci, m.map(x => round(x, 3))])
       // a move only others played is of no use when others count for nothing
       .filter(([, [g, s, o]]) => g > 0 || s > 0 || (useOthers && o > 0))
       .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
