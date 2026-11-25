@@ -108,7 +108,7 @@ describe('privacy contract: addresses', () => {
 
   it('treats a missing or non-web referrer as direct', () => {
     for (const ref of [undefined, '', '$direct', 'android-app://com.example/SECRET', 'javascript:alert(1)', 'not a url']) {
-      const out = gate({ event: '$pageview', properties: { $referrer: ref } }, page);
+      const out = gate({ event: '$pageview', properties: { $referrer: ref } as Record<string, unknown> }, page);
       expect(out?.properties?.$referrer).toBe('$direct');
       expect(out?.properties?.$referring_domain).toBe('$direct');
       expect(wire(out)).not.toContain('SECRET');
