@@ -2692,19 +2692,33 @@ cg-board square.selected {
     padding: 5px 8px;
   }
 
+  /* Six icon buttons and the pause button share one row on a 390px phone;
+     whatever does not fit (the way back to live, or pause on a narrower
+     phone) moves to a second row instead of being squeezed or cut off. */
+  .controls {
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
   .controls button {
-    flex: 1;
+    flex: 1 0 38px;
     min-width: 0;
     height: 44px;
+    padding: 0;
   }
 
   .controls .go-live {
-    flex: 2;
+    flex: 2 0 112px;
+    margin-left: 0;
+    padding: 0 8px;
+    justify-content: center;
   }
 
   .controls .pause-btn {
-    flex: 2;
+    flex: 2 0 90px;
     margin-left: 0;
+    padding: 0 6px;
+    white-space: nowrap;
   }
 
   .share-slot {
