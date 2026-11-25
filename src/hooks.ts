@@ -18,20 +18,21 @@ export const useNow = (intervalMs: number, active = true): number => {
 
 /** Live evaluation of a position (cloud first, local engine as fallback). */
 export const useEval = (fen: string | undefined, enabled: boolean): EvalResult | undefined => {
-  const [result, setResult] = useState<EvalResult | undefined>(() => (fen ? cachedEval(fen) : undefined));
+  const lines = useStore(s => s.settings.engineLines);
+  const [result, setResult] = useState<EvalResult | undefined>(() => (fen ? cachedEval(fen, lines) : undefined));
   useEffect(() => {
     if (!fen || !enabled) {
       setResult(undefined);
       return;
     }
-    setResult(cachedEval(fen));
+    setResult(cachedEval(fen, lines));
     // Small debounce so stepping quickly through moves does not fire a request per move.
-    const id = window.setTimeout(() => requestEval(fen, setResult, { useLocal: true }), 120);
+    const id = window.setTimeout(() => requestEval(fen, setResult, { useLocal: true, multiPv: lines }), 120);
     return () => {
       window.clearTimeout(id);
       cancelEval();
     };
-  }, [fen, enabled]);
+  }, [fen, enabled, lines]);
   return result && result.fen === fen ? result : undefined;
 };
 

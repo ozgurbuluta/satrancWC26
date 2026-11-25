@@ -78,6 +78,16 @@ describe('when the browser refuses storage', () => {
 });
 
 describe('when storage works', () => {
+  it('loads the line count and migrates missing or invalid values to three', async () => {
+    const { loadStore } = await import('./helpers');
+    for (const value of [undefined, 0, 9, '5', 2.5, 1, 5]) {
+      localStorage.setItem('wcc26:settings', JSON.stringify({ engineLines: value, sound: false }));
+      const { useStore } = await loadStore();
+      expect(useStore.getState().settings.engineLines).toBe(value === 1 || value === 5 ? value : 3);
+      expect(useStore.getState().settings.sound).toBe(false);
+    }
+  });
+
   it('remembers the statistics choice for the next visit', async () => {
     const first = await import('../src/lib/analytics');
     expect(first.setOptedOut(true).persisted).toBe(true);
