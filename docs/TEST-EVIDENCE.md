@@ -25,8 +25,10 @@ statistics switch (delayed start and page-leave included), nested Twitch
 parents, legal-move entry, puzzle rules, prediction logic, the stream
 finder, share links and the copy helper, the board's lifecycle, the
 viewer's own line, the engine following the board, keyboard shortcuts, the
-Turkish wording, time controls and move times, and the workspace panels:
-220 tests.
+Turkish wording, time controls and move times, the workspace panels, the
+move predictor (features, the estimate, rounding, the shipped model's
+counts) and its panel (the score it may use, every hidden and refused
+state): 250 tests.
 Also in CI: the secret check over the whole history, the type check, and
 builds for `/` and `/satranc/`.
 
@@ -175,6 +177,35 @@ the prediction checks above and by `tests/store.guess.test.ts`.
 
 Not covered by this run: real Safari and a real phone for the new layout
 and for tapping moves on the board.
+
+## The model estimate (issue 4)
+
+Run on 25 November 2026 in headless Chromium against the preview build, in
+`tests/e2e/board.cjs` (92 of 92 checks with these added), against a
+simulated match in which Sindarov is to play move 6 of a Ruy Lopez.
+
+| Model estimate, bottom of the Tahmin tab | Result |
+|---|---|
+| Rows | three different legal moves and "Diğer hamleler"; 57 + 29 + 5 + 9 = 100 |
+| Label | "Deneysel", and "Sindarov için, 6. hamle" |
+| Place | the last element of the tab, in the flow of the page, not fixed or sticky; on a phone (390 px) inside the screen width, no sideways scrolling |
+| Its moves | text, not buttons: they cannot be mistaken for a guess |
+| Details | closed until asked; give the measured numbers and the limits |
+| Guess mode on, no guess yet | hidden, with a "Tahmin etmeden göster" button |
+| After a guess | shown again |
+| A move of the viewer's own on the board | leaves the estimate about the game, not about the board |
+| Page errors | none |
+
+Unit tests cover what the browser run does not: a paused viewer (the
+estimate is for the position on the viewer's board, with that position's
+clock), a finished game (no estimate), a player who is not Gukesh or
+Sindarov (no estimate), and the match score (earlier games only, never the
+open game or a later one, also while paused).
+
+`share.cjs` 61 of 61 and `puzzles.cjs` 33 of 33 on the same build.
+
+Not covered: real Safari, a real phone, and the estimate against the
+production feed.
 
 ## Share links
 
