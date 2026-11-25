@@ -4,8 +4,10 @@ import { useNow, useT } from '../hooks';
 import { fedFlag, formatCountdown, formatPoints, shortName } from '../lib/format';
 import type { PlayerInfo } from '../lib/pgn';
 import { selectScore, useStore } from '../store';
+import { GamesDrawer } from './GamesMenu';
 
-export function Header() {
+/** `gamesButton`: the game list is not on screen beside the board, so the header offers it. */
+export function Header({ gamesButton = false }: { gamesButton?: boolean }) {
   const t = useT();
   const lang = useStore(s => s.settings.lang);
   const setSetting = useStore(s => s.setSetting);
@@ -47,6 +49,7 @@ export function Header() {
 
   return (
     <header className="top">
+      {gamesButton && <GamesDrawer />}
       <div className="brand">
         <span className="logo" aria-hidden="true" />
         <div>

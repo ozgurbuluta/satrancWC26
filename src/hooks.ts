@@ -49,3 +49,31 @@ export const useIsMobile = (): boolean => {
 
 /** Re-renders the caller whenever a new position score is stored. */
 export const useScoresVersion = (): number => useSyncExternalStore(subscribeScores, scoresVersion);
+
+/** Width of the game list beside the board and the gap after it. The same numbers are in styles.css. */
+const RAIL_SPACE = 212;
+
+/**
+ * Whether the game list fits beside the board without making the board
+ * smaller. The board column wants `max(320px, viewport height - 258px)`;
+ * the list is shown only when that much is left after the list, the divider
+ * and the side column. Otherwise the list lives in a drawer.
+ */
+export const railFits = (width: number, height: number, sideWidth?: number): boolean => {
+  if (width <= 900) return false;
+  // 0 or nothing: the side column has not been resized and follows its own rule in styles.css
+  const side = sideWidth && sideWidth > 0 ? sideWidth : Math.max(360, Math.min(580, width * 0.36));
+  const wanted = Math.max(320, height - 258);
+  const available = width - 32 - RAIL_SPACE - 12 - side;
+  return available >= wanted;
+};
+
+export const useRailFits = (sideWidth?: number): boolean => {
+  const [size, setSize] = useState(() => [window.innerWidth, window.innerHeight]);
+  useEffect(() => {
+    const on = () => setSize([window.innerWidth, window.innerHeight]);
+    window.addEventListener('resize', on);
+    return () => window.removeEventListener('resize', on);
+  }, []);
+  return railFits(size[0], size[1], sideWidth);
+};

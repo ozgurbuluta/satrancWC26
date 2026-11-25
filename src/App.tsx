@@ -4,6 +4,7 @@ import { AnalysisPanel } from './components/AnalysisPanel';
 import { Board } from './components/Board';
 import { CatchUpBar } from './components/CatchUpBar';
 import { EvalBar } from './components/EvalBar';
+import { GamesRail } from './components/GamesMenu';
 import { Header } from './components/Header';
 import { MatchPanel } from './components/MatchPanel';
 import { PromotionPicker, usePromotion } from './components/MoveEntry';
@@ -11,7 +12,7 @@ import { PlayerBar } from './components/PlayerBar';
 import { SettingsPanel } from './components/SettingsPanel';
 import { ShareButton } from './components/ShareButton';
 import { StreamPanel } from './components/StreamPanel';
-import { useEval, useIsMobile, useNow, useT } from './hooks';
+import { useEval, useIsMobile, useNow, useRailFits, useT } from './hooks';
 import { setContext, track, trackOutbound } from './lib/analytics';
 import { displayName, firstMoveSquares, localizeSan, materialFromFen, pvToSan, shortName } from './lib/format';
 import { seedGameScores } from './lib/quality';
@@ -72,6 +73,8 @@ export default function App() {
     track('tab_open', { tab: id });
   };
   const isMobile = useIsMobile();
+  // The game list sits beside the board only where that takes nothing from the board.
+  const rail = useRailFits(settings.sideWidth) && !isMobile;
   const layoutRef = useRef<HTMLElement>(null);
 
   useEffect(() => init(), [init]);
@@ -416,8 +419,9 @@ export default function App() {
 
   return (
     <div className="app">
-      <Header />
-      <main className="layout" ref={layoutRef} style={layoutStyle}>
+      <Header gamesButton={!rail} />
+      <main className={`layout ${rail ? 'with-rail' : ''}`} ref={layoutRef} style={layoutStyle}>
+        {rail && <GamesRail />}
         {view === 'puzzles' ? (
           <Suspense fallback={<section className="board-col" />}>
             <PuzzleBoard />
