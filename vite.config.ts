@@ -21,7 +21,13 @@ const productionHeaders = (): Record<string, string> => {
     headers: { source: string; has?: unknown; headers: { key: string; value: string }[] }[];
   };
   const everywhere = config.headers.find(h => h.source === '/(.*)' && !h.has);
-  return Object.fromEntries((everywhere?.headers ?? []).map(h => [h.key, h.value]));
+  const headers = Object.fromEntries((everywhere?.headers ?? []).map(h => [h.key, h.value]));
+  // Local embed tests only: lets a test page on another local origin frame the preview.
+  const extra = process.env.PREVIEW_FRAME_ANCESTORS;
+  if (extra && headers['Content-Security-Policy']) {
+    headers['Content-Security-Policy'] = headers['Content-Security-Policy'].replace(/frame-ancestors ([^;]+)/, `frame-ancestors $1 ${extra}`);
+  }
+  return headers;
 };
 
 export default defineConfig({

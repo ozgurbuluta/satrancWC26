@@ -1,0 +1,107 @@
+<!doctype html>
+<!--
+  PROPOSAL, not deployed anywhere: the page that would live at
+  https://ozgurakanay.com/satranc/ and show the chess site in a frame.
+
+  It is a complete document on purpose. It must not use the personal site's
+  shared layout: no navigation, no analytics, no other scripts.
+  Replace APP_ORIGIN (three places) with the chess deployment's production
+  origin, for example https://satrancwc26.vercel.app
+-->
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- This page may load one frame, its own small script and its own inline style. Nothing else. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; frame-src APP_ORIGIN; script-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
+    />
+    <!-- The frame learns only that the visitor is on this site, never the full address. -->
+    <meta name="referrer" content="strict-origin" />
+    <meta name="theme-color" content="#262421" />
+    <title>Dünya Satranç Şampiyonası 2026 canlı takip | Özgür Akanay</title>
+    <meta name="description" content="Gukesh ile Sindarov arasındaki Dünya Satranç Şampiyonası maçını Türkçe yayınla yan yana, canlı tahta ve motor değerlendirmesiyle takip et." />
+    <link rel="canonical" href="https://ozgurakanay.com/satranc/" />
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        background: #262421;
+      }
+      /* The frame fills the screen; the notch and home bar stay clear. Scrolling happens inside the frame. */
+      .frame {
+        position: fixed;
+        inset: 0;
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      }
+      iframe {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+      /* Hidden until focused with the keyboard, or shown if the frame does not load. */
+      .open {
+        position: fixed;
+        left: 8px;
+        top: 8px;
+        z-index: 2;
+        padding: 10px 14px;
+        border-radius: 8px;
+        background: #fff;
+        color: #111;
+        font: 600 15px/1.2 system-ui, -apple-system, 'Segoe UI', sans-serif;
+        transform: translateY(-200%);
+      }
+      .open:focus,
+      .open.show {
+        transform: none;
+      }
+      noscript p {
+        position: fixed;
+        inset: 0;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        color: #edece8;
+        font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif;
+        text-align: center;
+      }
+      noscript a {
+        color: #81b64c;
+      }
+    </style>
+  </head>
+  <body>
+    <a class="open" id="open" href="APP_ORIGIN/" target="_blank" rel="noopener">Uygulamayı yeni sekmede aç</a>
+    <div class="frame">
+      <!--
+        sandbox: scripts run the app; same-origin lets it keep its own origin
+        (its storage, its engine worker, its own analytics route) and is safe
+        because that origin is not this site's; the two popup tokens let
+        "open in a new tab" links open as normal tabs. Left out on purpose:
+        top navigation, forms, modals, downloads, pointer lock.
+        allow: what the video player needs, and nothing else.
+      -->
+      <iframe
+        id="satranc"
+        title="Dünya Satranç Şampiyonası 2026 canlı takip"
+        data-src="APP_ORIGIN/"
+        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+        allow="fullscreen; encrypted-media; picture-in-picture"
+        allowfullscreen
+        referrerpolicy="strict-origin"
+      ></iframe>
+    </div>
+    <noscript>
+      <p>
+        Bu sayfa JavaScript ile çalışır.
+        <a href="APP_ORIGIN/">Canlı takip sayfasını doğrudan aç.</a>
+      </p>
+    </noscript>
+    <script src="./shell.js"></script>
+  </body>
+</html>

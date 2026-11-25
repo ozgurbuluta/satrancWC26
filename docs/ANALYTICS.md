@@ -42,18 +42,37 @@ Code:
   included, so automated tests send nothing).
 - **Own visits:** open the site once with `?internal=1` in every browser you
   use (`?internal=0` undoes it). Those events carry `traffic_type=internal`.
-- **Visitor opt-out:** the switch in Ayarlar writes `analytics-off=1` to
-  localStorage; that browser then sends nothing.
+- **Visitor opt-out:** the switch in Ayarlar stops recording at once and
+  stores `satranc:analytics-off=1`; that browser then sends nothing.
+- **Storage keys are namespaced** (`satranc:…`), so they cannot collide with
+  another site's keys.
 
-## What the scrub removes
+## The privacy contract
 
-- this site's own URLs keep only `utm_*`, `tour` and `round`, and lose the
-  `#fragment`;
-- a referrer from another site keeps only its address and path;
-- a link to another site loses credentials, ad-click and share ids;
-- anything that looks like an email address becomes `[redacted]`.
+Enforced twice: when an event is recorded, and again in `before_send`, the
+last step before anything leaves the page (`gate` in `src/lib/analytics.ts`).
 
-A pasted stream link is never sent: only its platform is.
+- **Only listed events exist** (`EVENTS`). Each names the properties it may
+  carry, and every property has a bounded type: one of a fixed set of words,
+  a whole number in a range, true/false, or a bare hostname. Unknown events,
+  unknown properties and out-of-bounds values are dropped.
+- **Addresses.** This page's own address is sent without its query string and
+  fragment. A referrer and a clicked link are reduced to their origin: no
+  path, no query, no credentials. Campaign tags are not sent.
+- **Nothing typed or pasted.** No stream link, no move text, no position, no
+  game notation. A pasted stream link is recorded as its platform only.
+- **PostHog's own properties** are an explicit short list (`SYSTEM_KEYS`).
+  The page title, language list, screen size and the rest are removed.
+  `$raw_user_agent`, `$host` and `$timezone` stay because cookieless counting
+  is computed from them on PostHog's servers.
+- **No person data:** `$set` and `$set_once` are deleted.
+- **The visitor's switch acts at once.** Turning statistics off stops
+  recording immediately and drops events already on their way out, whether
+  or not the browser lets the page save the choice. If it does not, the
+  site says the choice only lasts while the page is open.
+
+`tests/analytics.test.ts` and `tests/storage.test.ts` cover this, including
+credentials in paths and query strings and a browser that refuses storage.
 
 ## Every event carries
 
@@ -64,6 +83,9 @@ A pasted stream link is never sent: only its platform is.
 | `game_no` | game number being viewed (1–14, higher for tie-breaks) |
 | `game_state` | `upcoming`, `live`, `finished`, `paused` |
 | `traffic_type` | `internal` or `test`, when set |
+| `embed` | `framed` when shown inside another page, else `direct` |
+| `referrer_domain` | host the embedding page says the visitor came from |
+| `view` | `live`, `puzzles` |
 
 ## Events
 
@@ -81,19 +103,19 @@ A pasted stream link is never sent: only its platform is.
 | `stream_uncover` | the video is shown while the board is paused | |
 | `sync_delay_set` | the board delay comes to rest on a value | `seconds` |
 | `pause_start` | the board is paused | `at_move`, `game_over` |
-| `pause_autoplay` | auto-play is switched on | `seconds` |
+| `pause_autoplay` | auto-play is switched on | `interval_ms` |
 | `pause_restart` | "Baştan izle" | |
 | `pause_end` | the pause ends | `reason`: `go_live` or `caught_up`, `moves_revealed` |
 | `similar_game_open` | an earlier master game is expanded | `year` |
 | `similar_preview` | a move of an earlier game is shown on the board | |
 | `chart_jump` | a chart or list is used to jump to a move | `chart`: `eval`, `time`, `key_moment`, `longest_think`; `quality` for key moments |
 | `setting_change` | a setting changes | `setting`, `value` |
-| `outbound_click` | a link to another site | `link_url`, `link_domain` |
+| `outbound_click` | a link to another site | `link_domain` (host only) |
 | `feed_fallback` | the live feed dropped to polling (once per visit) | |
 
 ## Questions these answer
 
-- Where visitors come from: `$referrer` on `$pageview`.
+- Where visitors come from: `$referring_domain` and `referrer_domain` on `$pageview`.
 - What they open: `tab_open`, `game_select`, `stream_select`.
 - What they use: the `pause_*` events, `sync_delay_set`, `similar_*`,
   `chart_jump`, `setting_change`.
