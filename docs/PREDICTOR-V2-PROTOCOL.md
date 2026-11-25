@@ -163,9 +163,10 @@ family B.
    is weighted by age, `0.5 ^ (years since that tournament ended / h)`.
 3. A final mix with "every legal move equally likely": `(1 − ε) · p + ε / n`.
 
-The estimate always lies between the base model's probability and the share
-actually played: close to the base model with few earlier games, close to
-the played share with many.
+After step 2 the estimate lies between the base model's probability and the
+share actually played (others' moves at their discount): close to the base
+model with few earlier games, close to the played share with many. Step 3
+then mixes in a third ingredient, the even share.
 
 The match-score rule of v1 (0.35 × urgency taken from even trades) stays a
 written rule on the base model's scores. Nothing here measures it.
@@ -283,7 +284,8 @@ corpus is affected by the guard.
    of the two players' IDs.
 7. The first version said the back-off estimate approaches the played share
    "and never beyond it". That is wrong where the base model gives a move
-   more than its played share. The estimate lies between the two.
+   more than its played share. Before the last step, the even share ε, the
+   estimate lies between the two; ε is a third ingredient.
 
 ## Limits accepted in advance
 

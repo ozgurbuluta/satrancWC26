@@ -174,8 +174,8 @@ describe('the estimate in the prediction tab', () => {
     // the untouched holdout, with the numbers of the shipped file and nothing rounder
     const shown = (shipped as unknown as { report: { shown: { top1: number; top3: number; whenSure: { said: number; happened: number } } } }).report.shown;
     const whole = (x: number) => String(Math.round(x * 100));
-    expect(details).toContain(`hiç kullanılmayan 83 oyunun 4.240 hamlesinde ilk tercih yüzde ${whole(shown.top1)}, ilk üç tercih yüzde ${whole(shown.top3)} tuttu`);
-    expect(details).toContain('yalnızca en sonda, bir kez bakıldı');
+    expect(details).toContain(`ağırlıkları ve ayarları belirlenirken ayrı tutulan 83 oyunun 4.240 hamlesinde ilk tercih yüzde ${whole(shown.top1)}, ilk üç tercih yüzde ${whole(shown.top3)} tuttu`);
+    expect(details).toContain('Bu ölçüm yalnızca en sonda, bir kez yapıldı');
     expect(details).toContain(`ortalama yüzde ${whole(shown.whenSure.said)} dedi; bunların yüzde ${whole(shown.whenSure.happened)} kadarı oynandı`);
     expect(details).toContain('Yüzdeleri kesinlik olarak okuma');
     // "too sure" is said exactly when the measurement shows it: three points or more between said and played

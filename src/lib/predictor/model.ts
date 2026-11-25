@@ -13,9 +13,13 @@
 //
 //   p(m) = (own(m) + w · others(m) + κ · base(m)) / (own + w · others + κ)
 //
-// With no earlier games it is the base model; with many it approaches the
-// share actually played, and never goes beyond it. Counts are aged, so a
-// game of last month weighs more than one of three years ago.
+// Up to this point the estimate lies between the base model and the share
+// actually played (other people's moves counted at their discount w): it is
+// the base model where there are no earlier games, and close to the played
+// share where there are many. A last step then spreads a small share ε
+// evenly over every legal move, a third ingredient that is neither of the
+// two. Counts are aged, so a game of last month weighs more than one of
+// three years ago.
 //
 // The match situation (score and games left) is not something the data can
 // teach: the earlier games are tournaments, not matches. It enters through

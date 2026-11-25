@@ -223,13 +223,25 @@ describe('earlier moves blended with the base model', () => {
     expect(at(model, 'e2e4', SINDAROV)).toBeCloseTo((2 / 20) / (5 + 2), 12);
   });
 
-  it('never says more than the share that was played, however many games there are', () => {
-    // 60 / 40 in a hundred games stays close to 60 / 40: it is not sharpened
+  it('before ε, lies between the base model and the share that was played, and does not sharpen a mixed repertoire', () => {
+    // 60 / 40 in a hundred games stays close to 60 / 40, a little towards the base model's 5 % each
     const model = withTable('e2e4 60 0|d2d4 40 0', { kappa: 2 });
     expect(at(model, 'e2e4')).toBeLessThan(0.6);
     expect(at(model, 'e2e4')).toBeGreaterThan(0.58);
     expect(at(model, 'd2d4')).toBeLessThan(0.4);
     expect(at(model, 'd2d4')).toBeGreaterThan(0.39);
+    // a move that was never played is above its played share of nothing: it keeps the base model's part
+    expect(at(model, 'g1f3')).toBeCloseTo((2 / 20) / 102, 12);
+    // every move is between its base probability and its played share, whichever of the two is larger
+    for (const m of predict(model, { fen: START, moverId: GUKESH }).moves) {
+      const played = m.uci === 'e2e4' ? 0.6 : m.uci === 'd2d4' ? 0.4 : 0;
+      expect(m.p).toBeGreaterThanOrEqual(Math.min(played, 1 / 20) - 1e-12);
+      expect(m.p).toBeLessThanOrEqual(Math.max(played, 1 / 20) + 1e-12);
+    }
+    // ε is a third ingredient, mixed in afterwards: (1 − ε) of the blend plus ε / 20 for every move
+    const smoothed = withTable('e2e4 60 0|d2d4 40 0', { kappa: 2, epsilon: 0.1 });
+    expect(at(smoothed, 'e2e4')).toBeCloseTo(0.9 * at(model, 'e2e4') + 0.1 / 20, 12);
+    expect(at(smoothed, 'g1f3')).toBeCloseTo(0.9 * at(model, 'g1f3') + 0.1 / 20, 12);
     // one game is weak evidence: the move is likelier than the rest, far from certain
     const once = withTable('e2e4 1 0', { kappa: 2 });
     expect(at(once, 'e2e4')).toBeCloseTo((1 + 0.1) / 3, 12);
