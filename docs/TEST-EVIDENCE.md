@@ -28,7 +28,7 @@ viewer's own line, the engine following the board, keyboard shortcuts, the
 Turkish wording, time controls and move times, the workspace panels, the
 move predictor (features, the estimate, rounding, the shipped model's
 counts) and its panel (the score it may use, every hidden and refused
-state): 250 tests.
+state): 253 tests.
 Also in CI: the secret check over the whole history, the type check, and
 builds for `/` and `/satranc/`.
 
@@ -188,6 +188,7 @@ simulated match in which Sindarov is to play move 6 of a Ruy Lopez.
 |---|---|
 | Rows | three different legal moves and "Diğer hamleler"; 57 + 29 + 5 + 9 = 100 |
 | Label | "Deneysel", and "Sindarov için, 6. hamle" |
+| A legal move with a share under one percent | printed "<1 %", never 0: after 1. e4 the rows read e5 98 %, c5 1 %, c6 <1 %, Diğer hamleler 1 % (looked at in the browser at 1440 px and 390 px; asserted in the unit tests) |
 | Place | the last element of the tab, in the flow of the page, not fixed or sticky; on a phone (390 px) inside the screen width, no sideways scrolling |
 | Its moves | text, not buttons: they cannot be mistaken for a guess |
 | Details | closed until asked; give the measured numbers and the limits |

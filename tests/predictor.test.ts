@@ -127,6 +127,43 @@ describe('the estimate', () => {
     }
   });
 
+  it('marks a legal move whose share rounds down to nothing, and changes no number for it', () => {
+    // the first move of the game: two moves take nearly everything, the third has a share far under one percent
+    for (const moverId of [GUKESH, SINDAROV]) {
+      const p = predict(MODEL, { fen: START, moverId });
+      const before = JSON.stringify(p);
+      const s = shares(p);
+      expect(p.moves[2].p).toBeGreaterThan(0);
+      expect(p.moves[2].p).toBeLessThan(0.01);
+      expect(s.top.map(m => m.belowOne)).toEqual([false, false, true]);
+      expect(s.top[2].percent).toBe(0);
+      expect(s.otherBelowOne).toBe(false);
+      // the whole numbers still add up to 100, and the estimate itself is untouched
+      expect(s.top.reduce((sum, m) => sum + m.percent, 0) + s.other).toBe(100);
+      expect(JSON.stringify(p)).toBe(before);
+    }
+    // a move is marked only when it has a share and that share shows as 0
+    for (const fen of POSITIONS) {
+      const p = predict(MODEL, { fen, moverId: GUKESH });
+      shares(p).top.forEach((m, i) => expect(m.belowOne).toBe(m.percent === 0 && p.moves[i].p > 0));
+    }
+  });
+
+  it('marks "other" the same way when the moves left over are almost nothing', () => {
+    const move = (uci: string, p: number) => ({ uci, san: uci, p });
+    const base = { supported: true, pressure: 0, urgency: 0, seenBefore: false };
+    // one move all but certain, with more legal moves than the list shows
+    const sure = { ...base, moves: [move('a1a2', 1 - 1e-12), move('a1a3', 5e-13), move('a1a4', 3e-13), move('a1a5', 2e-13)], other: 2e-13 };
+    expect(shares(sure)).toMatchObject({ other: 0, otherBelowOne: true });
+    expect(shares(sure).top.map(m => m.belowOne)).toEqual([false, true, true]);
+    // every legal move on the list: nothing is "other", marked or not
+    const two = { ...base, moves: [move('a1a2', 0.997), move('a1a3', 0.003)], other: 0 };
+    expect(shares(two)).toEqual({ top: [{ uci: 'a1a2', san: 'a1a2', percent: 100, belowOne: false }, { uci: 'a1a3', san: 'a1a3', percent: 0, belowOne: true }], other: 0, otherBelowOne: false });
+    // a share of exactly nothing is not marked
+    const none = { ...base, moves: [move('a1a2', 1), move('a1a3', 0)], other: 0 };
+    expect(shares(none).top.map(m => m.belowOne)).toEqual([false, false]);
+  });
+
   it('breaks exact ties by the move text, the same way every time', () => {
     const flat: PredictorModel = { ...MODEL, weights: { shared: MODEL.features.map(() => 0), players: {}, clock: MODEL.features.map(() => 0) }, priors: { players: {}, any: {} } };
     const p = predict(flat, { fen: START });
@@ -137,7 +174,7 @@ describe('the estimate', () => {
   it('has nothing to show when the game is over in the position', () => {
     const p = predict(MODEL, { fen: '7k/5Q2/6K1/8/8/8/8/8 b - - 0 1', moverId: GUKESH });
     expect(p.moves).toEqual([]);
-    expect(shares(p)).toEqual({ top: [], other: 0 });
+    expect(shares(p)).toEqual({ top: [], other: 0, otherBelowOne: false });
   });
 
   it('says whether it knows the player', () => {

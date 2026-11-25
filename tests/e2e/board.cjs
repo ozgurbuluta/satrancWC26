@@ -284,7 +284,7 @@ const pgn = (round, id, sans, result, opts = {}) => {
 
     // the site's own estimate, at the bottom of the tab
     const estimate = page.locator('.model-estimate');
-    const numbers = async () => (await estimate.locator('.model-moves .num').allInnerTexts()).map(t => Number(t.replace(/\D/g, '')));
+    const numbers = async () => (await estimate.locator('.model-moves .num').allInnerTexts()).map(t => (t.trim().startsWith('<') ? 0 : Number(t.replace(/\D/g, ''))));
     const first = await numbers();
     check('the model estimate shows three moves and "other", adding up to 100', first.length === 4 && first.reduce((a, b) => a + b, 0) === 100 && /Diğer hamleler/.test(await estimate.innerText()), first.join(' + '));
     check('it is labelled experimental and says whose move it is about', /Deneysel/i.test(await estimate.innerText()) && /Sindarov için, 6\. hamle/.test(await estimate.innerText()), (await estimate.innerText()).replace(/\s+/g, ' ').slice(0, 90));
@@ -484,7 +484,7 @@ const pgn = (round, id, sans, result, opts = {}) => {
     const phoneEstimate = await page.evaluate(() => {
       const el = document.querySelector('.model-estimate');
       const r = el.getBoundingClientRect();
-      const nums = [...el.querySelectorAll('.model-moves .num')].map(n => Number(n.textContent.replace(/\D/g, '')));
+      const nums = [...el.querySelectorAll('.model-moves .num')].map(n => (n.textContent.trim().startsWith('<') ? 0 : Number(n.textContent.replace(/\D/g, ''))));
       return { last: el === el.parentElement.lastElementChild, position: getComputedStyle(el).position, left: Math.round(r.left), right: Math.round(r.right), sum: nums.reduce((a, b) => a + b, 0), rows: nums.length, overflow: document.documentElement.scrollWidth - window.innerWidth };
     });
     check('on a phone the estimate is at the bottom of the Tahmin tab, in the flow, within the screen', phoneEstimate.last && phoneEstimate.position === 'static' && phoneEstimate.left >= 0 && phoneEstimate.right <= width && phoneEstimate.sum === 100 && phoneEstimate.rows === 4 && phoneEstimate.overflow <= 0, JSON.stringify(phoneEstimate));

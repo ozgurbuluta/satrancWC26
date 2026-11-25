@@ -128,10 +128,20 @@ export const predict = (model: PredictorModel, input: PredictInput): Prediction 
   return { supported: !!playerKey, moves, other: Math.max(0, 1 - top), pressure, urgency, seenBefore: !!repPlayer };
 };
 
+export interface Share {
+  uci: string;
+  san: string;
+  percent: number;
+  /** Has a share, but under one percent. Shown as "<1 %": a 0 would say the move cannot be played. */
+  belowOne: boolean;
+}
+
 export interface Shares {
-  top: { uci: string; san: string; percent: number }[];
+  top: Share[];
   /** Everything that is not one of the moves shown. */
   other: number;
+  /** There are other legal moves, and together they have under one percent. */
+  otherBelowOne: boolean;
 }
 
 /**
@@ -139,14 +149,20 @@ export interface Shares {
  * that what is shown adds up to exactly 100. The three are rounded down to
  * leave "other" at least its true share: they are never stretched to fill
  * the hundred.
+ *
+ * Rounding down can leave a legal move at 0. It is marked `belowOne` so the
+ * page can say "<1 %" instead. Only the wording changes: the whole numbers
+ * and the probabilities behind them stay as they are.
  */
 export const shares = (prediction: Prediction, count = 3): Shares => {
-  const top = prediction.moves.slice(0, count).map(m => ({ uci: m.uci, san: m.san, percent: Math.floor(m.p * 100 + 1e-9) }));
-  if (top.length === 0) return { top, other: 0 };
-  if (prediction.moves.length <= count && top.length > 0) {
-    // every legal move is on the list: the rounding remainder goes to the first of them, and nothing is "other"
-    top[0].percent += 100 - top.reduce((sum, m) => sum + m.percent, 0);
-    return { top, other: 0 };
-  }
-  return { top, other: 100 - top.reduce((sum, m) => sum + m.percent, 0) };
+  const top: Share[] = prediction.moves.slice(0, count).map(m => ({ uci: m.uci, san: m.san, percent: Math.floor(m.p * 100 + 1e-9), belowOne: false }));
+  if (top.length === 0) return { top, other: 0, otherBelowOne: false };
+  const all = prediction.moves.length <= count;
+  const rest = 100 - top.reduce((sum, m) => sum + m.percent, 0);
+  // every legal move is on the list: the rounding remainder goes to the first of them, and nothing is "other"
+  if (all) top[0].percent += rest;
+  top.forEach((m, i) => {
+    m.belowOne = m.percent === 0 && prediction.moves[i].p > 0;
+  });
+  return { top, other: all ? 0 : rest, otherBelowOne: !all && rest === 0 && prediction.moves.slice(count).some(m => m.p > 0) };
 };

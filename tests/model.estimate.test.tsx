@@ -87,7 +87,12 @@ const mount = async (pgn: string) => {
   return mod;
 };
 const rows = () => [...host.querySelectorAll('.model-moves li')];
-const percents = () => rows().map(li => Number(li.querySelector('.num')!.textContent!.replace(/\D/g, '')));
+/** The whole numbers of the rows. A row printed as "<1 %" carries none: it counts as 0 here. */
+const percents = () =>
+  rows().map(li => {
+    const shown = li.querySelector('.num')!.textContent!;
+    return shown.startsWith('<') ? 0 : Number(shown.replace(/\D/g, ''));
+  });
 const text = () => host.textContent ?? '';
 
 describe('the estimate in the prediction tab', () => {
@@ -99,6 +104,18 @@ describe('the estimate in the prediction tab', () => {
     expect(percents()[3]).toBeGreaterThan(0);
     expect(text()).toContain('Deneysel');
     expect(text()).toMatch(/Sindarov için, 3\. hamle/);
+  });
+
+  it('prints a legal move with a share under one percent as "<1 %", never as 0', async () => {
+    // Black's first move after 1. e4: two replies take nearly everything in the players' own games
+    await mount(game({ round: 1, id: 'g1', sans: ['e4'] }));
+    expect(text()).toMatch(/Gukesh için, 1… hamle/);
+    const shown = rows().map(li => li.querySelector('.num')!.textContent);
+    expect(shown).toHaveLength(4);
+    expect(shown[2]).toBe('<1 %');
+    for (const value of shown) expect(value).not.toBe('0 %');
+    // the rows that carry a number still add up to 100
+    expect(percents().reduce((a, b) => a + b, 0)).toBe(100);
   });
 
   it('follows the game: a new move gives a new estimate for the other player', async () => {

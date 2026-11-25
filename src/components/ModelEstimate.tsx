@@ -13,6 +13,8 @@ const MODEL = model as unknown as PredictorModel & {
 };
 const DOCS = `${REPO_URL}/blob/main/docs/PREDICTOR.md`;
 const whole = (x: number) => String(Math.round(x * 100));
+/** A share as the list prints it. A legal move with a share is never printed as 0. */
+const share = (percent: number, belowOne: boolean) => (belowOne ? '<1 %' : `${percent} %`);
 
 interface Props {
   game: GameData;
@@ -94,16 +96,16 @@ export function ModelEstimate({ game, fen }: Props) {
               <span className="model-bar" aria-hidden="true">
                 <i style={{ width: `${Math.max(2, m.percent)}%` }} />
               </span>
-              <span className="num">{m.percent} %</span>
+              <span className="num">{share(m.percent, m.belowOne)}</span>
             </li>
           ))}
-          {shown.other > 0 && (
+          {(shown.other > 0 || shown.otherBelowOne) && (
             <li className="other">
               <span>{t.modelOther}</span>
               <span className="model-bar" aria-hidden="true">
                 <i style={{ width: `${Math.max(2, shown.other)}%` }} />
               </span>
-              <span className="num">{shown.other} %</span>
+              <span className="num">{share(shown.other, shown.otherBelowOne)}</span>
             </li>
           )}
         </ol>
