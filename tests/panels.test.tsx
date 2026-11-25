@@ -198,3 +198,25 @@ describe('the status under the board', () => {
     expect(status().querySelector('.pulse')).toBeNull();
   });
 });
+
+describe('engine line preference', () => {
+  it('offers one to five lines, remembers the choice and displays two-decimal scores', async () => {
+    const mod = await boot();
+    await act(async () => push(R1, game({ round: 1, id: 'g1', sans: [] })));
+    const { EngineCard } = await import('../src/components/EnginePanel');
+    const g = mod.selectGameData(mod.useStore.getState())!;
+    const evaluation = { fen: g.initialFen, depth: 20, source: 'cloud' as const,
+      pvs: ['e2e4', 'd2d4', 'g1f3', 'c2c4', 'b1c3'].map((move, i) => ({ cp: 24 - i, moves: [move] })) };
+    await act(() => root.render(<EngineCard game={g} fen={g.initialFen} shown={0} evaluation={evaluation} inLine={false} />));
+    const select = host.querySelector('select')!;
+    expect([...select.options].map(o => o.value)).toEqual(['1', '2', '3', '4', '5']);
+    expect(select.closest('label')!.textContent).toContain('Varyant sayısı');
+    expect(host.querySelectorAll('.pv-list li')).toHaveLength(3);
+    await act(() => { select.value = '5'; select.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(host.querySelectorAll('.pv-list li')).toHaveLength(5);
+    expect([...host.querySelectorAll('.pv-eval')].map(e => e.textContent)).toEqual(['+0.24', '+0.23', '+0.22', '+0.21', '+0.20']);
+    expect(JSON.parse(localStorage.getItem('wcc26:settings')!).engineLines).toBe(5);
+    await act(() => { select.value = '1'; select.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(host.querySelectorAll('.pv-list li')).toHaveLength(1);
+  });
+});

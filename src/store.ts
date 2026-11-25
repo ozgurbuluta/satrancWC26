@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { CHAMPION_FIDE_ID, FORCED_ROUND_ID, GAMES_IN_MATCH, IS_MATCH, LINKED_GAME_NO, LINKED_PLY, STREAM_PRESETS, TOUR_ID } from './config';
 import type { Lang } from './i18n';
 import { track } from './lib/analytics';
+import { engineLineCount } from './lib/engine-settings';
 import { resultPoints, type Notation } from './lib/format';
 import {
   followRound,
@@ -25,6 +26,7 @@ export interface Settings {
   delaySec: number;
   sound: boolean;
   engine: boolean;
+  engineLines: number;
   arrow: boolean;
   streamId: string;
   customStream: string;
@@ -43,6 +45,7 @@ const DEFAULTS: Settings = {
   delaySec: 0,
   sound: true,
   engine: true,
+  engineLines: 3,
   arrow: true,
   streamId: 'yt-chesscomtr',
   customStream: '',
@@ -53,6 +56,7 @@ const DEFAULTS: Settings = {
 };
 
 const SETTINGS_KEY = 'wcc26:settings';
+const savedSettings = readJson<Partial<Settings>>(SETTINGS_KEY, {});
 const PAUSE_KEY = 'wcc26:pause';
 const SEEN_KEY = 'wcc26:seen';
 const GUESS_KEY = 'satranc:guesses';
@@ -579,7 +583,7 @@ export const useStore = create<State>((set, get) => {
     followLatest: true,
     nextUp: null,
     // Stream synchronization was removed. Old saved delays must not silently hold back the board.
-    settings: { ...DEFAULTS, ...readJson<Partial<Settings>>(SETTINGS_KEY, {}), delaySec: 0 },
+    settings: { ...DEFAULTS, ...savedSettings, engineLines: engineLineCount(savedSettings?.engineLines), delaySec: 0 },
 
     init: () => {
       if (started) return;
@@ -805,7 +809,7 @@ export const useStore = create<State>((set, get) => {
     },
 
     setSetting: (key, value) => {
-      const settings = { ...get().settings, [key]: value };
+      const settings = { ...get().settings, [key]: key === 'engineLines' ? engineLineCount(value) : value };
       writeJson(SETTINGS_KEY, settings);
       set({ settings });
       if (key === 'delaySec') {
@@ -818,7 +822,7 @@ export const useStore = create<State>((set, get) => {
         track('guess_mode', { on: !!value });
       } else if (key === 'streamId') track('stream_select', { stream: String(value) });
       else if (key === 'streamHidden') track('stream_toggle', { hidden: !!value });
-      else if (key !== 'customStream' && key !== 'sideWidth') track('setting_change', { setting: key, value: String(value) });
+      else if (key !== 'customStream' && key !== 'sideWidth' && key !== 'engineLines') track('setting_change', { setting: key, value: String(value) });
     },
   };
 });

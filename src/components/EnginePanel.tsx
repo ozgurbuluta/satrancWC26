@@ -89,6 +89,7 @@ interface EngineProps {
 export function EngineCard({ game, fen, shown, evaluation, inLine }: EngineProps) {
   const t = useT();
   const notation = useStore(s => s.settings.notation);
+  const lines = useStore(s => s.settings.engineLines);
   const engineOn = useStore(s => s.settings.engine);
   const setSetting = useStore(s => s.setSetting);
   useScoresVersion();
@@ -138,13 +139,20 @@ export function EngineCard({ game, fen, shown, evaluation, inLine }: EngineProps
         </button>
       </div>
 
+      <label className="engine-lines">
+        <span>{t.engineLines}</span>
+        <select value={lines} onChange={e => setSetting('engineLines', Number(e.target.value))}>
+          {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+        </select>
+      </label>
+
       {!engineOn ? (
         <p className="muted">{t.engineOff}</p>
       ) : !evaluation ? (
         <p className="muted">{t.thinking}</p>
       ) : (
         <ol className="pv-list">
-          {evaluation.pvs.map((pv, i) => {
+          {evaluation.pvs.slice(0, lines).map((pv, i) => {
             const moves = pvToSan(fen, pv.moves, 9);
             const first = moves[0];
             return (

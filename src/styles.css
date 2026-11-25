@@ -3503,6 +3503,27 @@ body {
   margin-left: auto;
 }
 
+.engine-lines {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.engine-lines select {
+  min-width: 60px;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+
 .switch {
   flex: none;
   width: 40px;

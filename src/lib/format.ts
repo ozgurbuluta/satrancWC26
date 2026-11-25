@@ -27,14 +27,14 @@ export const formatCountdown = (ms: number): string => {
   return d > 0 ? `${d}g ${pad(h)}:${pad(m)}:${pad(sec)}` : `${pad(h)}:${pad(m)}:${pad(sec)}`;
 };
 
-/** "+0.35", "−1.2", "#4", "#−4" from White's point of view. */
+/** "+0.35", "−1.20", "#4", "#−4" from White's point of view. */
 export const formatEval = (pv: { cp?: number; mate?: number } | undefined): string => {
   if (!pv) return '';
   if (pv.mate !== undefined) return pv.mate > 0 ? `#${pv.mate}` : `#−${Math.abs(pv.mate)}`;
   const v = (pv.cp ?? 0) / 100;
   const abs = Math.abs(v);
-  const txt = abs >= 10 ? abs.toFixed(0) : abs.toFixed(1);
-  if (txt === '0.0') return '0.0';
+  const txt = abs.toFixed(2);
+  if (txt === '0.00') return '0.00';
   return (v > 0 ? '+' : '−') + txt;
 };
 
