@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Read-only: this workflow never writes to the repository, comments, deploys or reads secrets.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # the secret check reads the whole history
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      # Dependencies' install scripts are not run.
+      - run: npm ci --ignore-scripts
+      - name: No secrets or env files in the repository or its history
+        run: node scripts/check-secrets.mjs --history
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Build for a sub-folder too
+        run: npm run build
+        env:
+          VITE_BASE_PATH: /satranc/
