@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useT } from '../hooks';
 import { analyticsConfigured, isOptedOut, setOptedOut } from '../lib/analytics';
+import { storagePersistent } from '../lib/storage';
 import { useStore } from '../store';
 
 function Toggle({ label, value, onChange, on, off }: { label: string; value: boolean; onChange: (v: boolean) => void; on: string; off: string }) {
@@ -22,8 +24,15 @@ export function SettingsPanel() {
   const t = useT();
   const settings = useStore(s => s.settings);
   const setSetting = useStore(s => s.setSetting);
+  const [statsOff, setStatsOff] = useState(isOptedOut);
+  const [statsRemembered, setStatsRemembered] = useState(true);
   return (
     <div className="settings">
+      {!storagePersistent() && (
+        <p className="notice small" role="status">
+          {t.notPersistent}
+        </p>
+      )}
       <div className="setting">
         <span>{t.language}</span>
         <div className="seg" role="group" aria-label={t.language}>
@@ -53,8 +62,22 @@ export function SettingsPanel() {
       <p className="muted small">{t.spoilerShieldHelp}</p>
       {analyticsConfigured && (
         <>
-          <Toggle label={t.stats} value={!isOptedOut()} onChange={v => setOptedOut(!v)} on={t.statsOn} off={t.statsOff} />
+          <Toggle
+            label={t.stats}
+            value={!statsOff}
+            onChange={v => {
+              setStatsRemembered(setOptedOut(!v).persisted);
+              setStatsOff(!v);
+            }}
+            on={t.statsOn}
+            off={t.statsOff}
+          />
           <p className="muted small">{t.statsHelp}</p>
+          {statsOff && !statsRemembered && (
+            <p className="muted small" role="status">
+              {t.statsNotRemembered}
+            </p>
+          )}
         </>
       )}
     </div>

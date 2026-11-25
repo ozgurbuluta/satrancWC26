@@ -31,6 +31,7 @@
    ============================================================ */
 
 import { STREAM_PRESETS } from '../config';
+import { readText, writeText } from './storage';
 
 export type EventProps = Record<string, string | number | boolean | null | undefined>;
 
@@ -183,7 +184,7 @@ interface OutgoingEvent {
  * slip through. Returns null to drop an event that is not in the contract.
  */
 export const gate = <T extends OutgoingEvent | null | undefined>(event: T, page: { origin: string; pathname: string } = window.location): T | null => {
-  if (!event || typeof event.event !== 'string') return null;
+  if (optedOut || !event || typeof event.event !== 'string') return null;
   const name = event.event;
   const pageEvent = name === '$pageview' || name === '$pageleave';
   if (!pageEvent && !Object.hasOwn(EVENTS, name)) return null;
@@ -221,39 +222,40 @@ const OFF_KEY = 'satranc:analytics-off';
 const INTERNAL_KEY = 'satranc:analytics-internal';
 const TEST_KEY = 'satranc:posthog-test';
 
-const local = {
-  get: (k: string) => {
-    try {
-      return localStorage.getItem(k);
-    } catch {
-      return null;
-    }
-  },
-  set: (k: string, v: string | null) => {
-    try {
-      if (v === null) localStorage.removeItem(k);
-      else localStorage.setItem(k, v);
-    } catch {
-      // storage blocked: the choice simply does not stick
-    }
-  },
-};
-
 /** True when this build has a PostHog project to write to. */
 export const analyticsConfigured = !!KEY;
 
-export const isOptedOut = (): boolean => local.get(OFF_KEY) === '1';
+// The visitor's choice lives in memory first. Storage only makes it last
+// beyond this page, and a browser that refuses storage must not undo it.
+let optedOut = readText(OFF_KEY) === '1';
 
-/** The visitor's statistics switch. The page reloads so what it says and does stay the same. */
-export const setOptedOut = (off: boolean) => {
-  local.set(OFF_KEY, off ? '1' : null);
-  window.location.reload();
+export const isOptedOut = (): boolean => optedOut;
+
+/**
+ * The visitor's statistics switch. Takes effect immediately: nothing is
+ * recorded from this moment, and events already on their way out are dropped
+ * at the gate. Returns whether the browser will remember the choice.
+ */
+export const setOptedOut = (off: boolean): { persisted: boolean } => {
+  optedOut = off;
+  const persisted = writeText(OFF_KEY, off ? '1' : null);
+  if (off) {
+    enabled = false;
+    queue.length = 0;
+  } else if (countsHere) {
+    enabled = true;
+    startLoading();
+  }
+  return { persisted };
 };
 
 // ---- recording ----
 
 let enabled = false;
 let started = false;
+/** This page is one that counts (key present, right host or a marked test tab). */
+let countsHere = false;
+let loading = false;
 let send: ((name: string, props: EventProps) => void) | undefined;
 let register: ((props: EventProps) => void) | undefined;
 const queue: [string, EventProps][] = [];
@@ -281,26 +283,75 @@ export const setContext = (props: Record<string, unknown>) => {
   if (changed && register) register({ ...context });
 };
 
+const load = async () => {
+  if (!KEY) return;
+  try {
+    const { default: posthog } = await import('posthog-js/dist/module.slim');
+    posthog.init(KEY, {
+      api_host: API_HOST,
+      ui_host: 'https://eu.posthog.com',
+      cookieless_mode: 'always',
+      person_profiles: 'never',
+      capture_pageview: false, // sent below, once the page's properties are registered
+      capture_pageleave: true, // carries time on page
+      autocapture: false,
+      rageclick: false,
+      capture_dead_clicks: false,
+      capture_heatmaps: false,
+      capture_exceptions: false,
+      capture_performance: false,
+      disable_session_recording: true,
+      disable_surveys: true,
+      disable_product_tours: true,
+      disable_conversations: true,
+      disable_web_experiments: true,
+      advanced_disable_flags: true,
+      disable_external_dependency_loading: true,
+      mask_personal_data_properties: true,
+      before_send: event => gate(event),
+    });
+    posthog.register({ ...context });
+    posthog.capture('$pageview');
+    register = props => posthog.register(props);
+    send = (name, props) => posthog.capture(name, props);
+    queue.splice(0).forEach(([name, props]) => send!(name, props));
+  } catch {
+    enabled = false; // blocked or offline: the site works the same without it
+    queue.length = 0;
+  }
+};
+
+/** Loads PostHog once, after the board is up and the game is known. */
+const startLoading = () => {
+  if (loading) return;
+  loading = true;
+  // Late enough that analytics never competes with the first paint and the
+  // page view already carries game_no.
+  window.setTimeout(() => {
+    if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(() => void load(), { timeout: 3000 });
+    else void load();
+  }, 2000);
+};
+
 export const initAnalytics = () => {
   if (started) return;
   started = true;
 
   // own-visit and preview markers, set once by opening the site with the parameter
   const params = new URLSearchParams(window.location.search);
-  if (params.get('internal') === '1') local.set(INTERNAL_KEY, '1');
-  if (params.get('internal') === '0') local.set(INTERNAL_KEY, null);
+  if (params.get('internal') === '1') writeText(INTERNAL_KEY, '1');
+  if (params.get('internal') === '0') writeText(INTERNAL_KEY, null);
   let test = false;
   try {
     if (params.get('posthog') === 'test') sessionStorage.setItem(TEST_KEY, '1');
     if (params.get('posthog') === 'off') sessionStorage.removeItem(TEST_KEY);
     test = sessionStorage.getItem(TEST_KEY) === '1';
   } catch {
-    test = false;
+    test = params.get('posthog') === 'test';
   }
 
   const onProdHost = !PROD_HOST || window.location.hostname === PROD_HOST;
-  if (!KEY || isOptedOut() || !(onProdHost || test)) return;
-  enabled = true;
+  countsHere = !!KEY && (onProdHost || test);
 
   let framed = false;
   try {
@@ -312,52 +363,12 @@ export const initAnalytics = () => {
     embed: framed ? 'framed' : 'direct',
     // When the site is shown inside a page of another site, that page can pass on where the visitor came from (host only).
     referrer_domain: hostOf(params.get('ref') ?? ''),
-    traffic_type: test ? 'test' : local.get(INTERNAL_KEY) === '1' ? 'internal' : undefined,
+    traffic_type: test ? 'test' : readText(INTERNAL_KEY) === '1' ? 'internal' : undefined,
   });
 
-  const load = async () => {
-    try {
-      const { default: posthog } = await import('posthog-js/dist/module.slim');
-      posthog.init(KEY, {
-        api_host: API_HOST,
-        ui_host: 'https://eu.posthog.com',
-        cookieless_mode: 'always',
-        person_profiles: 'never',
-        capture_pageview: false, // sent below, once the page's properties are registered
-        capture_pageleave: true, // carries time on page
-        autocapture: false,
-        rageclick: false,
-        capture_dead_clicks: false,
-        capture_heatmaps: false,
-        capture_exceptions: false,
-        capture_performance: false,
-        disable_session_recording: true,
-        disable_surveys: true,
-        disable_product_tours: true,
-        disable_conversations: true,
-        disable_web_experiments: true,
-        advanced_disable_flags: true,
-        disable_external_dependency_loading: true,
-        mask_personal_data_properties: true,
-        before_send: event => gate(event),
-      });
-      posthog.register({ ...context });
-      posthog.capture('$pageview');
-      register = props => posthog.register(props);
-      send = (name, props) => posthog.capture(name, props);
-      queue.splice(0).forEach(([name, props]) => send!(name, props));
-    } catch {
-      enabled = false; // blocked or offline: the site works the same without it
-      queue.length = 0;
-    }
-  };
-
-  // After the board is up and the game is known, so analytics never competes
-  // with the first paint and the page view already carries game_no.
-  window.setTimeout(() => {
-    if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(() => void load(), { timeout: 3000 });
-    else void load();
-  }, 2000);
+  if (!countsHere || optedOut) return;
+  enabled = true;
+  startLoading();
 };
 
 /** A link to another site: only its host is recorded. */

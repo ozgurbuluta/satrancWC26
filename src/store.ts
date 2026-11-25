@@ -14,6 +14,7 @@ import {
 } from './lib/lichess';
 import { parseGame, splitGames, type GameData, type PlayerInfo } from './lib/pgn';
 import { playMove } from './lib/sound';
+import { readJson, writeJson } from './lib/storage';
 import { fetchStreamFeeds, type StreamFeeds } from './lib/streams';
 
 export interface Settings {
@@ -50,24 +51,6 @@ const DEFAULTS: Settings = {
 const SETTINGS_KEY = 'wcc26:settings';
 const PAUSE_KEY = 'wcc26:pause';
 const SEEN_KEY = 'wcc26:seen';
-
-const readJson = <T>(key: string, fallback: T): T => {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) return JSON.parse(raw) as T;
-  } catch {
-    // private mode or blocked storage: fall back
-  }
-  return fallback;
-};
-
-const writeJson = (key: string, value: unknown) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // ignore
-  }
-};
 
 /** Paused ply per game id, so a pause survives closing the tab. */
 const pauses = readJson<Record<string, number>>(PAUSE_KEY, {});

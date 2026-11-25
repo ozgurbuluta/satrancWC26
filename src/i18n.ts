@@ -158,6 +158,8 @@ const tr = {
   stats: 'Anonim istatistik',
   statsOn: 'Açık',
   statsOff: 'Kapalı',
+  statsNotRemembered: 'İstatistik şu andan itibaren kapalı. Tarayıcın bu sayfada kalıcı kayda izin vermediği için tercihin yalnızca bu sayfa açık kaldıkça geçerli.',
+  notPersistent: 'Tarayıcın bu sayfada kalıcı kayda izin vermiyor. Ayarların, duraklattığın hamle ve puanların bu sayfa açık kaldıkça geçerli; sayfayı kapatınca sıfırlanır.',
   statsHelp:
     'Hangi özelliklerin kullanıldığını görmek için çerezsiz, anonim istatistik tutulur (PostHog, AB sunucuları). Kişi profili oluşturulmaz, IP adresi saklanmaz, oturum kaydı alınmaz. Bu tarayıcı için buradan kapatabilirsin.',
 };
@@ -319,6 +321,8 @@ const en: typeof tr = {
   stats: 'Anonymous statistics',
   statsOn: 'On',
   statsOff: 'Off',
+  statsNotRemembered: 'Statistics are off from this moment. Your browser does not let this page keep data, so the choice only lasts while this page stays open.',
+  notPersistent: 'Your browser does not let this page keep data. Your settings, paused move and scores last while this page stays open and reset when you close it.',
   statsHelp:
     'Cookieless, anonymous statistics show which features get used (PostHog, EU servers). No person profile is made, no IP address is stored and no session is recorded. You can turn it off for this browser here.',
 };
