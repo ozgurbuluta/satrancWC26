@@ -11,28 +11,34 @@ export const isFramed = (): boolean => {
   }
 };
 
+interface OriginList {
+  length: number;
+  item(index: number): string | null;
+}
+
 /**
- * Every site in the embedding chain, innermost first. Twitch's player refuses
- * to load unless each of them is named in its `parent` parameters.
+ * Every site in the embedding chain, innermost first: this page's host, then
+ * each page around it. Browsers that expose the chain (ancestorOrigins) give
+ * it exactly; Firefox does not, so there the public address names the outer site.
  */
-export const embedHosts = (): string[] => {
-  const hosts = new Set<string>([window.location.hostname || 'localhost']);
-  const ancestors = (window.location as Location & { ancestorOrigins?: DOMStringList }).ancestorOrigins;
-  for (let i = 0; i < (ancestors?.length ?? 0); i++) {
+export const embedHosts = (
+  ancestors: OriginList | undefined = (window.location as Location & { ancestorOrigins?: OriginList }).ancestorOrigins,
+  publicUrl: string | undefined = PUBLIC_URL,
+  framed: boolean = isFramed(),
+  self: string = window.location.hostname || 'localhost',
+): string[] => {
+  const hosts = new Set<string>([self]);
+  const add = (address: string | null | undefined) => {
+    if (!address) return;
     try {
-      hosts.add(new URL(ancestors!.item(i)!).hostname);
+      const host = new URL(address).hostname;
+      if (host) hosts.add(host);
     } catch {
-      // ignore an origin that is not a web address
+      // not a web address
     }
-  }
-  // Firefox has no ancestorOrigins; the public address names the embedding site there.
-  if (isFramed() && PUBLIC_URL) {
-    try {
-      hosts.add(new URL(PUBLIC_URL).hostname);
-    } catch {
-      // ignore
-    }
-  }
+  };
+  for (let i = 0; i < (ancestors?.length ?? 0); i++) add(ancestors!.item(i));
+  if (framed) add(publicUrl);
   return [...hosts];
 };
 

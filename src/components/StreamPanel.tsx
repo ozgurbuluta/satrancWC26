@@ -2,48 +2,10 @@ import { useMemo, useState } from 'react';
 import { IS_MATCH, STREAM_PRESETS } from '../config';
 import { useT } from '../hooks';
 import { track, trackOutbound } from '../lib/analytics';
-import { embedHosts } from '../lib/embed';
+import { parseStreamLink, youtubeChannel, youtubeVideo, type Embed } from '../lib/streamLinks';
 import { pickVideo } from '../lib/streams';
 import { selectRoundNo, useStore } from '../store';
 import { CatchUpBar } from './CatchUpBar';
-
-interface Embed {
-  src: string;
-  url: string;
-}
-
-const youtubeChannel = (id: string): string => `https://www.youtube.com/embed/live_stream?channel=${id}`;
-const youtubeVideo = (id: string): string => `https://www.youtube.com/embed/${id}?rel=0`;
-// Twitch needs every embedding site named: this one and, when framed, the pages around it.
-const twitch = (name: string): string =>
-  `https://player.twitch.tv/?channel=${name}${embedHosts()
-    .map(h => `&parent=${encodeURIComponent(h)}`)
-    .join('')}&autoplay=false`;
-const kick = (name: string): string => `https://player.kick.com/${name}`;
-
-/** Turns a pasted YouTube/Twitch/Kick link into an embeddable player URL. */
-export const parseStreamLink = (input: string): Embed | undefined => {
-  let u: URL;
-  try {
-    u = new URL(/^https?:\/\//i.test(input.trim()) ? input.trim() : `https://${input.trim()}`);
-  } catch {
-    return undefined;
-  }
-  const h = u.hostname.replace(/^(www|m)\./, '');
-  const parts = u.pathname.split('/').filter(Boolean);
-  const okId = (s: string | null | undefined): s is string => !!s && /^[\w-]{6,}$/.test(s);
-  if (h === 'youtu.be' && okId(parts[0])) return { src: youtubeVideo(parts[0]), url: u.href };
-  if (h === 'youtube.com' || h === 'youtube-nocookie.com') {
-    const v = u.searchParams.get('v');
-    if (okId(v)) return { src: youtubeVideo(v), url: u.href };
-    if (['live', 'embed', 'shorts'].includes(parts[0]) && okId(parts[1])) return { src: youtubeVideo(parts[1]), url: u.href };
-    if (parts[0] === 'channel' && /^UC[\w-]{22}$/.test(parts[1] ?? '')) return { src: youtubeChannel(parts[1]), url: u.href };
-    return undefined;
-  }
-  if (h === 'twitch.tv' && parts[0] && /^\w+$/.test(parts[0])) return { src: twitch(parts[0]), url: u.href };
-  if (h === 'kick.com' && parts[0] && /^[\w-]+$/.test(parts[0])) return { src: kick(parts[0]), url: u.href };
-  return undefined;
-};
 
 const DELAY_STEPS = [0, 5, 10, 15, 20, 30, 45];
 
