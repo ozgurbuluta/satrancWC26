@@ -116,6 +116,7 @@ credentials in paths and query strings and a browser that refuses storage.
 | `guess_mode` | guess mode is switched on or off | `on` |
 | `guess_result` | a guess is settled by the move that was played | `hit`, `quality` (currently always `unknown`) |
 | `puzzle_start` | a puzzle is shown | `source`: `daily`, `lichess`, `builtin`; `theme`: `mix`, `mateIn1`, `mateIn2`, `short`, `endgame` |
+| `share_link` | the share button is pressed | `kind`: `position`, `puzzles`; `copied`: whether the browser allowed the copy |
 | `puzzle_end` | a puzzle is finished or left | `result`: `first_try`, `solved`, `revealed`, `skipped`; `rating_band`; `hint_used` |
 
 ## Questions these answer
@@ -127,5 +128,7 @@ credentials in paths and query strings and a browser that refuses storage.
 
 Moves, positions and puzzle ids are never part of an event: a guess is
 recorded as right or wrong, a puzzle as its rating band and how it ended.
+A shared link is recorded as its kind and whether copying worked. The link
+itself, the game number and the move are not sent.
 - How long they stay: `$pageleave`, split by `game_state`.
 - Whether the live feed holds up: `feed_fallback` against `$pageview`.

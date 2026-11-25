@@ -9,7 +9,8 @@ hand; their scripts are in `tests/e2e/`.
 `npm test`: pause and catch-up, board sync delay, following the match,
 tie-break days, the analytics privacy contract, storage refusal, the
 statistics switch (delayed start and page-leave included), nested Twitch
-parents, legal-move entry, puzzle rules and guess-the-move logic and the stream finder: 108 tests.
+parents, legal-move entry, puzzle rules, guess-the-move logic, the stream
+finder and share links: 131 tests.
 Also in CI: the secret check over the whole history, the type check, and
 builds for `/` and `/satranc/`.
 
@@ -99,6 +100,75 @@ replaced; the masters database is the real one). 32 of 32 checks passed on
 | While paused, with later moves already played | nothing announced; a guess is settled only by the move revealed next |
 | Phone size | video and whole board fit together; a guess by tapping works; no sideways scroll |
 | Content security policy violations, page errors | none |
+
+## Share links
+
+Unit tests (`tests/share.test.ts`, `tests/share.button.test.tsx`, 17 cases):
+the link is the public address plus `parti` and `hamle`, or `#bulmaca` with
+no query; a public address configured with a user name, password, query or
+fragment loses all of them; missing or out-of-range numbers are left out; a
+link that was built reads back as the same game and move; the address in
+the browser never reaches the link; a refused copy shows the link focused
+and selected; Escape closes the panel; a press after the board has moved on
+shares the new position. One more case in `tests/analytics.test.ts`: the
+event carries the kind and whether copying worked, never the link.
+
+Script: `tests/e2e/share.cjs`. Run on 25 November 2026 in headless Chromium
+against the preview build made with
+`VITE_PUBLIC_URL=https://ozgurakanay.com/satranc/` and the production
+headers, with a simulated live game. The clipboard was read back from a
+separate page after every copy. 47 of 47 checks passed.
+
+Opened: `/?parti=1&hamle=4&internal=1&posthog=test&ref=x.com&utm_source=tw&utm_campaign=wc&secret=abc`
+
+| Check | Result |
+|---|---|
+| Clipboard after pressing Paylaş | `https://ozgurakanay.com/satranc/?parti=1&hamle=4` |
+| Anything else from the visitor's address, or the deployment's hostname, in the link | nothing |
+| After one step forward on the board | `…?parti=1&hamle=5`; the open panel kept showing the first link until the next press |
+| Start of the game | `…?parti=1&hamle=0` |
+| Opening the copied link's query on the build | the same position is on the board |
+| Puzzle corner | `https://ozgurakanay.com/satranc/#bulmaca` |
+| A test broadcast (`?tour=…`) | no share button |
+| Outcome announced | "Bağlantı kopyalandı." in a polite live region |
+| Link also shown | in a labelled, read-only field, with Kopyala and Kapat |
+
+| Copying refused | Result |
+|---|---|
+| Both ways of copying refused | "Bağlantı kopyalanamadı…", the clipboard left untouched |
+| The link | focused, all of it selected |
+| Ctrl+C on that selection | the clipboard holds the public link |
+| Arrow keys inside the field | move the caret; the game does not step |
+| Escape | closes the panel, focus back on the button |
+
+| Inside the sandboxed frame on another origin (`docs/embed-shell/`) | Result |
+|---|---|
+| Clipboard interface | refused by the browser (`NotAllowedError`): the frame has no clipboard permission |
+| What the visitor gets | the older copy command did the copy; "Bağlantı kopyalandı." and the clipboard holds the public link |
+| Older copy command refused too | says not copied, clipboard untouched, link focused and selected; Ctrl+C gives the link |
+| Link shown | the public one in both cases |
+
+| Keyboard only | Result |
+|---|---|
+| Tab reaches the button; focus indicator | yes |
+| Enter | shares |
+| Tab order in the panel | link, Kopyala, Kapat |
+| Escape from inside the panel | closes it, focus back on the button |
+
+| Phone size (390 px wide) | Result |
+|---|---|
+| Share button | icon only, named "Paylaş" for screen readers, 39×44 px |
+| Following live | six controls and Duraklat on one row, no label cut off |
+| Stepped back from live | "Canlıya dön" on a row of its own, no label cut off (before this change it was squeezed and ran off the edge) |
+| Panel | fits the screen, no sideways scroll, 16 px text in the field, 40 px buttons |
+
+After the change to the phone controls the other scripts were run again:
+`puzzles.cjs` 33 of 33, `guess.cjs` 32 of 32, `embed.cjs` at phone size as
+before.
+
+Not covered by this run: real Safari, on a Mac and on an iPhone, inside the
+real `/satranc/` page. Safari has its own rules for copying from a frame;
+whichever way it goes, the page either copies or shows the selected link.
 
 ## Earlier browser checks (24 November 2026, before this branch)
 

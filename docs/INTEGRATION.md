@@ -88,12 +88,24 @@ under the same policy:
     lock, storage access. The app does not submit forms.
 - **Allow:** `fullscreen; encrypted-media; picture-in-picture`, for the video
   player. No autoplay, clipboard, camera or microphone.
+  - The share button works without a clipboard permission. In Chromium the
+    frame is refused the clipboard interface, and the older copy command,
+    which needs no permission, does the copy. Where that is refused as well,
+    the link is shown selected and the visitor copies it by hand.
+  - Adding `clipboard-write` to this list would let the clipboard interface
+    work inside the frame. It only allows writing, and only after a click.
+    It is not needed; whether real Safari wants it is not checked yet.
 - **Referrer policy:** `strict-origin`, so the frame learns the site, not the
   address.
 - **Deep links.** `shell.js` copies an allowlist from the page's address into
   the frame's: `parti` (game number), `hamle` (half-move), `internal`,
   `posthog`, and `ref` set to the host of an external referrer. Nothing else
   is passed on, and the page and the frame exchange no messages.
+- **Shared links.** The share button builds its links on `VITE_PUBLIC_URL`
+  and adds only `parti` and `hamle`, or the fragment `#bulmaca`. It never
+  reads the frame's own address, so `internal`, `posthog`, `ref`, a test
+  broadcast or the deployment's hostname cannot end up in a link. Without
+  `VITE_PUBLIC_URL` the links point at the deployment itself.
 - **Height.** The frame is fixed to the viewport and scrolls inside. Safe-area
   padding keeps the notch and home bar clear.
 - **Title.** Static. The tab title does not follow the game, because that

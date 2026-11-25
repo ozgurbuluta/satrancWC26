@@ -15,6 +15,7 @@ bağımsız bir hayran sitesi.
 
 - **Hamleyi tahmin et:** tahmin modunda sıradaki hamleyi tahtada yap ya da yaz; hamle oynanınca tuttu mu görürsün. Tahmin edene kadar motor önerileri gizlenir. Yanında iki ayrı bilgi durur: usta partilerinde o pozisyonda neyin kaç kez oynandığı ve motorun en güçlü bulduğu hamleler. İkisi de olasılık değildir; sayfada insan hamlesi tahmin eden bir model yoktur.
 - **Bulmaca köşesi:** Lichess bulmacaları (günün bulmacası, karışık, 1 ve 2 hamlede mat, kısa, oyun sonu). Yalnızca kurallı hamleler oynanır; ipucu, çözümü göster, baştan ve skor vardır. Lichess'e ulaşılamazsa hazır bulmacalar gösterilir.
+- **Paylaş:** tahtanın altındaki düğme, ekrandaki partinin o hamlesine giden bağlantıyı kopyalar (`?parti=3&hamle=24`). Bulmaca köşesinin bağlantısı `#bulmaca` ile biter. Bağlantıda bunlardan başka hiçbir şey olmaz. Tarayıcı kopyalamaya izin vermezse bağlantı seçili olarak gösterilir, elle kopyalarsın.
 - **Maçı kendi takip eder:** yeni parti başlayınca kısa bir duyurudan sonra o partiye geçer; her günün yayınını kanalın canlı yayın listesinden kendi bulur.
 
 ## İstatistik
