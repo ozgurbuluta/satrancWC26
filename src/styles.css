@@ -1471,6 +1471,98 @@ button.move:hover {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- the site's own estimate, at the bottom of the prediction tab ---------- */
+
+.model-estimate {
+  margin: 18px 0 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.model-estimate h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.tag.experimental {
+  margin: 0;
+  background: var(--amber-bg);
+  color: var(--amber-text);
+}
+
+.model-for {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.model-moves {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.model-moves li {
+  display: grid;
+  grid-template-columns: minmax(64px, auto) minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+}
+
+.model-moves li.other {
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.model-bar {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--panel-2);
+  overflow: hidden;
+}
+
+.model-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: var(--accent);
+}
+
+.model-moves li.other .model-bar i {
+  background: var(--draw);
+}
+
+.model-moves .num {
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.model-details {
+  margin-top: 12px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.model-details summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--text);
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+.model-details p {
+  margin: 8px 0 0;
+  line-height: 1.5;
+}
+
 /* ---------- settings ---------- */
 
 .settings {

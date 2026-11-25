@@ -280,9 +280,30 @@ const pgn = (round, id, sans, result, opts = {}) => {
   {
     const { ctx, page, errors } = await open();
     await page.locator('.tabs button', { hasText: 'Tahmin' }).click();
+    await page.waitForSelector('.model-estimate');
+
+    // the site's own estimate, at the bottom of the tab
+    const estimate = page.locator('.model-estimate');
+    const numbers = async () => (await estimate.locator('.model-moves .num').allInnerTexts()).map(t => Number(t.replace(/\D/g, '')));
+    const first = await numbers();
+    check('the model estimate shows three moves and "other", adding up to 100', first.length === 4 && first.reduce((a, b) => a + b, 0) === 100 && /Diğer hamleler/.test(await estimate.innerText()), first.join(' + '));
+    check('it is labelled experimental and says whose move it is about', /Deneysel/i.test(await estimate.innerText()) && /Sindarov için, 6\. hamle/.test(await estimate.innerText()), (await estimate.innerText()).replace(/\s+/g, ' ').slice(0, 90));
+    const shownMoves = (await estimate.locator('.model-moves strong').allInnerTexts()).map(t => t.trim());
+    const legal = (await page.evaluate(() => [...document.querySelectorAll('.strip-track .move')].length)) > 0;
+    check('its three moves are different from each other', legal && new Set(shownMoves).size === 3, shownMoves.join(', '));
+    check('it is the last thing in the tab, in the flow of the page', await page.evaluate(() => {
+      const el = document.querySelector('.model-estimate');
+      return el === el.parentElement.lastElementChild && getComputedStyle(el).position !== 'fixed' && getComputedStyle(el).position !== 'sticky';
+    }));
+    check('its moves are text, not controls', (await estimate.locator('.model-moves button, .model-moves a').count()) === 0);
+    await estimate.locator('summary').click();
+    const details = (await estimate.locator('.model-details').innerText()).replace(/\s+/g, ' ');
+    check('the details give the measured numbers and the limits', /963 hamlesinde ilk tercih yüzde \d+, ilk üç tercih yüzde \d+ tuttu/.test(details) && /fazla emin/.test(details) && /ölçülebilir bir fark yaratmadı/.test(details) && /yazılı bir kuraldır/.test(details), details.slice(0, 140));
+
     await page.locator('.predict .seg button', { hasText: 'Açık' }).click();
     await page.waitForTimeout(300);
     check('guess mode asks in its tab', /Sence ne oynayacak/.test(await page.locator('.guess-card').innerText()));
+    check('in guess mode the estimate waits, with a button to show it', (await estimate.locator('.model-moves li').count()) === 0 && (await estimate.locator('button', { hasText: 'Tahmin etmeden göster' }).count()) === 1);
     check('nothing about a guess is on the board column', (await page.locator('.board-col .banner.guess').count()) === 0 && !/Tahmin/.test(await page.locator('.board-col').innerText()));
     await page.waitForFunction(() => document.querySelectorAll('.left-col .pv-list li').length > 0, null, { timeout: 60000 }).catch(() => {});
     check('the engine beside the board is not hidden by guess mode', (await page.locator('.left-col .pv-list li').count()) > 0);
@@ -298,6 +319,8 @@ const pgn = (round, id, sans, result, opts = {}) => {
     await page.waitForTimeout(300);
     check('a move picked from the list becomes the guess', /Tahminin:\s*6\. ?Ke1/.test(await page.locator('.guess-card').innerText().then(t => t.replace(/\s+/g, ' '))), await page.locator('.guess-card').innerText());
     check('and the board keeps the viewer’s own line', (await ownLine(page)) === before && /pawn/.test((await pieceAt(page, 'd3')) || '') && /rook/.test((await pieceAt(page, 'f1')) || ''));
+    const afterGuess = await numbers();
+    check('once guessed, the estimate is shown again, still about the game and not the board', afterGuess.length === 4 && afterGuess.reduce((a, b) => a + b, 0) === 100 && /Sindarov için, 6\. hamle/.test(await estimate.innerText()), afterGuess.join(' + '));
 
     // typing in the tab's field does not drive the board
     await page.locator('.guess-card .link', { hasText: 'Değiştir' }).click();
@@ -455,6 +478,17 @@ const pgn = (round, id, sans, result, opts = {}) => {
     await back.tap();
     await page.waitForTimeout(300);
     check('it returns to the live position', (await page.locator('.strip-track.own').count()) === 0);
+
+    await page.locator('.tabs button', { hasText: 'Tahmin' }).tap();
+    await page.waitForSelector('.model-estimate');
+    const phoneEstimate = await page.evaluate(() => {
+      const el = document.querySelector('.model-estimate');
+      const r = el.getBoundingClientRect();
+      const nums = [...el.querySelectorAll('.model-moves .num')].map(n => Number(n.textContent.replace(/\D/g, '')));
+      return { last: el === el.parentElement.lastElementChild, position: getComputedStyle(el).position, left: Math.round(r.left), right: Math.round(r.right), sum: nums.reduce((a, b) => a + b, 0), rows: nums.length, overflow: document.documentElement.scrollWidth - window.innerWidth };
+    });
+    check('on a phone the estimate is at the bottom of the Tahmin tab, in the flow, within the screen', phoneEstimate.last && phoneEstimate.position === 'static' && phoneEstimate.left >= 0 && phoneEstimate.right <= width && phoneEstimate.sum === 100 && phoneEstimate.rows === 4 && phoneEstimate.overflow <= 0, JSON.stringify(phoneEstimate));
+    await page.evaluate(() => window.scrollTo(0, 0));
 
     await page.locator('.games-btn').tap();
     await page.waitForSelector('dialog.games-drawer[open]');

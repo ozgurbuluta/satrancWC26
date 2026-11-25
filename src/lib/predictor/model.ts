@@ -127,3 +127,26 @@ export const predict = (model: PredictorModel, input: PredictInput): Prediction 
   const top = moves.slice(0, 3).reduce((sum, m) => sum + m.p, 0);
   return { supported: !!playerKey, moves, other: Math.max(0, 1 - top), pressure, urgency, seenBefore: !!repPlayer };
 };
+
+export interface Shares {
+  top: { uci: string; san: string; percent: number }[];
+  /** Everything that is not one of the moves shown. */
+  other: number;
+}
+
+/**
+ * The first three moves as whole percentages, with the rest as "other", so
+ * that what is shown adds up to exactly 100. The three are rounded down to
+ * leave "other" at least its true share: they are never stretched to fill
+ * the hundred.
+ */
+export const shares = (prediction: Prediction, count = 3): Shares => {
+  const top = prediction.moves.slice(0, count).map(m => ({ uci: m.uci, san: m.san, percent: Math.floor(m.p * 100 + 1e-9) }));
+  if (top.length === 0) return { top, other: 0 };
+  if (prediction.moves.length <= count && top.length > 0) {
+    // every legal move is on the list: the rounding remainder goes to the first of them, and nothing is "other"
+    top[0].percent += 100 - top.reduce((sum, m) => sum + m.percent, 0);
+    return { top, other: 0 };
+  }
+  return { top, other: 100 - top.reduce((sum, m) => sum + m.percent, 0) };
+};

@@ -983,6 +983,27 @@ export const selectGameRows = (s: State): GameRow[] => {
   });
 };
 
+/**
+ * The match as it stood before the open game: each player's points from the
+ * earlier games, and the games left counting this one. Only earlier games
+ * count, so neither the open game's result nor anything played later can
+ * reach whatever is built on this, paused or not. Undefined outside the
+ * scheduled games of the match.
+ */
+export const selectStakes = (s: State): { points: Record<string, number>; gamesLeft: number } | undefined => {
+  const roundNo = selectRoundNo(s);
+  if (!IS_MATCH || roundNo < 1 || roundNo > GAMES_IN_MATCH) return undefined;
+  const points: Record<string, number> = {};
+  for (const mg of s.matchGames) {
+    if (mg.roundNo >= roundNo) continue;
+    const pts = resultPoints(mg.result);
+    if (!pts) continue;
+    if (mg.white.fideId) points[mg.white.fideId] = (points[mg.white.fideId] ?? 0) + pts[0];
+    if (mg.black.fideId) points[mg.black.fideId] = (points[mg.black.fideId] ?? 0) + pts[1];
+  }
+  return { points, gamesLeft: GAMES_IN_MATCH - (roundNo - 1) };
+};
+
 export const selectScore = (s: State): MatchScore | undefined => {
   if (!s.matchGames.length) return undefined;
   const first = s.matchGames[0];
