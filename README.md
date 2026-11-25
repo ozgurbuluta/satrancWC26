@@ -32,7 +32,7 @@ npm test
 
 Tarayıcıda elle çalıştırılan denemeler `tests/e2e/` altında, sonuçları [docs/TEST-EVIDENCE.md](docs/TEST-EVIDENCE.md) içinde.
 Barındırma ve `ozgurakanay.com/satranc/` sayfası: [docs/INTEGRATION.md](docs/INTEGRATION.md).
-Tahmin panelinin ne gösterip ne göstermediği: [docs/PREDICTION.md](docs/PREDICTION.md).
+Tahmin panelinin ne gösterip ne göstermediği ve insan hamlesi tahmini için araştırma planı: [docs/PREDICTION.md](docs/PREDICTION.md).
 Canlı akış, Lichess'in istek sınırları ve reddedilen bağlantılar için öneri: [docs/LIVE-FEED.md](docs/LIVE-FEED.md).
 
 ## Geliştirme
