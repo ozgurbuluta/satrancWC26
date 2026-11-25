@@ -195,6 +195,16 @@ const tr = {
   engineElsewhere: 'Motor şu an tahtadaki başka bir konumu inceliyor. Bu konumun önerilerini görmek için tahtayı oyundaki son konuma getir.',
   shortcuts: 'Klavye',
   shortcutsHelp: '← ve → hamle hamle ilerler. ↑ ya da End canlı konuma döner. Home ilk konuma gider. F tahtayı çevirir.',
+  // --- the workspace ---
+  winChance: 'Kazanma şansı',
+  timePerMove: 'Hamle süreleri',
+  longestThink: 'En uzun düşünme',
+  hoursShort: 'sa',
+  timeUnknown: '{n} hamlenin süresi bilinmiyor; bu hamleler için çubuk çizilmedi.',
+  timeUnknownOne: 'süre bilinmiyor',
+  liveShort: 'Canlı',
+  customStreamOption: 'Kendi bağlantım',
+  tabMoves: 'Hamleler',
   // --- own moves on the board ---
   analysisTag: 'Analiz',
   analysisLine: 'Kendi hamlelerin',
@@ -468,6 +478,16 @@ const en: typeof tr = {
   engineElsewhere: 'The engine is looking at another position on the board right now. To see its suggestions for this one, bring the board to the newest position of the game.',
   shortcuts: 'Keyboard',
   shortcutsHelp: '← and → step through the moves. ↑ or End returns to the live position. Home goes to the first position. F turns the board round.',
+  // --- the workspace ---
+  winChance: 'Win chance',
+  timePerMove: 'Time per move',
+  longestThink: 'Longest think',
+  hoursShort: 'h',
+  timeUnknown: 'The time of {n} moves is not known; no bar is drawn for them.',
+  timeUnknownOne: 'time not known',
+  liveShort: 'Live',
+  customStreamOption: 'My own link',
+  tabMoves: 'Moves',
   // --- own moves on the board ---
   analysisTag: 'Analysis',
   analysisLine: 'Your own moves',

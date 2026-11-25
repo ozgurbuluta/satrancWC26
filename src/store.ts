@@ -917,6 +917,71 @@ export const visibleResult = (s: State, mg: MatchGame): string => {
   return mg.result;
 };
 
+export const samePlayer = (x: PlayerInfo, y: PlayerInfo): boolean => (x.fideId && y.fideId ? x.fideId === y.fideId : x.name === y.name);
+
+/** How a game of the match stands, as far as this viewer may know. */
+export type GameStatus = 'done' | 'live' | 'paused' | 'hidden' | 'ahead';
+
+export interface GameRow {
+  /** 1-based number of the game in the match. */
+  n: number;
+  roundId: string;
+  /** The game that is open on the board. */
+  current: boolean;
+  /** A day with several boards: there is no single result for the round. */
+  several: boolean;
+  white?: PlayerInfo;
+  black?: PlayerInfo;
+  /** '*' unless the result may be shown. */
+  result: string;
+  status: GameStatus;
+  /** Which of the two players won, in the order of the match score. */
+  winner?: 'a' | 'b';
+  /** Full move reached in the open game while it is live. */
+  move?: number;
+  startsAt?: number;
+  tiebreak: boolean;
+}
+
+/**
+ * The games of the match in order, with what may be shown of each: the open
+ * game honours the delay and the pause, and while paused later games that
+ * have a result stay hidden, so the list never gives the score away.
+ */
+export const selectGameRows = (s: State): GameRow[] => {
+  const roundNo = selectRoundNo(s);
+  const open = selectGameData(s);
+  const score = selectScore(s);
+  return s.rounds.map((r, i) => {
+    const n = i + 1;
+    const mg = s.matchGames.find(g => g.roundNo === n);
+    const current = r.id === s.roundId;
+    const several = current && s.gameOrder.length > 1;
+    const white = current && open && !several ? open.white : mg?.white;
+    const black = current && open && !several ? open.black : mg?.black;
+    const result = several ? '*' : current && open ? (s.resultVisible ? open.result : '*') : mg ? visibleResult(s, mg) : '*';
+    const done = result !== '*';
+    const hidden = s.paused && roundNo > 0 && n > roundNo && !!mg && mg.result !== '*';
+    const live = !done && !hidden && (current ? s.revealed > 0 && !s.paused : !!r.ongoing);
+    const status: GameStatus = done ? 'done' : hidden ? 'hidden' : live ? 'live' : current && s.paused ? 'paused' : 'ahead';
+    const won = result === '1-0' ? white : result === '0-1' ? black : undefined;
+    return {
+      n,
+      roundId: r.id,
+      current,
+      several,
+      white,
+      black,
+      result,
+      status,
+      winner: won && score ? (samePlayer(won, score.a) ? 'a' : 'b') : undefined,
+      move: live && current && !several ? Math.ceil(s.revealed / 2) : undefined,
+      startsAt: r.startsAt,
+      tiebreak: IS_MATCH && n > GAMES_IN_MATCH,
+    };
+  });
+};
+
 export const selectScore = (s: State): MatchScore | undefined => {
   if (!s.matchGames.length) return undefined;
   const first = s.matchGames[0];
@@ -924,7 +989,7 @@ export const selectScore = (s: State): MatchScore | undefined => {
   const firstIsA = first.black.fideId !== CHAMPION_FIDE_ID;
   const a = firstIsA ? first.white : first.black;
   const b = firstIsA ? first.black : first.white;
-  const same = (x: PlayerInfo, y: PlayerInfo) => (x.fideId && y.fideId ? x.fideId === y.fideId : x.name === y.name);
+  const same = samePlayer;
   let aPoints = 0;
   let bPoints = 0;
   let played = 0;

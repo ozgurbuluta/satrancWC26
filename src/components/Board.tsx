@@ -130,7 +130,7 @@ export function Board({ fen, lastMove, check, orientation, arrow, shapes, onMove
 
   useEffect(() => {
     const all: DrawShape[] = [];
-    if (arrow) all.push({ orig: arrow[0] as Key, dest: arrow[1] as Key, brush: 'paleBlue' });
+    if (arrow) all.push({ orig: arrow[0] as Key, dest: arrow[1] as Key, brush: 'green' });
     for (const s of shapes ?? []) all.push({ orig: s.from as Key, dest: s.to as Key | undefined, brush: s.brush });
     api.current?.setAutoShapes(all);
   }, [arrow, shapes, fen, syncToken]);

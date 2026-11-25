@@ -1,20 +1,21 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { REPO_URL } from './config';
-import { AnalysisPanel } from './components/AnalysisPanel';
+import { MovesPanel } from './components/AnalysisPanel';
 import { Board } from './components/Board';
 import { CatchUpBar } from './components/CatchUpBar';
-import { EvalBar } from './components/EvalBar';
-import { GamesRail } from './components/GamesMenu';
+import { EngineCard, EvalStrip, WinChance } from './components/EnginePanel';
 import { Header } from './components/Header';
 import { MatchPanel } from './components/MatchPanel';
+import { MoveStrip } from './components/MoveStrip';
 import { PromotionPicker, usePromotion } from './components/MoveEntry';
 import { PlayerBar } from './components/PlayerBar';
 import { SettingsPanel } from './components/SettingsPanel';
 import { ShareButton } from './components/ShareButton';
 import { StreamPanel } from './components/StreamPanel';
-import { useEval, useIsMobile, useNow, useRailFits, useT } from './hooks';
+import { TimePanel } from './components/TimePanel';
+import { GAME_SQUARES, useEval, useIsMobile, useMedia, useNow, useT, WIDE_LAYOUT } from './hooks';
 import { setContext, track, trackOutbound } from './lib/analytics';
-import { displayName, firstMoveSquares, localizeSan, materialFromFen, pvToSan, shortName } from './lib/format';
+import { displayName, firstMoveSquares, materialFromFen, pvToSan, shortName } from './lib/format';
 import { seedGameScores } from './lib/quality';
 import { shortcutFor } from './lib/shortcuts';
 import { unlockAudio } from './lib/sound';
@@ -62,7 +63,6 @@ export default function App() {
   const movesWhenLeft = useStore(s => s.movesWhenLeft);
   const analysis = useStore(s => s.analysis);
   const analysisMove = useStore(s => s.analysisMove);
-  const analysisGoto = useStore(s => s.analysisGoto);
   const closeAnalysis = useStore(s => s.closeAnalysis);
   const guessFen = useStore(selectGuessFen);
   const [boardSync, setBoardSync] = useState(0);
@@ -73,8 +73,9 @@ export default function App() {
     track('tab_open', { tab: id });
   };
   const isMobile = useIsMobile();
-  // The game list sits beside the board only where that takes nothing from the board.
-  const rail = useRailFits(settings.sideWidth) && !isMobile;
+  // Engine and time sit beside the board on wide screens; elsewhere they live in the tabs.
+  const wide = useMedia(WIDE_LAYOUT);
+  const squares = useMedia(GAME_SQUARES);
   const layoutRef = useRef<HTMLElement>(null);
 
   useEffect(() => init(), [init]);
@@ -188,6 +189,7 @@ export default function App() {
   };
 
   const orientation = flipped ? 'black' : 'white';
+  const inLine = !!line && !preview;
   const top = orientation === 'white' ? 'black' : 'white';
   const bottom = orientation;
   const layoutStyle = !isMobile && settings.sideWidth ? ({ '--side-w': `${settings.sideWidth}px` } as React.CSSProperties) : undefined;
@@ -239,8 +241,9 @@ export default function App() {
     );
   };
 
+  // With the engine in its own column, the first tab is the list of moves.
   const tabLabel = (id: Tab) =>
-    ({ analysis: t.tabAnalysis, predict: t.tabPredict, similar: t.tabSimilar, charts: t.tabCharts, match: t.tabMatch, settings: t.tabSettings })[id];
+    ({ analysis: wide ? t.tabMoves : t.tabAnalysis, predict: t.tabPredict, similar: t.tabSimilar, charts: t.tabCharts, match: t.tabMatch, settings: t.tabSettings })[id];
 
   const boardColumn = (
     <section className="board-col">
@@ -255,8 +258,8 @@ export default function App() {
             captured={material ? (top === 'white' ? material.capturedByWhite : material.capturedByBlack) : []}
             lead={material ? (top === 'white' ? material.diff : -material.diff) : 0}
           />
-          <div className={`board-row ${line ? 'analysing' : ''}`}>
-            <EvalBar evaluation={settings.engine ? evaluation : undefined} orientation={orientation} />
+          <EvalStrip evaluation={evaluation} />
+          <div className={`board-row ${inLine ? 'analysing' : ''}`}>
             <Board
               fen={fen}
               lastMove={lastMove}
@@ -290,87 +293,47 @@ export default function App() {
               </button>
             </div>
           ) : (
-            <div className="controls">
-              <button onClick={() => setViewPly(0)} disabled={!line && shown === 0} aria-label={t.first} title={`${t.first} (Home)`} aria-keyshortcuts="Home">
-                ⏮
-              </button>
-              <button onClick={() => step(-1)} disabled={!line && shown === 0} aria-label={t.prev} title={`${t.prev} (←)`} aria-keyshortcuts="ArrowLeft">
-                ◀
-              </button>
-              <button
-                onClick={() => step(1)}
-                disabled={line ? line.cursor >= line.moves.length : atLiveEdge && !paused}
-                aria-label={t.next}
-                title={`${t.next} (→)`}
-                aria-keyshortcuts="ArrowRight"
-              >
-                ▶
-              </button>
-              {/* The last-move control also leaves the viewer's own line. */}
-              <button
-                onClick={() => setViewPly(null)}
-                disabled={!line && atLiveEdge}
-                aria-label={line ? backLabel : t.last}
-                title={`${line ? backLabel : t.last} (↑)`}
-                aria-keyshortcuts="ArrowUp End"
-              >
-                ⏭
-              </button>
-              <button onClick={toggleFlip} aria-label={t.flip} title={`${t.flip} (F)`} aria-keyshortcuts="F">
-                ⇅
-              </button>
-              {shareable && game && (
-                <ShareButton
-                  // a new game starts with no panel: a link copied for another game is not left on screen
-                  key={game.id}
-                  compact={isMobile}
-                  panelHost={shareSlot}
-                  // the position on the board, which is never beyond what this viewer has been shown
-                  target={{ view: 'live', gameNo: roundNo, ply: shown }}
-                  describe={(shown === 0 ? t.shareGame : t.sharePosition).replace('{g}', String(roundNo)).replace('{m}', String(Math.ceil(shown / 2)))}
-                />
-              )}
-              {!paused && !resultVisible && (
-                <button className="pause-btn" onClick={pause} title={t.pauseTitle}>
-                  ⏸ {t.pauseBtn}
-                </button>
-              )}
-              {(line || (!atLiveEdge && !paused)) && (
-                <button className="go-live" onClick={() => setViewPly(null)} title={`${backLabel} (↑)`} aria-keyshortcuts="ArrowUp End">
-                  {!paused && !resultVisible && <i className="pulse" />} {backLabel}
-                </button>
-              )}
-            </div>
+            <>
+              <MoveStrip
+                game={game}
+                shown={shown}
+                line={line}
+                ownMoves={ownMoves}
+                backLabel={backLabel}
+                atNewest={atLiveEdge && !line}
+                liveNow={!paused && !resultVisible}
+              />
+              <div className="board-actions">
+                {shareable && (
+                  <ShareButton
+                    // a new game starts with no panel: a link copied for another game is not left on screen
+                    key={game.id}
+                    compact={isMobile}
+                    panelHost={shareSlot}
+                    // the position on the board, which is never beyond what this viewer has been shown
+                    target={{ view: 'live', gameNo: roundNo, ply: shown }}
+                    describe={(shown === 0 ? t.shareGame : t.sharePosition).replace('{g}', String(roundNo)).replace('{m}', String(Math.ceil(shown / 2)))}
+                  />
+                )}
+                {!paused && !resultVisible && (
+                  <button className="pause-btn" onClick={pause} title={t.pauseTitle}>
+                    ⏸ {t.pauseBtn}
+                  </button>
+                )}
+                {line && newInGame > 0 && (
+                  <span className="muted small" role="status">
+                    {t.newMovesInGame.replace('{n}', String(newInGame))}
+                  </span>
+                )}
+                {line && line.rootPly < revealed && (
+                  <button type="button" className="link small" onClick={closeAnalysis} title={t.closeAnalysisTitle}>
+                    {t.closeAnalysis}
+                  </button>
+                )}
+              </div>
+            </>
           )}
           <div className="share-slot" ref={setShareSlot} />
-          {line && !preview && (
-            <div className="own-line" role="group" aria-label={t.analysisLine}>
-              <span className="tag">{t.analysisTag}</span>
-              <span className="own-moves">
-                <button type="button" className={`move ${line.cursor === 0 ? 'active' : ''}`} onClick={() => analysisGoto(0)} title={t.analysisStart} aria-label={t.analysisStart}>
-                  ●
-                </button>
-                {ownMoves.map((m, i) => (
-                  <span className="mv" key={i}>
-                    {m.label && <span className="move-num">{m.label}</span>}
-                    <button type="button" className={`move ${line.cursor === i + 1 ? 'active' : ''}`} onClick={() => analysisGoto(i + 1)}>
-                      {localizeSan(m.san, settings.notation)}
-                    </button>
-                  </span>
-                ))}
-              </span>
-              {newInGame > 0 && (
-                <span className="muted small" role="status">
-                  {t.newMovesInGame.replace('{n}', String(newInGame))}
-                </span>
-              )}
-              {line.rootPly < revealed && (
-                <button type="button" className="link small" onClick={closeAnalysis} title={t.closeAnalysisTitle}>
-                  {t.closeAnalysis}
-                </button>
-              )}
-            </div>
-          )}
           {paused && !preview && (settings.streamHidden || streamUncovered) && <CatchUpBar />}
           {nextUpBanner() ?? resultBanner()}
           {revealed === 0 && !resultVisible && !paused && !preview && !line && <div className="banner">{t.notStarted}</div>}
@@ -379,6 +342,21 @@ export default function App() {
         <div className="board-skeleton">{loadError ? t.loadError : ''}</div>
       )}
     </section>
+  );
+
+  // What the engine says about the position on the board. Beside the board on wide screens, in the first tab elsewhere.
+  const enginePanels = game && fen && (
+    <>
+      <WinChance game={game} evaluation={evaluation} />
+      <EngineCard game={game} fen={fen} shown={shown} evaluation={evaluation} inLine={inLine} />
+    </>
+  );
+
+  const leftColumn = (
+    <aside className="left-col" aria-label={t.tabAnalysis}>
+      {enginePanels}
+      {game && <TimePanel game={game} shown={shown} />}
+    </aside>
   );
 
   const sideColumn = (
@@ -393,35 +371,39 @@ export default function App() {
         </div>
       ) : (
         <>
-      <div className="tabs" role="tablist">
-        {TABS.map(id => (
-          <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>
-            {tabLabel(id)}
-          </button>
-        ))}
-      </div>
-      <div className="tab-body">
-        {tab === 'analysis' && game && fen && (
-          <AnalysisPanel game={game} fen={fen} shown={shown} evaluation={evaluation} lineFrom={line && !preview ? line.rootPly : undefined} />
-        )}
-        <Suspense fallback={<p className="muted pad">{t.loading}</p>}>
-          {tab === 'predict' && game && guessFen && <PredictPanel game={game} fen={guessFen} evaluation={evaluation} boardElsewhere={fen !== guessFen} />}
-          {tab === 'similar' && game && gameFen && <SimilarPanel game={game} fen={gameFen} shown={shown} />}
-          {tab === 'charts' && game && <ChartsPanel game={game} shown={shown} />}
-        </Suspense>
-        {tab === 'match' && <MatchPanel />}
-        {tab === 'settings' && <SettingsPanel />}
-      </div>
+          <div className="tabs" role="tablist">
+            {TABS.map(id => (
+              <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>
+                {tabLabel(id)}
+              </button>
+            ))}
+          </div>
+          <div className="tab-body">
+            {tab === 'analysis' && game && fen && (
+              <>
+                {!wide && enginePanels}
+                <MovesPanel game={game} shown={shown} lineFrom={inLine && line ? line.rootPly : undefined} />
+              </>
+            )}
+            <Suspense fallback={<p className="muted pad">{t.loading}</p>}>
+              {tab === 'predict' && game && guessFen && <PredictPanel game={game} fen={guessFen} evaluation={evaluation} boardElsewhere={fen !== guessFen} />}
+              {tab === 'similar' && game && gameFen && <SimilarPanel game={game} fen={gameFen} shown={shown} />}
+              {tab === 'charts' && game && <ChartsPanel game={game} shown={shown} withTime={!wide} />}
+            </Suspense>
+            {tab === 'match' && <MatchPanel />}
+            {tab === 'settings' && <SettingsPanel />}
+          </div>
         </>
       )}
     </section>
   );
 
+  const threeColumns = wide && view === 'live';
   return (
     <div className="app">
-      <Header gamesButton={!rail} />
-      <main className={`layout ${rail ? 'with-rail' : ''}`} ref={layoutRef} style={layoutStyle}>
-        {rail && <GamesRail />}
+      <Header squares={squares} />
+      <main className={`layout ${threeColumns ? 'three' : ''}`} ref={layoutRef} style={layoutStyle}>
+        {threeColumns && leftColumn}
         {view === 'puzzles' ? (
           <Suspense fallback={<section className="board-col" />}>
             <PuzzleBoard />

@@ -1,13 +1,10 @@
-import { useShallow } from 'zustand/react/shallow';
-import { GAMES_IN_MATCH, IS_MATCH, KNOWN_PLAYERS } from '../config';
 import { useNow, useT } from '../hooks';
-import { fedFlag, formatCountdown, formatPoints, shortName } from '../lib/format';
-import type { PlayerInfo } from '../lib/pgn';
-import { selectScore, useStore } from '../store';
-import { GamesDrawer } from './GamesMenu';
+import { formatCountdown } from '../lib/format';
+import { useStore } from '../store';
+import { GamesDrawer, MatchStrip } from './GamesMenu';
 
-/** `gamesButton`: the game list is not on screen beside the board, so the header offers it. */
-export function Header({ gamesButton = false }: { gamesButton?: boolean }) {
+/** `squares`: there is room for one square per game in the bar. Without them the full list is one button away. */
+export function Header({ squares = false }: { squares?: boolean }) {
   const t = useT();
   const lang = useStore(s => s.settings.lang);
   const setSetting = useStore(s => s.setSetting);
@@ -16,18 +13,15 @@ export function Header({ gamesButton = false }: { gamesButton?: boolean }) {
   const revealed = useStore(s => s.revealed);
   const resultVisible = useStore(s => s.resultVisible);
   const feed = useStore(s => s.feed);
-  const feds = useStore(s => s.feds);
   const delaySec = useStore(s => s.settings.delaySec);
   const paused = useStore(s => s.paused);
   const view = useStore(s => s.view);
   const setView = useStore(s => s.setView);
-  const score = useStore(useShallow(selectScore));
 
   const roundIdx = rounds.findIndex(r => r.id === roundId);
   const round = rounds[roundIdx];
   const waiting = revealed === 0 && !resultVisible;
   const now = useNow(1000, waiting);
-  const flag = (p: PlayerInfo) => fedFlag(p.fideId ? (feds[p.fideId] ?? KNOWN_PLAYERS[p.fideId]?.fed) : undefined);
 
   let status: React.ReactNode = null;
   if (paused) status = <span className="pill paused">⏸ {t.pausedPill}</span>;
@@ -49,21 +43,16 @@ export function Header({ gamesButton = false }: { gamesButton?: boolean }) {
 
   return (
     <header className="top">
-      {gamesButton && <GamesDrawer />}
+      <GamesDrawer compact={squares} />
       <div className="brand">
         <span className="logo" aria-hidden="true" />
         <div>
           <h1>{t.title}</h1>
-          <p>
-            {t.location}
-            {round
-              ? IS_MATCH && roundIdx + 1 > GAMES_IN_MATCH
-                ? ` · ${t.tiebreak}`
-                : ` · ${t.game} ${roundIdx + 1} ${t.of} ${IS_MATCH ? GAMES_IN_MATCH : rounds.length}`
-              : ''}
-          </p>
+          <p>{t.location}</p>
         </div>
       </div>
+
+      <MatchStrip squares={squares} />
 
       <nav className="viewnav" aria-label={t.title}>
         <button className={view === 'live' ? 'active' : ''} aria-current={view === 'live' ? 'page' : undefined} onClick={() => setView('live')}>
@@ -73,22 +62,6 @@ export function Header({ gamesButton = false }: { gamesButton?: boolean }) {
           {t.viewPuzzles}
         </button>
       </nav>
-
-      {score && (
-        <div className="scoreline" aria-label="score">
-          <span className="who">
-            <span className="flag">{flag(score.a)}</span> {shortName(score.a)}
-          </span>
-          <span className="pts">
-            {formatPoints(score.aPoints)}
-            <i>–</i>
-            {formatPoints(score.bPoints)}
-          </span>
-          <span className="who">
-            {shortName(score.b)} <span className="flag">{flag(score.b)}</span>
-          </span>
-        </div>
-      )}
 
       <div className="top-right">
         {delaySec > 0 && !paused && <span className="pill delay">{t.boardDelayed.replace('{n}', String(delaySec))}</span>}
