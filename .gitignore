@@ -9,3 +9,6 @@ public/engine
 .env
 .env.*
 !.env.example
+
+# Reproducible source archive downloads
+.cache/
