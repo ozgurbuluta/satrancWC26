@@ -25,6 +25,8 @@ import { analysisPosition, AUTO_SWITCH_SEC, canSharePosition, selectGameData, se
 const SimilarPanel = lazy(() => import('./components/SimilarPanel').then(m => ({ default: m.SimilarPanel })));
 const ChartsPanel = lazy(() => import('./components/ChartsPanel').then(m => ({ default: m.ChartsPanel })));
 const PredictPanel = lazy(() => import('./components/PredictPanel').then(m => ({ default: m.PredictPanel })));
+// The model's tables are a few hundred KB: they come after the page, not with it.
+const ModelEstimate = lazy(() => import('./components/ModelEstimate').then(m => ({ default: m.ModelEstimate })));
 const PuzzleBoard = lazy(() => import('./components/PuzzleView').then(m => ({ default: m.PuzzleBoard })));
 const PuzzlePanel = lazy(() => import('./components/PuzzleView').then(m => ({ default: m.PuzzlePanel })));
 
@@ -337,6 +339,12 @@ export default function App() {
           {paused && !preview && (settings.streamHidden || streamUncovered) && <CatchUpBar />}
           {nextUpBanner() ?? resultBanner()}
           {revealed === 0 && !resultVisible && !paused && !preview && !line && <div className="banner">{t.notStarted}</div>}
+          {/* The site's own estimate of the next move of the game, whatever the board is showing. */}
+          {!preview && guessFen && (
+            <Suspense fallback={null}>
+              <ModelEstimate game={game} fen={guessFen} />
+            </Suspense>
+          )}
         </>
       ) : (
         <div className="board-skeleton">{loadError ? t.loadError : ''}</div>

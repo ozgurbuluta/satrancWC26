@@ -4,6 +4,9 @@
 //   node scripts/train-predictor.mjs --final               the selection stage again, then the final measurement
 //   node scripts/train-predictor.mjs --measure-frozen      the final measurement from the committed selection, without fitting
 //   node scripts/train-predictor.mjs --calibration-check   one more calibration step, tried on the selection games and not adopted
+//   node scripts/train-predictor.mjs --v3                  the third version's choices, on the selection games (add --final to measure)
+//   node scripts/train-predictor.mjs --v3-situation        what the score does to a player's moves, from World Cup two-game matches
+//   node scripts/train-predictor.mjs --v3-title            whether a title match changes what a player opens with
 //
 // The protocol this follows was written down before any fitting:
 // docs/PREDICTOR-V2-PROTOCOL.md. In short:
@@ -41,6 +44,10 @@ import { createServer } from 'vite';
 const FINAL = process.argv.includes('--final');
 /** Measure with the committed selection as it is: nothing is fitted and nothing is chosen in such a run. */
 const FROZEN = process.argv.includes('--measure-frozen');
+/** The third version: theory, the same tournament's earlier rounds and faster games on top of the second version's frozen base. See scripts/predictor-v3.mjs. */
+const V3 = process.argv.includes('--v3');
+/** The two studies of the third version: they read the committed selection and write a file of their own. */
+const STUDY = process.argv.includes('--v3-situation') || process.argv.includes('--v3-title');
 const vite = await createServer({ configFile: false, appType: 'custom', server: { middlewareMode: true, hmr: false, ws: false }, logLevel: 'error' });
 const { parseGame, splitGames } = await vite.ssrLoadModule('/src/lib/pgn.ts');
 const { candidates, FEATURES, positionKey } = await vite.ssrLoadModule('/src/lib/predictor/features.ts');
@@ -145,6 +152,8 @@ for (const corpus of corpora) {
       v1Date: tagOf(chunk, 'Date') ?? '',
       white: PLAYERS[game.white.fideId],
       black: PLAYERS[game.black.fideId],
+      // the round inside its tournament, from a tag like "11.3"; 0 where it cannot be read
+      round: Math.floor(Number((tagOf(chunk, 'Round') ?? '').split('.')[0])) || 0,
     });
   }
 }
@@ -221,7 +230,7 @@ for (const g of games) {
     const chosen = cands.findIndex(c => c.san === game.plies[i].san);
     if (chosen < 0) throw new Error(`move not among the legal ones: ${game.id} ply ${i + 1} ${game.plies[i].san}`);
     if (i < PRIOR_PLIES) {
-      (history.get(key) ?? history.set(key, []).get(key)).push({ uci: cands[chosen].uci, mover: MOVER[mover], t: g.tournament });
+      (history.get(key) ?? history.set(key, []).get(key)).push({ uci: cands[chosen].uci, mover: MOVER[mover], t: g.tournament, round: g.round });
       if (v1Fitting(g)) {
         if (mover !== 'other') bump(v1Tables[mover], key, cands[chosen].uci);
         bump(v1Tables.any, key, cands[chosen].uci);
@@ -231,7 +240,7 @@ for (const g of games) {
       const n = cands.length;
       const x = new Float64Array(n * K);
       for (let j = 0; j < n; j++) x.set(cands[j].f, j * K);
-      rows.push({ g: g.index, t: g.tournament, set, mover: MOVER[mover], ply: i, key, n, x, ucis: cands.map(c => c.uci), chosen, pressure: clockPressure(i > 1 ? game.plies[i - 2].clk : undefined, CLOCK_FULL_SECONDS) });
+      rows.push({ g: g.index, t: g.tournament, round: g.round, set, mover: MOVER[mover], ply: i, key, n, x, ucis: cands.map(c => c.uci), chosen, pressure: clockPressure(i > 1 ? game.plies[i - 2].clk : undefined, CLOCK_FULL_SECONDS) });
     }
     fen = game.plies[i].fen;
   }
@@ -701,7 +710,7 @@ const select = () => {
   return JSON.stringify(selection, (key, value) => (typeof value === 'number' && !Number.isInteger(value) ? round(value, 6) : value), 1) + '\n';
 };
 
-if (!FROZEN) {
+if (!FROZEN && !V3 && !STUDY) {
   const selectionText = select();
   if (!FINAL) {
     mkdirSync('data/predictor-v2', { recursive: true });
@@ -732,6 +741,24 @@ for (const family of ['A', 'B']) {
   if (loss !== selection.families[family].loss) throw new Error(`family ${family} of the committed selection gives log loss ${loss} on the selection games, not the ${selection.families[family].loss} it records`);
 }
 log(`committed selection verified (${sha256(SELECTION).slice(0, 16)}…): family ${selection.chosen}; measuring`);
+if (process.argv.includes('--v3-situation')) {
+  const { runSituation } = await import('./predictor-v3-situation.mjs');
+  await runSituation({ round, FEATURES, K, BOARD, STAKES_MAX, selection, measure, scoresOf, softmaxInto, parseGame, candidates, log });
+  await vite.close();
+  process.exit(0);
+}
+if (process.argv.includes('--v3-title')) {
+  const { runTitle } = await import('./predictor-v3-title.mjs');
+  await runTitle({ round, K, BOARD, selection, measure, scoresOf, softmaxInto, parseGame, candidates, positionKey, monthIndex, log });
+  await vite.close();
+  process.exit(0);
+}
+if (V3) {
+  const { runV3 } = await import('./predictor-v3.mjs');
+  await runV3({ FINAL, splitGames, publishedV1, v1, round, byText, FEATURES, K, BOARD, PLAYERS, MOVER, AS_OF, PRIOR_PLIES, CLOCK_FULL_SECONDS, STAKES_MAX, selection, models, measure, uniform, logLoss, searchTemperature, scoresOf, softmaxInto, ownOf, rows, games, tournaments, history, sample, selectionCounts, yearsBetween, earlier, monthIndex, parseGame, positionKey, candidates, clockPressure, log, sha256 });
+  await vite.close();
+  process.exit(0);
+}
 const { writeFinal } = await import('./predictor-final.mjs');
 await writeFinal({ publishedV1, v1, round, FEATURES, K, REP_PLAYER, REP_ANY, ALL, PLAYERS, V1, SELECTION, AS_OF, PRIOR_PLIES, CLOCK_FULL_SECONDS, STAKES_MAX, CLASSICAL_SECONDS, selection, models, measure, uniform, scoresOf, softmaxInto, ownOf, games, tournaments, history, sample, selectionCounts, yearsBetween, log, sha256 });
 await vite.close();

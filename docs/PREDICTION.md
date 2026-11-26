@@ -21,7 +21,7 @@ players, now in its second version. It is described in
 [PREDICTOR-REPORT.md](PREDICTOR-REPORT.md). It is not Kibitz, uses no engine
 and no third-party weights, and its accuracy is modest and stated.
 
-The Tahmin tab keeps four things apart:
+The site keeps four things apart, the first three in the Tahmin tab:
 
 1. **The viewer's own guess.** With guess mode on, the viewer picks the move
    they expect, and when the real move is shown it is a hit or a miss.
@@ -33,12 +33,13 @@ The Tahmin tab keeps four things apart:
    shows no numbers.
 3. **What the engine prefers.** The strongest moves according to the engine.
    This is about quality, not about what a person will choose.
-4. **The model estimate.** At the bottom of the tab: three legal moves with a
-   share each and the rest as "other", labelled experimental, with its
-   measured accuracy one click away.
+4. **The model estimate.** Not in the tab any more: it is on the main page,
+   under the board. Three legal moves with a share each and the rest as
+   "other", labelled experimental. Its measured accuracy and its limits are
+   in [PREDICTOR.md](PREDICTOR.md), not on the page.
 
-The second and third are not probabilities of the player's next move, and
-the page says so. Only the fourth is an estimate of that, and it is never
+The second and third are not probabilities of the player's next move. Only
+the fourth is an estimate of that, and it is never
 built from the other two: an engine score is not renamed a probability, and
 neither is a count from the masters database.
 

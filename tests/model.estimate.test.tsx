@@ -2,7 +2,6 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { boot, game, HOUR, ITALIAN, push, QGD, R1, R2, R3, resetWorld, round, world } from './helpers';
-import shipped from '../src/data/predictor.json';
 
 const T0 = Date.UTC(2026, 10, 25, 15, 0, 0);
 const GUKESH = '46616543';
@@ -96,7 +95,7 @@ const percents = () =>
   });
 const text = () => host.textContent ?? '';
 
-describe('the estimate in the prediction tab', () => {
+describe('the estimate under the board', () => {
   it('shows three legal moves and the rest as "other", adding up to 100', async () => {
     await mount(game({ round: 1, id: 'g1', sans: ITALIAN.slice(0, 4) }));
     expect(rows()).toHaveLength(4);
@@ -145,17 +144,17 @@ describe('the estimate in the prediction tab', () => {
     expect(host.querySelectorAll('.model-moves button')).toHaveLength(0);
   });
 
-  it('says so when the game is over', async () => {
+  it('shows nothing at all once the game is over', async () => {
     await mount(game({ round: 1, id: 'g1', sans: ITALIAN, result: '1/2-1/2' }));
-    expect(rows()).toHaveLength(0);
-    expect(text()).toContain('Oyun bitti; tahmin edilecek hamle yok.');
+    expect(host.querySelector('.model-estimate')).toBeNull();
+    expect(text()).toBe('');
   });
 
-  it('gives no estimate for a player it was not made for', async () => {
+  it('shows nothing for a player it was not made for', async () => {
     const other = game({ round: 1, id: 'g1', sans: ITALIAN.slice(0, 4) }).replace('14205483', '1503014').replace('46616543', '2016192');
     await mount(other);
-    expect(rows()).toHaveLength(0);
-    expect(text()).toContain('yalnızca Gukesh ve Sindarov için');
+    expect(host.querySelector('.model-estimate')).toBeNull();
+    expect(text()).toBe('');
   });
 
   it('while paused it estimates the move after the paused position, not the one being played', async () => {
@@ -166,26 +165,44 @@ describe('the estimate in the prediction tab', () => {
     expect(text()).toMatch(/Sindarov için, 2\. hamle/);
   });
 
-  it('tells what it is and how well it did, in measured numbers', async () => {
+  it('reads what the player did in the earlier games of this match, and nothing of the open or later ones', async () => {
+    // game 1: Sindarov, with White, opened 1. c4, which he does not usually play. Game 3 is his next White.
+    const share = async (firstGame: string[]) => {
+      resetWorld();
+      world.rounds = [round(R1, 1, T0 - 49 * HOUR, { finished: true }), round(R2, 2, T0 - 25 * HOUR, { finished: true }), round(R3, 3, T0 - HOUR, { ongoing: true })];
+      world.defaultRoundId = R3;
+      world.tournamentPgn = game({ round: 1, id: 'g1', sans: firstGame, result: '1/2-1/2' }) + game({ round: 2, id: 'g2', sans: ['d4', 'd5'], result: '1/2-1/2', whiteIsSindarov: false });
+      const mod = await boot();
+      push(R3, game({ round: 3, id: 'g3', sans: [] }));
+      const { ModelEstimate } = await import('../src/components/ModelEstimate');
+      const Host = () => {
+        const g = mod.useStore(mod.selectGameData);
+        const fen = mod.useStore(mod.selectGuessFen);
+        return g && fen ? <ModelEstimate game={g} fen={fen} /> : null;
+      };
+      await act(() => root.render(<Host />));
+      expect(text()).toMatch(/Sindarov için, 1\. hamle/);
+      const c4 = rows().find(li => li.querySelector('strong')?.textContent === 'c4');
+      const shown = c4 ? Number(c4.querySelector('.num')!.textContent!.replace(/\D/g, '')) : 0;
+      await act(() => root.render(<></>));
+      return shown;
+    };
+    const after = await share(['c4', 'e5']);
+    const before = await share(['e4', 'e5']);
+    // his c4 of game 1 counts; Gukesh's 1. d4 of game 2 is not Sindarov's move and changes nothing for him
+    expect(after).toBeGreaterThan(before + 5);
+    expect(after).toBeGreaterThanOrEqual(10);
+  });
+
+  it('is a title, a label and a list, with no explanation under it', async () => {
     await mount(game({ round: 1, id: 'g1', sans: ITALIAN.slice(0, 4) }));
-    const details = host.querySelector('.model-details')!.textContent!;
-    expect(details).toContain('455 klasik oyunundan');
-    expect(details).toContain('Stockfish kullanmaz');
-    // the untouched holdout, with the numbers of the shipped file and nothing rounder
-    const report = (shipped as unknown as { report: { shown: { top1: number; top3: number; whenSure: { said: number; happened: number } }; benchmark: { v2: { sure70: { said: number; happened: number } } } } }).report;
-    const shown = report.shown;
-    const whole = (x: number) => String(Math.round(x * 100));
-    expect(details).toContain(`ağırlıkları ve ayarları belirlenirken ayrı tutulan 83 oyunun 4.240 hamlesinde ilk tercih yüzde ${whole(shown.top1)}, ilk üç tercih yüzde ${whole(shown.top3)} tuttu`);
-    expect(details).toContain('Bu ölçüm yalnızca en sonda, bir kez yapıldı');
-    expect(details).toContain(`ortalama yüzde ${whole(shown.whenSure.said)} dedi; bunların yüzde ${whole(shown.whenSure.happened)} kadarı oynandı`);
-    // and the other measured event, where it was further off, is not left out
-    const elsewhere = report.benchmark.v2.sure70;
-    expect(details).toContain(`başka bir turnuvanın 963 hamlesinde ise yüzde ${whole(elsewhere.said)} dedi, yüzde ${whole(elsewhere.happened)} kadarı oynandı`);
-    expect(elsewhere.said - elsewhere.happened).toBeGreaterThan(shown.whenSure.said - shown.whenSure.happened);
-    expect(details).toContain('emin göründüğünde fazla emin olabiliyor');
-    expect(details).toContain('Yüzdeleri kesinlik olarak okuma');
-    expect(details).toContain('ölçülebilir bir fark yaratmadı');
-    expect(details).toContain('öğrenilmiş değil, yazılı bir kuraldır');
-    expect(details).toContain('CC BY-SA 4.0');
+    const card = host.querySelector('.model-estimate')!;
+    expect(card.querySelector('h3')!.textContent).toContain('Model tahmini');
+    expect(card.querySelector('.tag.experimental')!.textContent).toBe('Deneysel');
+    expect(card.querySelector('details')).toBeNull();
+    expect(card.querySelector('a')).toBeNull();
+    expect(card.querySelector('p')).toBeNull();
+    expect(card.textContent).not.toContain('Nasıl hesaplanıyor');
+    expect(card.textContent).not.toContain('Ölçüm');
   });
 });
