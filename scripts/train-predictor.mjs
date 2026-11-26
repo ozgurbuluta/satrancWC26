@@ -7,6 +7,7 @@
 //   node scripts/train-predictor.mjs --v3                  the third version's choices, on the selection games (add --final to measure)
 //   node scripts/train-predictor.mjs --v3-situation        what the score does to a player's moves, from World Cup two-game matches
 //   node scripts/train-predictor.mjs --v3-title            whether a title match changes what a player opens with
+//   node scripts/train-predictor.mjs --v3 --v4-engine      how much the two avoid moves the engine thinks little of (needs Stockfish; see scripts/predictor-v4-engine.mjs)
 //
 // The protocol this follows was written down before any fitting:
 // docs/PREDICTOR-V2-PROTOCOL.md. In short:
@@ -240,7 +241,7 @@ for (const g of games) {
       const n = cands.length;
       const x = new Float64Array(n * K);
       for (let j = 0; j < n; j++) x.set(cands[j].f, j * K);
-      rows.push({ g: g.index, t: g.tournament, round: g.round, set, mover: MOVER[mover], ply: i, key, n, x, ucis: cands.map(c => c.uci), chosen, pressure: clockPressure(i > 1 ? game.plies[i - 2].clk : undefined, CLOCK_FULL_SECONDS) });
+      rows.push({ g: g.index, t: g.tournament, round: g.round, set, mover: MOVER[mover], ply: i, key, fen, n, x, ucis: cands.map(c => c.uci), chosen, pressure: clockPressure(i > 1 ? game.plies[i - 2].clk : undefined, CLOCK_FULL_SECONDS) });
     }
     fen = game.plies[i].fen;
   }

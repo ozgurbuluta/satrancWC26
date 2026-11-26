@@ -194,6 +194,63 @@ Match by match, with the players' other events of the year before in brackets:
 
 What this cannot see is what a player has prepared and not yet shown. A new line is new to the tables as well, and the estimate for it comes from theory and the board.
 
+## The engine's opinion of a move (fourth version)
+
+Asked for by Özgür after the third version went on the page: it gave a share to moves that lose on the spot, because it knows what was played before and what a move looks like, and nothing of how good a move is. Players of this strength rarely play such a move. The plan of the third version said "no engine"; this section changes that, and says so.
+
+What is added is what the page already has when it shows the estimate: the engine's best lines for the position. For every legal move,
+
+`score(m) = α · log p3(m) − β · loss(m) − γ · [m is not among the engine's lines]`
+
+and the scores become shares that add up to one. p3 is the third version's estimate. loss(m) is the part of the expected result the move gives up against the engine's first line (0 to 1, on the page's win-chance curve). A move the engine does not list is at least as bad as its last line, so it takes that line's loss, and γ on top. α, β and γ were fitted by maximum likelihood on the selection games (2025), once for each number of lines the page may have (1 to 5).
+
+The engine for the fit: Stockfish 16, every position searched to depth 14 with 5 lines, 9880 positions. Its answers are kept in `data/predictor-v4/lines.txt`, so the fit can be repeated without the engine.
+
+| Lines | α | β | γ | Selection log loss |
+|---|---|---|---|---|
+| 1 | 0.8 | 0 | 2.5 | 1.6310 |
+| 2 | 0.6 | 40 | 2.5 | 1.3828 |
+| 3 | 0.5 | 40 | 2.5 | 1.2716 |
+| 4 | 0.5 | 40 | 2.5 | 1.2220 |
+| 5 | 0.5 | 40 | 2.5 | 1.1969 |
+
+Third version on the same selection games: 2.1508.
+
+Measured on the games of 2026, which the fit did not use:
+
+| | Decisions | Log loss | First choice right | In the first three | Calibration error |
+|---|---|---|---|---|---|
+| January to August 2026, third version | 4240 | 2.125 | 36.5 % | 61.2 % | 3.4 % |
+| January to August 2026, with 1 engine line | 4240 | 1.679 | 56.3 % | 77.3 % | 9.0 % |
+| January to August 2026, with 3 engine lines | 4240 | 1.355 | 58.4 % | 85.5 % | 3.0 % |
+| January to August 2026, with 5 engine lines | 4240 | 1.271 | 58.5 % | 86.4 % | 4.4 % |
+| September 2026, third version | 963 | 2.299 | 33.8 % | 59.0 % | 6.5 % |
+| September 2026, with 1 engine line | 963 | 1.733 | 56.8 % | 75.5 % | 9.0 % |
+| September 2026, with 3 engine lines | 963 | 1.348 | 59.1 % | 85.9 % | 3.7 % |
+| September 2026, with 5 engine lines | 963 | 1.263 | 59.5 % | 86.8 % | 5.3 % |
+
+With three lines on January to August 2026: log loss -0.770 (-0.855 to -0.686), first choice right +21.9 points (+19.6 to +24.2).
+
+What the two did with the engine's opinion, in the 5203 decisions of 2026: the move played was the engine's first 57.1 % of the time, among its first three 85.4 %, and not among its five 6.2 %.
+
+Every move among the engine's five lines, by how much of the expected result it gives up, how often it was played, and what each version said of it on average (three lines at hand):
+
+| Gives up | Moves offered | Played | Third version said | With the engine |
+|---|---|---|---|---|
+| under 2 % | 13886 | 31.7 % | 14.8 % | 30.2 % |
+| under 5 % | 5035 | 7.2 % | 7.0 % | 6.3 % |
+| under 10 % | 2728 | 3.3 % | 7.4 % | 2.2 % |
+| under 20 % | 1721 | 1.6 % | 7.4 % | 0.4 % |
+| 20 % or more | 2296 | 0.2 % | 4.8 % | 0.1 % |
+
+The rule is the one used before: lower log loss on January to August 2026 with the interval of the difference below zero, and a calibration error that is not higher. **Both are met, and the estimate on the page uses the engine's lines.**
+
+Limits of this part:
+
+- The page's engine is not the fit's engine at depth 14: the cloud's answers are much deeper, the browser's own start shallower and deepen. The weights are applied to whatever depth is at hand.
+- The estimate now leans on the engine. Where the engine is switched off, or has no answer after a few seconds, the page shows the third version's estimate as it is.
+- It says what these two tend to do with good and bad moves on average. It does not know that a player is in time trouble and about to blunder; the clock enters only through the third version.
+
 ## What can be said
 
 The rule was written down beforehand: the third version replaces the second if its log loss is lower on January to August 2026 with the interval of the difference below zero, and its calibration error is not higher.

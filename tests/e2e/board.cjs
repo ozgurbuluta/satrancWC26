@@ -307,7 +307,8 @@ const pgn = (round, id, sans, result, opts = {}) => {
   {
     const { ctx, page, errors } = await open();
     await page.waitForSelector('.left-col .predict');
-    await page.waitForSelector('.model-estimate');
+    // the card waits for the engine's first answer before it shows its rows
+    await page.waitForSelector('.model-estimate .model-moves li', { timeout: 60000 });
     const tabNames = (await page.locator('.tabs button').allInnerTexts()).map(t => t.trim());
     check('the tabs start with Stockfish, open by default, and guessing is not one of them', tabNames.join(',') === 'Stockfish,Benzer,Grafik,Maç,Ayarlar' && (await page.locator('.tabs button.active').innerText()).trim() === 'Stockfish', tabNames.join(','));
     const firstTab = await page.evaluate(() => {
@@ -335,6 +336,19 @@ const pgn = (round, id, sans, result, opts = {}) => {
     const first = await numbers();
     check('the model estimate shows three moves and "other", adding up to 100', first.length === 4 && first.reduce((a, b) => a + b, 0) === 100 && /Diğer hamleler/.test(await estimate.innerText()), first.join(' + '));
     check('it carries no "Deneysel" label and says whose move it is about', !/Deneysel/i.test(await estimate.innerText()) && (await estimate.locator('.tag').count()) === 0 && /Sindarov için, 6\. hamle/.test(await estimate.innerText()), (await estimate.innerText()).replace(/\s+/g, ' ').slice(0, 90));
+    // the engine's opinion goes into it: its first move is one of the engine's lines, as on the page's Stockfish card
+    await page.waitForFunction(() => document.querySelectorAll('.side-col .pv-first').length >= 3, null, { timeout: 60000 }).catch(() => {});
+    await page.waitForTimeout(600);
+    const engineMoves = (await page.locator('.side-col .pv-first').allInnerTexts()).map(t => t.replace(/^\d+\s*(\.|…)\s*/, '').trim());
+    const withEngine = (await estimate.locator('.model-moves strong').allInnerTexts()).map(t => t.trim());
+    check('with the engine on, the estimate’s first move is one of the engine’s lines', engineMoves.length >= 3 && engineMoves.includes(withEngine[0]), `${withEngine.join(', ')} with the engine saying ${engineMoves.join(', ')}`);
+    // switched off, the card shows the model's own estimate at once: the same numbers every time
+    await page.locator('.side-col .engine-card .switch').click();
+    await page.waitForTimeout(400);
+    const own = await numbers();
+    check('with the engine switched off, it is the model’s own estimate, at once', own.join(' + ') === '65 + 27 + 5 + 3' && (await estimate.locator('.model-wait').count()) === 0, own.join(' + '));
+    await page.locator('.side-col .engine-card .switch').click();
+    await page.waitForFunction(() => document.querySelectorAll('.side-col .pv-first').length >= 3 && document.querySelectorAll('.model-estimate .model-moves li').length === 4, null, { timeout: 60000 }).catch(() => {});
     const shownMoves = (await estimate.locator('.model-moves strong').allInnerTexts()).map(t => t.trim());
     const legal = (await page.evaluate(() => [...document.querySelectorAll('.strip-track .move')].length)) > 0;
     check('its three moves are different from each other', legal && new Set(shownMoves).size === 3, shownMoves.join(', '));
@@ -740,7 +754,7 @@ const pgn = (round, id, sans, result, opts = {}) => {
     await page.waitForTimeout(300);
     check('it returns to the live position', (await page.locator('.strip-track.own').count()) === 0);
 
-    await page.waitForSelector('.model-estimate');
+    await page.waitForSelector('.model-estimate .model-moves li');
     const phoneEstimate = await page.evaluate(() => {
       const el = document.querySelector('.model-estimate');
       const r = el.getBoundingClientRect();

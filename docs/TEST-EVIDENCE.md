@@ -284,6 +284,42 @@ to within the three weeks between the two ageing dates.
 Not covered: real Safari, a real phone, and the estimate against the
 production feed.
 
+## The estimate with the engine's lines (fourth version)
+
+Run on 26 November 2026. What was measured about the estimate itself (the
+games of 2026) is in [PREDICTOR-V3-REPORT.md](PREDICTOR-V3-REPORT.md); this
+is about the page.
+
+`npm test` on this branch: 338 tests. New among them: the engine-aware
+step worked out by hand (what a listed move gives up, what an unlisted one
+pays, the exponent on the model's own estimate, castling in the engine's
+spelling, a line counted once and at most five), the shipped weights equal
+to the fitted ones, and the card with and without the engine.
+
+| The card under the board | Result |
+|---|---|
+| Engine on, no answer yet | "Hesaplanıyor…" and no rows; after four seconds without an answer, the model's own estimate |
+| Engine on, three lines for the position | the engine's two best lead; a move the engine does not list keeps under a third of what it had |
+| A listed move that drops a piece's worth | 0 %, while the two sound moves hold over 85 % |
+| Lines for another position | not used: the card is still waiting |
+| Engine switched off | the model's own estimate at once |
+
+In headless Chromium against the preview build (`tests/e2e/board.cjs`, 131
+of 131 on this branch), with the page's own Stockfish running:
+
+| | Result |
+|---|---|
+| Engine on | the estimate's three moves were Ke1, d3, Ac3, the same three as the engine's lines on the Stockfish card |
+| Engine switched off | 65 + 27 + 5 + 3, the model's own estimate, every time |
+| Phone | the card under the board, rows adding up to 100 |
+
+`share.cjs` 61 of 61 and `puzzles.cjs` 33 of 33 on the same build. The
+part of the page that carries the model is 616 KB (318 KB compressed), 4 KB
+more than before.
+
+Not covered: the card against the live feed with the cloud database's
+lines, real Safari, a real phone.
+
 ## Share links
 
 Unit tests, 30 cases:

@@ -85,6 +85,26 @@ export interface PredictorModel {
   situation: number[];
   /** Seconds on the clock below which pressure starts to count. */
   clockFullSeconds: number;
+  /**
+   * What the engine's opinion of a move does to the estimate, for each number of engine lines at hand ("1" to "5"):
+   * see `withEngine`. Fitted on the two players' games (scripts/predictor-v4-engine.mjs). Absent: the engine is not used.
+   */
+  engine?: Record<string, EngineWeights>;
+}
+
+export interface EngineWeights {
+  /** How much of the estimate without the engine is kept (the exponent on its shares). */
+  alpha: number;
+  /** What a move costs for each unit of the expected result it gives up against the engine's first line. */
+  beta: number;
+  /** What a move costs for not being among the engine's lines at all. */
+  gamma: number;
+}
+
+/** One of the engine's lines for a position: its first move, and the mover's winning chances after it, from -1 to 1. */
+export interface EngineLine {
+  uci: string;
+  chances: number;
 }
 
 export interface MatchSituation {
@@ -135,6 +155,8 @@ export interface Prediction {
   urgency: number;
   /** The player has been in this exact position before in the data. */
   seenBefore: boolean;
+  /** How many of the engine's lines went into the estimate. Absent or 0: none did. */
+  engineLines?: number;
 }
 
 /** 0 while there is plenty of time, rising to 1 as the clock runs out. */
@@ -289,6 +311,44 @@ export const predict = (model: PredictorModel, input: PredictInput): Prediction 
   const moves = cands.map((c, i) => ({ uci: c.uci, san: c.san, p: p[i] })).sort((a, b) => b.p - a.p || a.uci.localeCompare(b.uci));
   const top = moves.slice(0, 3).reduce((sum, m) => sum + m.p, 0);
   return { supported: !!playerKey, moves, other: Math.max(0, 1 - top), pressure, urgency, seenBefore };
+};
+
+/** The engine writes castling as the king's own move (e1g1); the list of legal moves has it as king to rook (e1h1). */
+const CASTLING: Record<string, string> = { e1g1: 'e1h1', e1c1: 'e1a1', e8g8: 'e8h8', e8c8: 'e8a8' };
+
+/**
+ * The estimate with the engine's opinion of the moves taken into account.
+ *
+ * A model of what was played before can give a share to a move that loses on the spot; players of this strength
+ * rarely play one. With the engine's best lines for the position at hand, every legal move gets
+ *
+ *   score(m) = α · log p(m) − β · loss(m) − γ · [m is not among the lines]
+ *
+ * and the scores become shares that add up to one. p is the estimate without the engine. loss(m) is the part of the
+ * expected result the move gives up against the first line, from 0 to 1. A move the engine does not list is at least
+ * as bad as the last line, so it takes that line's loss, and γ for not being listed. α, β and γ were fitted on the
+ * two players' own games, separately for each number of lines. Without lines, or without fitted weights for their
+ * number, the estimate is returned as it is.
+ */
+export const withEngine = (model: PredictorModel, prediction: Prediction, lines: EngineLine[]): Prediction => {
+  const legal = new Set(prediction.moves.map(m => m.uci));
+  const listed = new Map<string, number>();
+  let best: number | undefined;
+  let last = 0;
+  for (const line of lines) {
+    const uci = legal.has(line.uci) ? line.uci : CASTLING[line.uci] && legal.has(CASTLING[line.uci]) ? CASTLING[line.uci] : undefined;
+    if (!uci || listed.has(uci) || listed.size >= 5) continue;
+    best ??= line.chances;
+    last = Math.max(0, (best - line.chances) / 2);
+    listed.set(uci, last);
+  }
+  const weights = model.engine?.[String(listed.size)];
+  if (!weights || listed.size === 0) return prediction;
+  const scores = prediction.moves.map(m => weights.alpha * Math.log(Math.max(1e-12, m.p)) - weights.beta * (listed.get(m.uci) ?? last) - (listed.has(m.uci) ? 0 : weights.gamma));
+  const p = softmax(scores);
+  const moves = prediction.moves.map((m, i) => ({ ...m, p: p[i] })).sort((a, b) => b.p - a.p || a.uci.localeCompare(b.uci));
+  const top = moves.slice(0, 3).reduce((sum, m) => sum + m.p, 0);
+  return { ...prediction, moves, other: Math.max(0, 1 - top), engineLines: listed.size };
 };
 
 export interface Share {

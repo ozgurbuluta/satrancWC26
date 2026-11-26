@@ -1,0 +1,1285 @@
+{
+ "about": "How much the two players avoid moves the engine thinks little of, on top of the third version. See scripts/predictor-v4-engine.mjs.",
+ "engine": {
+  "name": "Stockfish 16",
+  "depth": 14,
+  "lines": 5,
+  "threads": 1,
+  "positions": 9880,
+  "kept": "data/predictor-v4/lines.txt"
+ },
+ "form": "score(m) = alpha * log p3(m) - beta * loss(m) - gamma * [m is not among the N lines]; loss is the share of the expected result given up against the first line, 0 to 1; an unlisted move has the loss of the last line",
+ "grid": {
+  "alpha": [
+   0.2,
+   0.3,
+   0.4,
+   0.5,
+   0.6,
+   0.7,
+   0.8,
+   0.9,
+   1,
+   1.1,
+   1.2
+  ],
+  "beta": [
+   0,
+   2,
+   4,
+   6,
+   8,
+   10,
+   12,
+   15,
+   20,
+   25,
+   30,
+   40,
+   50,
+   60,
+   80
+  ],
+  "gamma": [
+   0,
+   0.25,
+   0.5,
+   0.75,
+   1,
+   1.25,
+   1.5,
+   1.75,
+   2,
+   2.5,
+   3,
+   3.5,
+   4,
+   5
+  ]
+ },
+ "fitted": {
+  "1": {
+   "alpha": 0.8,
+   "beta": 0,
+   "gamma": 2.5,
+   "selectionLoss": 1.630988
+  },
+  "2": {
+   "alpha": 0.6,
+   "beta": 40,
+   "gamma": 2.5,
+   "selectionLoss": 1.382807
+  },
+  "3": {
+   "alpha": 0.5,
+   "beta": 40,
+   "gamma": 2.5,
+   "selectionLoss": 1.27161
+  },
+  "4": {
+   "alpha": 0.5,
+   "beta": 40,
+   "gamma": 2.5,
+   "selectionLoss": 1.221959
+  },
+  "5": {
+   "alpha": 0.5,
+   "beta": 40,
+   "gamma": 2.5,
+   "selectionLoss": 1.196938
+  }
+ },
+ "results": {
+  "selection": {
+   "decisions": 5733,
+   "v3": {
+    "n": 5733,
+    "games": 118,
+    "logLoss": 2.1508,
+    "brier": 0.762,
+    "top1": 0.3572,
+    "top3": 0.6098,
+    "ece": 0.0334,
+    "sure70": {
+     "n": 885,
+     "said": 0.863,
+     "happened": 0.811
+    }
+   },
+   "byLines": {
+    "1": {
+     "n": 5733,
+     "games": 118,
+     "logLoss": 1.631,
+     "brier": 0.615,
+     "top1": 0.5842,
+     "top3": 0.7793,
+     "ece": 0.0984,
+     "sure70": {
+      "n": 2113,
+      "said": 0.875,
+      "happened": 0.751
+     },
+     "difference": {
+      "logLoss": {
+       "value": -0.5198,
+       "interval": [
+        -0.5577,
+        -0.4837
+       ]
+      },
+      "brier": {
+       "value": -0.147,
+       "interval": [
+        -0.1613,
+        -0.133
+       ]
+      },
+      "top1": {
+       "value": 0.2269,
+       "interval": [
+        0.2098,
+        0.2441
+       ]
+      },
+      "top3": {
+       "value": 0.1695,
+       "interval": [
+        0.158,
+        0.1816
+       ]
+      },
+      "ece": {
+       "value": 0.065,
+       "interval": [
+        0.0488,
+        0.0809
+       ]
+      },
+      "shownEce": {
+       "value": 0.0315,
+       "interval": [
+        0.023,
+        0.0377
+       ]
+      },
+      "gap70": {
+       "value": 0.0721,
+       "interval": [
+        0.0428,
+        0.0985
+       ]
+      },
+      "gap90": {
+       "value": 0.094,
+       "interval": [
+        0.0613,
+        0.1249
+       ]
+      }
+     }
+    },
+    "2": {
+     "n": 5733,
+     "games": 118,
+     "logLoss": 1.3828,
+     "brier": 0.5414,
+     "top1": 0.6035,
+     "top3": 0.842,
+     "ece": 0.032,
+     "sure70": {
+      "n": 2181,
+      "said": 0.893,
+      "happened": 0.845
+     },
+     "difference": {
+      "logLoss": {
+       "value": -0.768,
+       "interval": [
+        -0.8176,
+        -0.7198
+       ]
+      },
+      "brier": {
+       "value": -0.2206,
+       "interval": [
+        -0.2352,
+        -0.2054
+       ]
+      },
+      "top1": {
+       "value": 0.2463,
+       "interval": [
+        0.231,
+        0.262
+       ]
+      },
+      "top3": {
+       "value": 0.2322,
+       "interval": [
+        0.2165,
+        0.2479
+       ]
+      },
+      "ece": {
+       "value": -0.0013,
+       "interval": [
+        -0.0123,
+        0.0132
+       ]
+      },
+      "shownEce": {
+       "value": 0.0026,
+       "interval": [
+        -0.0049,
+        0.0105
+       ]
+      },
+      "gap70": {
+       "value": -0.0035,
+       "interval": [
+        -0.03,
+        0.0212
+       ]
+      },
+      "gap90": {
+       "value": 0.0324,
+       "interval": [
+        0.0065,
+        0.0547
+       ]
+      }
+     }
+    },
+    "3": {
+     "n": 5733,
+     "games": 118,
+     "logLoss": 1.2716,
+     "brier": 0.5249,
+     "top1": 0.6039,
+     "top3": 0.8749,
+     "ece": 0.0284,
+     "sure70": {
+      "n": 1976,
+      "said": 0.9,
+      "happened": 0.871
+     },
+     "difference": {
+      "logLoss": {
+       "value": -0.8792,
+       "interval": [
+        -0.9281,
+        -0.8316
+       ]
+      },
+      "brier": {
+       "value": -0.2371,
+       "interval": [
+        -0.2514,
+        -0.2229
+       ]
+      },
+      "top1": {
+       "value": 0.2466,
+       "interval": [
+        0.2321,
+        0.2623
+       ]
+      },
+      "top3": {
+       "value": 0.2651,
+       "interval": [
+        0.2505,
+        0.28
+       ]
+      },
+      "ece": {
+       "value": -0.0049,
+       "interval": [
+        -0.0155,
+        0.0089
+       ]
+      },
+      "shownEce": {
+       "value": -0.0084,
+       "interval": [
+        -0.0151,
+        -0.0014
+       ]
+      },
+      "gap70": {
+       "value": -0.0238,
+       "interval": [
+        -0.0491,
+        -0.0013
+       ]
+      },
+      "gap90": {
+       "value": 0.0253,
+       "interval": [
+        -0.0026,
+        0.0502
+       ]
+      }
+     }
+    },
+    "4": {
+     "n": 5733,
+     "games": 118,
+     "logLoss": 1.222,
+     "brier": 0.5222,
+     "top1": 0.6025,
+     "top3": 0.8795,
+     "ece": 0.0368,
+     "sure70": {
+      "n": 1967,
+      "said": 0.899,
+      "happened": 0.876
+     },
+     "difference": {
+      "logLoss": {
+       "value": -0.9288,
+       "interval": [
+        -0.9759,
+        -0.8825
+       ]
+      },
+      "brier": {
+       "value": -0.2398,
+       "interval": [
+        -0.2538,
+        -0.2258
+       ]
+      },
+      "top1": {
+       "value": 0.2452,
+       "interval": [
+        0.2306,
+        0.2611
+       ]
+      },
+      "top3": {
+       "value": 0.2697,
+       "interval": [
+        0.2542,
+        0.2853
+       ]
+      },
+      "ece": {
+       "value": 0.0034,
+       "interval": [
+        -0.0095,
+        0.0163
+       ]
+      },
+      "shownEce": {
+       "value": -0.0102,
+       "interval": [
+        -0.0158,
+        -0.0043
+       ]
+      },
+      "gap70": {
+       "value": -0.0288,
+       "interval": [
+        -0.0539,
+        -0.0052
+       ]
+      },
+      "gap90": {
+       "value": 0.0283,
+       "interval": [
+        0.0003,
+        0.0527
+       ]
+      }
+     }
+    },
+    "5": {
+     "n": 5733,
+     "games": 118,
+     "logLoss": 1.1969,
+     "brier": 0.5226,
+     "top1": 0.6007,
+     "top3": 0.8782,
+     "ece": 0.0409,
+     "sure70": {
+      "n": 1940,
+      "said": 0.901,
+      "happened": 0.876
+     },
+     "difference": {
+      "logLoss": {
+       "value": -0.9538,
+       "interval": [
+        -1.0024,
+        -0.9057
+       ]
+      },
+      "brier": {
+       "value": -0.2394,
+       "interval": [
+        -0.2535,
+        -0.225
+       ]
+      },
+      "top1": {
+       "value": 0.2435,
+       "interval": [
+        0.2285,
+        0.2598
+       ]
+      },
+      "top3": {
+       "value": 0.2684,
+       "interval": [
+        0.2541,
+        0.2831
+       ]
+      },
+      "ece": {
+       "value": 0.0075,
+       "interval": [
+        -0.0058,
+        0.0209
+       ]
+      },
+      "shownEce": {
+       "value": -0.0074,
+       "interval": [
+        -0.0131,
+        -0.0023
+       ]
+      },
+      "gap70": {
+       "value": -0.0277,
+       "interval": [
+        -0.0522,
+        -0.0044
+       ]
+      },
+      "gap90": {
+       "value": 0.0286,
+       "interval": [
+        0.0009,
+        0.0529
+       ]
+      }
+     }
+    }
+   }
+  },
+  "holdout": {
+   "decisions": 4240,
+   "v3": {
+    "n": 4240,
+    "games": 83,
+    "logLoss": 2.1251,
+    "brier": 0.7544,
+    "top1": 0.3653,
+    "top3": 0.6123,
+    "ece": 0.0339,
+    "sure70": {
+     "n": 626,
+     "said": 0.865,
+     "happened": 0.815
+    }
+   },
+   "byLines": {
+    "1": {
+     "n": 4240,
+     "games": 83,
+     "logLoss": 1.6789,
+     "brier": 0.6335,
+     "top1": 0.563,
+     "top3": 0.7733,
+     "ece": 0.0905,
+     "sure70": {
+      "n": 1528,
+      "said": 0.876,
+      "happened": 0.743
+     },
+     "difference": {
+      "logLoss": {
+       "value": -0.4462,
+       "interval": [
+        -0.4955,
+        -0.3958
+       ]
+      },
+      "brier": {
+       "value": -0.1209,
+       "interval": [
+        -0.1388,
+        -0.1014
+       ]
+      },
+      "top1": {
+       "value": 0.1976,
+       "interval": [
+        0.1748,
+        0.2198
+       ]
+      },
+      "top3": {
+       "value": 0.1611,
+       "interval": [
+        0.1475,
+        0.1749
+       ]
+      },
+      "ece": {
+       "value": 0.0565,
+       "interval": [
+        0.0363,
+        0.074
+       ]
+      },
+      "shownEce": {
+       "value": 0.035,
+       "interval": [
+        0.0261,
+        0.0434
+       ]
+      },
+      "gap70": {
+       "value": 0.0822,
+       "interval": [
+        0.0517,
+        0.1125
+       ]
+      },
+      "gap90": {
+       "value": 0.0768,
+       "interval": [
+        0.037,
+        0.1149
+       ]
+      }
+     }
+    },
+    "2": {
+     "n": 4240,
+     "games": 83,
+     "logLoss": 1.4689,
+     "brier": 0.5715,
+     "top1": 0.5767,
+     "top3": 0.8283,
+     "ece": 0.0371,
+     "sure70": {
+      "n": 1509,
+      "said": 0.895,
+      "happened": 0.834
+     },
+     "difference": {
+      "logLoss": {
+       "value": -0.6562,
+       "interval": [
+        -0.735,
+        -0.5793
+       ]
+      },
+      "brier": {
+       "value": -0.1829,
+       "interval": [
+        -0.2055,
+        -0.1595
+       ]
+      },
+      "top1": {
+       "value": 0.2113,
+       "interval": [
+        0.1878,
+        0.2348
+       ]
+      },
+      "top3": {
+       "value": 0.216,
+       "interval": [
+        0.1967,
+        0.2359
+       ]
+      },
+      "ece": {
+       "value": 0.0031,
+       "interval": [
+        -0.0127,
+        0.019
+       ]
+      },
+      "shownEce": {
+       "value": 0.0112,
+       "interval": [
+        0.0023,
+        0.0209
+       ]
+      },
+      "gap70": {
+       "value": 0.0099,
+       "interval": [
+        -0.0242,
+        0.0418
+       ]
+      },
+      "gap90": {
+       "value": 0.018,
+       "interval": [
+        -0.0174,
+        0.0538
+       ]
+      }
+     }
+    },
+    "3": {
+     "n": 4240,
+     "games": 83,
+     "logLoss": 1.3551,
+     "brier": 0.5492,
+     "top1": 0.584,
+     "top3": 0.855,
+     "ece": 0.0298,
+     "sure70": {
+      "n": 1361,
+      "said": 0.897,
+      "happened": 0.868
+     },
+     "difference": {
+      "logLoss": {
+       "value": -0.7701,
+       "interval": [
+        -0.8547,
+        -0.6864
+       ]
+      },
+      "brier": {
+       "value": -0.2053,
+       "interval": [
+        -0.2264,
+        -0.1831
+       ]
+      },
+      "top1": {
+       "value": 0.2186,
+       "interval": [
+        0.1957,
+        0.2418
+       ]
+      },
+      "top3": {
+       "value": 0.2427,
+       "interval": [
+        0.2191,
+        0.2662
+       ]
+      },
+      "ece": {
+       "value": -0.0041,
+       "interval": [
+        -0.0203,
+        0.0134
+       ]
+      },
+      "shownEce": {
+       "value": -0.0049,
+       "interval": [
+        -0.0125,
+        0.0028
+       ]
+      },
+      "gap70": {
+       "value": -0.0213,
+       "interval": [
+        -0.0565,
+        0.0112
+       ]
+      },
+      "gap90": {
+       "value": 0.0076,
+       "interval": [
+        -0.0311,
+        0.0436
+       ]
+      }
+     }
+    },
+    "4": {
+     "n": 4240,
+     "games": 83,
+     "logLoss": 1.3038,
+     "brier": 0.5453,
+     "top1": 0.5866,
+     "top3": 0.8597,
+     "ece": 0.0368,
+     "sure70": {
+      "n": 1340,
+      "said": 0.899,
+      "happened": 0.871
+     },
+     "difference": {
+      "logLoss": {
+       "value": -0.8213,
+       "interval": [
+        -0.9019,
+        -0.7407
+       ]
+      },
+      "brier": {
+       "value": -0.2091,
+       "interval": [
+        -0.2291,
+        -0.1881
+       ]
+      },
+      "top1": {
+       "value": 0.2212,
+       "interval": [
+        0.1994,
+        0.2441
+       ]
+      },
+      "top3": {
+       "value": 0.2474,
+       "interval": [
+        0.2258,
+        0.2692
+       ]
+      },
+      "ece": {
+       "value": 0.0029,
+       "interval": [
+        -0.0126,
+        0.0208
+       ]
+      },
+      "shownEce": {
+       "value": -0.0034,
+       "interval": [
+        -0.01,
+        0.0038
+       ]
+      },
+      "gap70": {
+       "value": -0.0225,
+       "interval": [
+        -0.0586,
+        0.0097
+       ]
+      },
+      "gap90": {
+       "value": 0.0097,
+       "interval": [
+        -0.0276,
+        0.0457
+       ]
+      }
+     }
+    },
+    "5": {
+     "n": 4240,
+     "games": 83,
+     "logLoss": 1.2712,
+     "brier": 0.5441,
+     "top1": 0.5851,
+     "top3": 0.8639,
+     "ece": 0.0443,
+     "sure70": {
+      "n": 1328,
+      "said": 0.899,
+      "happened": 0.87
+     },
+     "difference": {
+      "logLoss": {
+       "value": -0.8539,
+       "interval": [
+        -0.9351,
+        -0.7745
+       ]
+      },
+      "brier": {
+       "value": -0.2103,
+       "interval": [
+        -0.23,
+        -0.19
+       ]
+      },
+      "top1": {
+       "value": 0.2198,
+       "interval": [
+        0.1975,
+        0.2432
+       ]
+      },
+      "top3": {
+       "value": 0.2517,
+       "interval": [
+        0.2311,
+        0.2727
+       ]
+      },
+      "ece": {
+       "value": 0.0104,
+       "interval": [
+        -0.0062,
+        0.0279
+       ]
+      },
+      "shownEce": {
+       "value": -0.0018,
+       "interval": [
+        -0.009,
+        0.0057
+       ]
+      },
+      "gap70": {
+       "value": -0.0213,
+       "interval": [
+        -0.0572,
+        0.011
+       ]
+      },
+      "gap90": {
+       "value": 0.0124,
+       "interval": [
+        -0.0243,
+        0.0491
+       ]
+      }
+     }
+    }
+   }
+  },
+  "benchmark": {
+   "decisions": 963,
+   "v3": {
+    "n": 963,
+    "games": 21,
+    "logLoss": 2.2987,
+    "brier": 0.7929,
+    "top1": 0.3375,
+    "top3": 0.5898,
+    "ece": 0.0654,
+    "sure70": {
+     "n": 123,
+     "said": 0.846,
+     "happened": 0.748
+    }
+   },
+   "byLines": {
+    "1": {
+     "n": 963,
+     "games": 21,
+     "logLoss": 1.7334,
+     "brier": 0.632,
+     "top1": 0.568,
+     "top3": 0.7549,
+     "ece": 0.0902,
+     "sure70": {
+      "n": 340,
+      "said": 0.868,
+      "happened": 0.732
+     },
+     "difference": {
+      "logLoss": {
+       "value": -0.5653,
+       "interval": [
+        -0.669,
+        -0.4534
+       ]
+      },
+      "brier": {
+       "value": -0.161,
+       "interval": [
+        -0.2,
+        -0.1203
+       ]
+      },
+      "top1": {
+       "value": 0.2305,
+       "interval": [
+        0.1868,
+        0.2758
+       ]
+      },
+      "top3": {
+       "value": 0.1651,
+       "interval": [
+        0.1406,
+        0.1893
+       ]
+      },
+      "ece": {
+       "value": 0.0248,
+       "interval": [
+        -0.0131,
+        0.0624
+       ]
+      },
+      "shownEce": {
+       "value": 0.0151,
+       "interval": [
+        -0.001,
+        0.0309
+       ]
+      },
+      "gap70": {
+       "value": 0.0375,
+       "interval": [
+        -0.0296,
+        0.0998
+       ]
+      },
+      "gap90": {
+       "value": 0.1092,
+       "interval": [
+        0.0442,
+        0.1765
+       ]
+      }
+     }
+    },
+    "2": {
+     "n": 963,
+     "games": 21,
+     "logLoss": 1.4484,
+     "brier": 0.5583,
+     "top1": 0.5888,
+     "top3": 0.8328,
+     "ece": 0.0553,
+     "sure70": {
+      "n": 348,
+      "said": 0.887,
+      "happened": 0.828
+     },
+     "difference": {
+      "logLoss": {
+       "value": -0.8503,
+       "interval": [
+        -0.9749,
+        -0.7311
+       ]
+      },
+      "brier": {
+       "value": -0.2346,
+       "interval": [
+        -0.2688,
+        -0.1987
+       ]
+      },
+      "top1": {
+       "value": 0.2513,
+       "interval": [
+        0.2212,
+        0.2834
+       ]
+      },
+      "top3": {
+       "value": 0.243,
+       "interval": [
+        0.2186,
+        0.2672
+       ]
+      },
+      "ece": {
+       "value": -0.0101,
+       "interval": [
+        -0.0448,
+        0.0282
+       ]
+      },
+      "shownEce": {
+       "value": 0.005,
+       "interval": [
+        -0.0111,
+        0.0214
+       ]
+      },
+      "gap70": {
+       "value": -0.038,
+       "interval": [
+        -0.1003,
+        0.0216
+       ]
+      },
+      "gap90": {
+       "value": -0.006,
+       "interval": [
+        -0.0713,
+        0.0533
+       ]
+      }
+     }
+    },
+    "3": {
+     "n": 963,
+     "games": 21,
+     "logLoss": 1.3479,
+     "brier": 0.5433,
+     "top1": 0.5909,
+     "top3": 0.8588,
+     "ece": 0.0373,
+     "sure70": {
+      "n": 315,
+      "said": 0.886,
+      "happened": 0.857
+     },
+     "difference": {
+      "logLoss": {
+       "value": -0.9508,
+       "interval": [
+        -1.0759,
+        -0.8287
+       ]
+      },
+      "brier": {
+       "value": -0.2496,
+       "interval": [
+        -0.2837,
+        -0.2149
+       ]
+      },
+      "top1": {
+       "value": 0.2534,
+       "interval": [
+        0.2247,
+        0.2833
+       ]
+      },
+      "top3": {
+       "value": 0.269,
+       "interval": [
+        0.2321,
+        0.3003
+       ]
+      },
+      "ece": {
+       "value": -0.0281,
+       "interval": [
+        -0.055,
+        0.0079
+       ]
+      },
+      "shownEce": {
+       "value": -0.0221,
+       "interval": [
+        -0.0307,
+        -0.0052
+       ]
+      },
+      "gap70": {
+       "value": -0.0689,
+       "interval": [
+        -0.1277,
+        -0.0093
+       ]
+      },
+      "gap90": {
+       "value": -0.0152,
+       "interval": [
+        -0.0909,
+        0.0528
+       ]
+      }
+     }
+    },
+    "4": {
+     "n": 963,
+     "games": 21,
+     "logLoss": 1.2885,
+     "brier": 0.5386,
+     "top1": 0.594,
+     "top3": 0.8712,
+     "ece": 0.0401,
+     "sure70": {
+      "n": 309,
+      "said": 0.888,
+      "happened": 0.861
+     },
+     "difference": {
+      "logLoss": {
+       "value": -1.0102,
+       "interval": [
+        -1.126,
+        -0.8966
+       ]
+      },
+      "brier": {
+       "value": -0.2543,
+       "interval": [
+        -0.2878,
+        -0.2206
+       ]
+      },
+      "top1": {
+       "value": 0.2565,
+       "interval": [
+        0.2278,
+        0.2869
+       ]
+      },
+      "top3": {
+       "value": 0.2814,
+       "interval": [
+        0.2453,
+        0.3146
+       ]
+      },
+      "ece": {
+       "value": -0.0254,
+       "interval": [
+        -0.0517,
+        0.0148
+       ]
+      },
+      "shownEce": {
+       "value": -0.0152,
+       "interval": [
+        -0.0264,
+        0.0031
+       ]
+      },
+      "gap70": {
+       "value": -0.0701,
+       "interval": [
+        -0.1285,
+        -0.0115
+       ]
+      },
+      "gap90": {
+       "value": -0.0158,
+       "interval": [
+        -0.0926,
+        0.0527
+       ]
+      }
+     }
+    },
+    "5": {
+     "n": 963,
+     "games": 21,
+     "logLoss": 1.263,
+     "brier": 0.5391,
+     "top1": 0.595,
+     "top3": 0.8681,
+     "ece": 0.0531,
+     "sure70": {
+      "n": 303,
+      "said": 0.89,
+      "happened": 0.855
+     },
+     "difference": {
+      "logLoss": {
+       "value": -1.0357,
+       "interval": [
+        -1.1475,
+        -0.9237
+       ]
+      },
+      "brier": {
+       "value": -0.2538,
+       "interval": [
+        -0.2864,
+        -0.2215
+       ]
+      },
+      "top1": {
+       "value": 0.2575,
+       "interval": [
+        0.2281,
+        0.2878
+       ]
+      },
+      "top3": {
+       "value": 0.2783,
+       "interval": [
+        0.2418,
+        0.3115
+       ]
+      },
+      "ece": {
+       "value": -0.0123,
+       "interval": [
+        -0.0447,
+        0.0197
+       ]
+      },
+      "shownEce": {
+       "value": -0.011,
+       "interval": [
+        -0.0231,
+        0.0065
+       ]
+      },
+      "gap70": {
+       "value": -0.0627,
+       "interval": [
+        -0.1225,
+        -0.0016
+       ]
+      },
+      "gap90": {
+       "value": -0.0147,
+       "interval": [
+        -0.092,
+        0.054
+       ]
+      }
+     }
+    }
+   }
+  }
+ },
+ "played": {
+  "decisions": 5203,
+  "byEngineRank": {
+   "first": 2973,
+   "second": 976,
+   "third": 494,
+   "fourth": 269,
+   "fifth": 171,
+   "notAmongFive": 320
+  },
+  "byLoss": [
+   {
+    "lossBelow": 0.02,
+    "offered": 13886,
+    "played": 4399,
+    "playedShare": 0.3168,
+    "thirdVersionSaid": 0.1476,
+    "fourthVersionSaid": 0.302
+   },
+   {
+    "lossBelow": 0.05,
+    "offered": 5035,
+    "played": 363,
+    "playedShare": 0.0721,
+    "thirdVersionSaid": 0.0695,
+    "fourthVersionSaid": 0.0634
+   },
+   {
+    "lossBelow": 0.1,
+    "offered": 2728,
+    "played": 89,
+    "playedShare": 0.0326,
+    "thirdVersionSaid": 0.0743,
+    "fourthVersionSaid": 0.0218
+   },
+   {
+    "lossBelow": 0.2,
+    "offered": 1721,
+    "played": 28,
+    "playedShare": 0.0163,
+    "thirdVersionSaid": 0.0739,
+    "fourthVersionSaid": 0.0038
+   },
+   {
+    "lossBelow": null,
+    "offered": 2296,
+    "played": 4,
+    "playedShare": 0.0017,
+    "thirdVersionSaid": 0.0483,
+    "fourthVersionSaid": 0.0006
+   }
+  ]
+ },
+ "adopted": true
+}

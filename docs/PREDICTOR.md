@@ -10,13 +10,78 @@ that: its probabilities are not claimed to be calibrated. The page itself
 carries no explanation of it any more: what it is, how it was measured and where it
 falls short is on this page and in the report.
 
-This is its third version: the second version's model of the board, with
-opening theory and the match's own games laid over it. That part is
-described first, below; the rest of the page is the second version, which
-is still what the board model is. Reports, each written by the training
+This is its fourth version: the third version's estimate, with the engine's
+opinion of each move taken into account. That part comes first, below.
+After it the third version (the second version's model of the board, with
+opening theory and the match's own games laid over it), and the rest of the
+page is the second version, which is still what the board model is. Reports, each written by the training
 script: [third](PREDICTOR-V3-REPORT.md), [second](PREDICTOR-REPORT.md),
 [first](PREDICTOR-REPORT-V1.md). The plans written before each was fitted:
 [third](PREDICTOR-V3-PROTOCOL.md), [second](PREDICTOR-V2-PROTOCOL.md).
+
+## Fourth version: how good the move is
+
+The third version knows what was played before and what a move looks like
+on the board. It knows nothing of how good a move is, so it could give a
+share to a move that loses on the spot. Özgür pointed at one on the page
+(26 November 2026): players of this strength do not go from level to lost
+in one move, and the estimate should know that.
+
+It now uses what the page already has when it shows the estimate: the
+engine's best lines for the position (Stockfish, from the cloud database or
+the browser). For every legal move,
+
+`score(move) = α · log p3(move) − β · loss(move) − γ · [the move is not among the engine's lines]`
+
+and the scores become shares that add up to one. `p3` is the third
+version's estimate. `loss` is the part of the expected result the move
+gives up against the engine's first line, from 0 to 1. A move the engine
+does not list is at least as bad as its last line: it takes that line's
+loss, and γ on top. α, β and γ were fitted on the two players' games of
+2025, separately for each number of lines the page may have (one to five).
+With three lines: α 0.5, β 40, γ 2.5.
+
+**Measured** on the games of 2026, which the fit did not use, with three
+lines (the page's default):
+
+| | Decisions | Log loss | First choice right | In the first three | Calibration error |
+|---|---|---|---|---|---|
+| January to August 2026, with the engine | 4,240 | 1.355 | 58.4 % | 85.5 % | 3.0 % |
+| January to August 2026, third version | 4,240 | 2.125 | 36.5 % | 61.2 % | 3.4 % |
+| September 2026, with the engine | 963 | 1.348 | 59.1 % | 85.9 % | 3.7 % |
+| September 2026, third version | 963 | 2.299 | 33.8 % | 59.0 % | 6.5 % |
+
+- In those games the move played was the engine's first line 57 % of the
+  time, among its first three 85 %, and not among its five 6 %.
+- A move among the engine's lines that gives up a fifth or more of the
+  expected result was played 4 times in 2,296. The third version gave such
+  a move 4.8 % on average; with the engine it gets 0.1 %.
+- By the rule used for the third version (lower log loss with the interval
+  below zero, calibration error not higher) this is an improvement with
+  three lines. With one line only, the first choice is right about as often
+  (56 %) but the calibration error is higher (9.0 % against 3.4 %): one line
+  says which move the engine likes, not by how much.
+
+How it behaves on the page:
+
+- With the engine on, the card waits for the engine's first answer (up to
+  four seconds) rather than show an estimate that knows nothing of the
+  moves' quality. Without an answer it shows the third version's estimate.
+- With the engine switched off it shows the third version's estimate.
+- The lines are the ones the page has for the position anyway: the board's
+  analysis, or the cloud database when the board is on another position.
+  The engine is asked for nothing more.
+
+Limits: the fit used Stockfish 16 at depth 14 with one thread; the page's
+lines are deeper (cloud) or start shallower (browser). And the estimate now
+follows the engine closely: it says what these two usually do with good and
+bad moves, not that someone short of time is about to blunder.
+
+The fit: `node scripts/train-predictor.mjs --v3 --v4-engine` (needs a
+`stockfish` binary only for positions missing from
+`data/predictor-v4/lines.txt`, where the engine's answers are kept). It
+writes `data/predictor-v4/engine.json`; `--v3 --final` then puts the
+weights into the model file and the section into the report.
 
 ## Third version: theory, and this match
 
@@ -123,9 +188,12 @@ A new line is new to the tables as well.
 
 ## What it is
 
-An original statistical model. It uses no chess engine and no weights from
-anyone else. It is not an engine evaluation turned into percentages, and it
-is not a count of what masters played.
+An original statistical model, with no weights from anyone else. Up to the
+third version it used no chess engine at all; since the fourth, the engine's
+lines for the position adjust its estimate (above). It is still not an
+engine evaluation turned into percentages: how much the engine's opinion
+counts was fitted on what these two players actually played. And it is not
+a count of what masters played.
 
 It has two parts.
 

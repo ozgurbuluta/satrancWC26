@@ -1,6 +1,7 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { EvalResult } from '../src/lib/engine';
 import { boot, game, HOUR, ITALIAN, push, QGD, R1, R2, R3, resetWorld, round, world } from './helpers';
 
 const T0 = Date.UTC(2026, 10, 25, 15, 0, 0);
@@ -15,6 +16,7 @@ beforeEach(() => {
   localStorage.clear();
   window.history.replaceState(null, '', '/');
   resetWorld();
+  analysis = undefined;
   host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
@@ -71,17 +73,24 @@ describe('the match situation the estimate may use', () => {
   });
 });
 
-/** The estimate as the prediction tab mounts it. */
-const mount = async (pgn: string) => {
+/** What the engine says of a position, when a test gives the card an analysis of the board. */
+let analysis: ((fen: string) => EvalResult | undefined) | undefined;
+
+/**
+ * The estimate as the page mounts it. The engine is off unless a test asks for it, so that the tests of the model
+ * itself see its estimate without the engine's opinion.
+ */
+const mount = async (pgn: string, { engine = false }: { engine?: boolean } = {}) => {
   world.rounds = [round(R1, 1, T0 - HOUR, { ongoing: true })];
   world.defaultRoundId = R1;
+  localStorage.setItem('wcc26:settings', JSON.stringify({ engine }));
   const mod = await boot();
   push(R1, pgn);
   const { ModelEstimate } = await import('../src/components/ModelEstimate');
   const Host = () => {
     const g = mod.useStore(mod.selectGameData);
     const fen = mod.useStore(mod.selectGuessFen);
-    return g && fen ? <ModelEstimate game={g} fen={fen} /> : null;
+    return g && fen ? <ModelEstimate game={g} fen={fen} evaluation={analysis?.(fen)} /> : null;
   };
   await act(() => root.render(<Host />));
   return mod;
@@ -169,6 +178,8 @@ describe('the estimate under the board', () => {
       world.rounds = [round(R1, 1, T0 - 49 * HOUR, { finished: true }), round(R2, 2, T0 - 25 * HOUR, { finished: true }), round(R3, 3, T0 - HOUR, { ongoing: true })];
       world.defaultRoundId = R3;
       world.tournamentPgn = game({ round: 1, id: 'g1', sans: firstGame, result: '1/2-1/2' }) + game({ round: 2, id: 'g2', sans: ['d4', 'd5'], result: '1/2-1/2', whiteIsSindarov: false });
+      // the model's own estimate, without the engine's opinion
+      localStorage.setItem('wcc26:settings', JSON.stringify({ engine: false }));
       const mod = await boot();
       push(R3, game({ round: 3, id: 'g3', sans: [] }));
       const { ModelEstimate } = await import('../src/components/ModelEstimate');
@@ -202,5 +213,74 @@ describe('the estimate under the board', () => {
     expect(card.querySelector('p')).toBeNull();
     expect(card.textContent).not.toContain('Nasıl hesaplanıyor');
     expect(card.textContent).not.toContain('Ölçüm');
+  });
+});
+
+describe('the estimate with the engine\u2019s opinion of the moves', () => {
+  // after 1. e4 e5 2. Nf3 Nc6: Sindarov, with White, to play his third move
+  const position = () => game({ round: 1, id: 'g1', sans: ITALIAN.slice(0, 4) });
+  const lines = (fen: string, moves: [string, number][]): EvalResult => ({ fen, depth: 20, source: 'local', pvs: moves.map(([uci, cp]) => ({ cp, moves: [uci] })) });
+  const shown = () => rows().slice(0, 3).map(li => li.querySelector('strong')!.textContent);
+  const percentOf = (move: string) => {
+    const at = rows().findIndex(li => li.querySelector('strong')?.textContent === move);
+    return at < 0 ? 0 : percents()[at];
+  };
+
+  it('waits for the engine a moment, and shows the estimate without it if the engine does not answer', async () => {
+    await mount(position(), { engine: true });
+    expect(rows()).toHaveLength(0);
+    expect(host.querySelector('.model-wait')!.textContent).toBe('Hesaplanıyor…');
+    expect(text()).toMatch(/Sindarov için, 3\. hamle/);
+    await act(async () => vi.advanceTimersByTime(3900));
+    expect(rows()).toHaveLength(0);
+    await act(async () => vi.advanceTimersByTime(200));
+    expect(rows()).toHaveLength(4);
+    expect(percents().reduce((a, b) => a + b, 0)).toBe(100);
+    expect(host.querySelector('.model-wait')).toBeNull();
+  });
+
+  it('puts the engine\u2019s moves first, and takes nearly everything from a move the engine does not list', async () => {
+    // without the engine first, to see what the model likes here
+    await mount(position());
+    const before = { first: shown()[0], bishopC4: percentOf('Fc4'), bishopB5: percentOf('Fb5') };
+    expect(before.bishopC4 + before.bishopB5).toBeGreaterThan(50);
+    await act(() => root.render(<></>));
+
+    // the engine: 3. d4 first, then 3. Nc3 and 3. Be2 close behind; neither bishop move the players prefer is listed
+    analysis = fen => lines(fen, [['d2d4', 30], ['b1c3', 25], ['f1e2', 20]]);
+    await mount(position(), { engine: true });
+    expect(rows()).toHaveLength(4);
+    expect(host.querySelector('.model-wait')).toBeNull();
+    // the engine's two best lead now; its third line, which the two never play, stays behind an old favourite
+    expect(new Set(shown().slice(0, 2))).toEqual(new Set(['d4', 'Ac3']));
+    expect(percents().reduce((a, b) => a + b, 0)).toBe(100);
+    expect(percentOf('d4') + percentOf('Ac3')).toBeGreaterThan(60);
+    // a move the engine does not list keeps a fraction of what it had, however often it was played before
+    expect(percentOf('Fc4')).toBeLessThan(before.bishopC4 / 3);
+    expect(percentOf('Fc4') + percentOf('Fb5')).toBeLessThan(20);
+  });
+
+  it('gives a listed move that loses on the spot next to nothing', async () => {
+    // the engine's lines: 3. Bb5 fine, 3. Bc4 fine, and third a move that drops a piece's worth
+    analysis = fen => lines(fen, [['f1b5', 30], ['f1c4', 25], ['f3e5', -350]]);
+    await mount(position(), { engine: true });
+    expect(shown().slice(0, 2).sort()).toEqual(['Fb5', 'Fc4']);
+    expect(percentOf('Axe5')).toBe(0);
+    expect(percentOf('Fb5') + percentOf('Fc4')).toBeGreaterThan(85);
+  });
+
+  it('uses an analysis only for the position it is about', async () => {
+    analysis = () => lines('8/8/8/8/8/8/8/K6k w - - 0 1', [['d2d4', 30]]);
+    await mount(position(), { engine: true });
+    // another position's lines are no lines: the card is still waiting
+    expect(rows()).toHaveLength(0);
+    expect(host.querySelector('.model-wait')).not.toBeNull();
+  });
+
+  it('with the engine switched off, shows the model\u2019s own estimate at once', async () => {
+    analysis = fen => lines(fen, [['d2d4', 30], ['b1c3', 25], ['f1e2', 20]]);
+    await mount(position(), { engine: false });
+    expect(rows()).toHaveLength(4);
+    expect(['Fb5', 'Fc4']).toContain(shown()[0]);
   });
 });
