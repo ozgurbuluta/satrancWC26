@@ -252,17 +252,6 @@ a {
   }
 }
 
-.feed-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--amber);
-}
-
-.feed-dot.live {
-  background: var(--accent);
-}
-
 .lang {
   padding: 5px 9px;
   border-radius: 7px;
@@ -1547,21 +1536,34 @@ button.move:hover {
 /* ---------- settings ---------- */
 
 .settings {
-  padding: 6px 12px;
+  padding: 4px 16px 8px;
 }
 
+/* One block for each setting: the row, then its note. The rule is above the block, so a note stays with its own row. */
 .setting {
+  padding: 12px 0;
+}
+
+.setting + .setting {
+  border-top: 1px solid var(--line);
+}
+
+.setting-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line);
+  gap: 8px 12px;
   flex-wrap: wrap;
+  min-height: 36px;
 }
 
-.setting:last-child {
-  border-bottom: 0;
+.setting p {
+  margin: 6px 0 0;
+  max-width: 62ch;
+}
+
+.settings > .notice {
+  margin: 8px 0 4px;
 }
 
 .seg {
@@ -1826,6 +1828,29 @@ button.move:hover {
   font-variant-numeric: tabular-nums;
 }
 
+/* How the games ended, each share written out with its name: none depends on the width of its part of the bar. */
+.res-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.res-legend span {
+  white-space: nowrap;
+}
+
+.res-legend .sw {
+  margin-right: 5px;
+}
+
+.res-legend b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
 .sw {
   display: inline-block;
   width: 9px;
@@ -1928,10 +1953,6 @@ button.move:hover {
   color: var(--muted);
 }
 
-.charts .sub {
-  margin: -4px 0 4px;
-}
-
 .similar-opening {
   margin: 0 0 10px;
   font-size: 13.5px;
@@ -2000,6 +2021,25 @@ button.move:hover {
   color: var(--on-black);
 }
 
+/* A share inside its part of the bar: shown wherever that part is wide enough for the number, hidden where it is not. */
+.resbar i {
+  container-type: inline-size;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+@container (max-width: 27px) {
+  .resbar i span {
+    display: none;
+  }
+}
+
+@container (min-width: 19px) and (max-width: 27px) {
+  .resbar i span.short {
+    display: inline;
+  }
+}
+
 .next-moves {
   width: 100%;
   border-collapse: collapse;
@@ -2030,16 +2070,10 @@ button.move:hover {
 }
 
 .mgames,
-.shared,
 .rows {
   list-style: none;
   margin: 0;
   padding: 0;
-}
-
-.shared li {
-  font-size: 13.5px;
-  padding: 3px 0;
 }
 
 .mgame {
@@ -2231,10 +2265,6 @@ button.move:hover {
   border-radius: 8px;
   background: var(--amber-bg);
   color: var(--amber-text);
-}
-
-.settings p {
-  margin: -4px 0 10px;
 }
 
 /* ---------- view switch ---------- */

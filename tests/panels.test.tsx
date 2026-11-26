@@ -394,7 +394,42 @@ describe('turning the board', () => {
   });
 });
 
+describe('the settings tab', () => {
+  it('is one block for each setting, with what it does inside the block', async () => {
+    await boot();
+    const { SettingsPanel } = await import('../src/components/SettingsPanel');
+    await act(() => root.render(<SettingsPanel />));
+    const blocks = [...host.querySelectorAll('.settings > .setting')];
+    expect(blocks.map(b => b.querySelector('.setting-row > span')!.textContent)).toEqual(['Dil', 'Notasyon', 'Stockfish değerlendirmesi', 'En iyi hamle oku', 'Hamle sesi', 'Spoiler koruması', 'Klavye']);
+    // every block starts with its row; a note is never a sibling of the blocks, where a rule could come between it and its row
+    for (const b of blocks) expect(b.firstElementChild!.className).toBe('setting-row');
+    expect(host.querySelectorAll('.settings > p:not(.notice)')).toHaveLength(0);
+    const noted = blocks.filter(b => b.querySelector('p'));
+    expect(noted.map(b => b.querySelector('.setting-row > span')!.textContent)).toEqual(['Spoiler koruması', 'Klavye']);
+    expect(noted[0].querySelector('p')!.textContent).toBe('Her oyunu en son gördüğün hamlede duraklatılmış aç');
+    // the keyboard block has no control, only its note
+    expect(noted[1].querySelector('.seg')).toBeNull();
+    // a switch still switches
+    const sound = blocks[4].querySelectorAll<HTMLButtonElement>('.seg button');
+    await act(async () => sound[1].click());
+    expect(sound[1].getAttribute('aria-pressed')).toBe('true');
+  });
+});
+
 describe('the top bar', () => {
+  it('shows the status and the language, and no connection dot', async () => {
+    const mod = await boot();
+    const { Header } = await import('../src/components/Header');
+    await act(() => root.render(<Header />));
+    await act(async () => push(R1, game({ round: 1, id: 'g1', sans: ITALIAN })));
+    expect(host.querySelector('.feed-dot')).toBeNull();
+    const right = host.querySelector('.top-right')!;
+    expect([...right.children].map(c => c.className.split(' ')[0])).toEqual(['pill', 'lang']);
+    expect(right.textContent).toBe('CANLIEN');
+    expect(mod.useStore.getState().feed).toBeDefined(); // the store still knows; the bar no longer says
+  });
+
+
   it('has a mark of its own and the title in two halves that each stay whole', async () => {
     await boot();
     const { Header } = await import('../src/components/Header');
