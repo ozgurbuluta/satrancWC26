@@ -1,8 +1,10 @@
 # The move predictor
 
 The site's own estimate of the next move of Gukesh or Sindarov: three legal
-moves with a share each, and the rest as "other", at the bottom of the
-Tahmin tab. It is experimental, and labelled so.
+moves with a share each, and the rest as "other", on the main page under
+the board. It is experimental, and labelled so. The page itself carries no
+explanation of it any more: what it is, how it was measured and where it
+falls short is on this page and in the report.
 
 This is its second version. What was measured, with every table, is in
 [PREDICTOR-REPORT.md](PREDICTOR-REPORT.md), which the training script writes.

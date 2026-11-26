@@ -283,7 +283,7 @@ const pgn = (round, id, sans, result, opts = {}) => {
     await page.locator('.tabs button', { hasText: 'Tahmin' }).click();
     await page.waitForSelector('.model-estimate');
 
-    // the site's own estimate, at the bottom of the tab
+    // the site's own estimate, on the main page under the board, whatever tab is open
     const estimate = page.locator('.model-estimate');
     const numbers = async () => (await estimate.locator('.model-moves .num').allInnerTexts()).map(t => (t.trim().startsWith('<') ? 0 : Number(t.replace(/\D/g, ''))));
     const first = await numbers();
@@ -292,20 +292,28 @@ const pgn = (round, id, sans, result, opts = {}) => {
     const shownMoves = (await estimate.locator('.model-moves strong').allInnerTexts()).map(t => t.trim());
     const legal = (await page.evaluate(() => [...document.querySelectorAll('.strip-track .move')].length)) > 0;
     check('its three moves are different from each other', legal && new Set(shownMoves).size === 3, shownMoves.join(', '));
-    check('it is the last thing in the tab, in the flow of the page', await page.evaluate(() => {
+    const place = await page.evaluate(() => {
       const el = document.querySelector('.model-estimate');
-      return el === el.parentElement.lastElementChild && getComputedStyle(el).position !== 'fixed' && getComputedStyle(el).position !== 'sticky';
-    }));
+      const board = document.querySelector('.board-col cg-board').getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      return { inBoardColumn: !!el.closest('.board-col'), inTabs: !!el.closest('.predict'), below: r.top >= board.bottom, position: getComputedStyle(el).position };
+    });
+    check('it is in the board column, below the board, in the flow of the page', place.inBoardColumn && !place.inTabs && place.below && place.position === 'static', JSON.stringify(place));
     check('its moves are text, not controls', (await estimate.locator('.model-moves button, .model-moves a').count()) === 0);
-    await estimate.locator('summary').click();
-    const details = (await estimate.locator('.model-details').innerText()).replace(/\s+/g, ' ');
-    check('the details give the measured numbers and the limits', /83 oyunun 4\.240 hamlesinde ilk tercih yüzde \d+, ilk üç tercih yüzde \d+ tuttu/.test(details) && /Yüzdeleri kesinlik olarak okuma/.test(details) && /ölçülebilir bir fark yaratmadı/.test(details) && /yazılı bir kuraldır/.test(details), details.slice(0, 140));
+    check('it is a title, a label and a list: no explanation block and no link', (await estimate.locator('details, a, summary').count()) === 0 && !/Nasıl hesaplanıyor|Ölçüm/.test(await estimate.innerText()));
+    check('the Tahmin tab no longer carries the estimate or the note under the masters’ moves', (await page.locator('.predict .model-estimate').count()) === 0 && !/gerçek sıklıktır/.test(await page.locator('.predict').innerText()));
 
     await page.locator('.predict .seg button', { hasText: 'Açık' }).click();
     await page.waitForTimeout(300);
     check('guess mode asks in its tab', /Sence ne oynayacak/.test(await page.locator('.guess-card').innerText()));
     check('in guess mode the estimate waits, with a button to show it', (await estimate.locator('.model-moves li').count()) === 0 && (await estimate.locator('button', { hasText: 'Tahmin etmeden göster' }).count()) === 1);
-    check('nothing about a guess is on the board column', (await page.locator('.board-col .banner.guess').count()) === 0 && !/Tahmin/.test(await page.locator('.board-col').innerText()));
+    // the model's card is under the board now; apart from it, the board column says nothing about guessing
+    const boardColumnText = await page.evaluate(() => {
+      const column = document.querySelector('.board-col').cloneNode(true);
+      column.querySelectorAll('.model-estimate').forEach(el => el.remove());
+      return column.textContent;
+    });
+    check('nothing asks for a guess on the board column', (await page.locator('.board-col .banner.guess').count()) === 0 && !/Tahmin|Sence ne oynayacak/.test(boardColumnText) && (await page.locator('.board-col .model-estimate input, .board-col .model-estimate select').count()) === 0);
     await page.waitForFunction(() => document.querySelectorAll('.left-col .pv-list li').length > 0, null, { timeout: 60000 }).catch(() => {});
     check('the engine beside the board is not hidden by guess mode', (await page.locator('.left-col .pv-list li').count()) > 0);
 
@@ -480,15 +488,16 @@ const pgn = (round, id, sans, result, opts = {}) => {
     await page.waitForTimeout(300);
     check('it returns to the live position', (await page.locator('.strip-track.own').count()) === 0);
 
-    await page.locator('.tabs button', { hasText: 'Tahmin' }).tap();
     await page.waitForSelector('.model-estimate');
     const phoneEstimate = await page.evaluate(() => {
       const el = document.querySelector('.model-estimate');
       const r = el.getBoundingClientRect();
+      const board = document.querySelector('.board-col cg-board').getBoundingClientRect();
+      const tabs = document.querySelector('.tabs').getBoundingClientRect();
       const nums = [...el.querySelectorAll('.model-moves .num')].map(n => (n.textContent.trim().startsWith('<') ? 0 : Number(n.textContent.replace(/\D/g, ''))));
-      return { last: el === el.parentElement.lastElementChild, position: getComputedStyle(el).position, left: Math.round(r.left), right: Math.round(r.right), sum: nums.reduce((a, b) => a + b, 0), rows: nums.length, overflow: document.documentElement.scrollWidth - window.innerWidth };
+      return { underBoard: r.top >= board.bottom, aboveTabs: r.bottom <= tabs.top + 1, position: getComputedStyle(el).position, left: Math.round(r.left), right: Math.round(r.right), sum: nums.reduce((a, b) => a + b, 0), rows: nums.length, overflow: document.documentElement.scrollWidth - window.innerWidth };
     });
-    check('on a phone the estimate is at the bottom of the Tahmin tab, in the flow, within the screen', phoneEstimate.last && phoneEstimate.position === 'static' && phoneEstimate.left >= 0 && phoneEstimate.right <= width && phoneEstimate.sum === 100 && phoneEstimate.rows === 4 && phoneEstimate.overflow <= 0, JSON.stringify(phoneEstimate));
+    check('on a phone the estimate is under the board and above the tabs, in the flow, within the screen', phoneEstimate.underBoard && phoneEstimate.aboveTabs && phoneEstimate.position === 'static' && phoneEstimate.left >= 0 && phoneEstimate.right <= width && phoneEstimate.sum === 100 && phoneEstimate.rows === 4 && phoneEstimate.overflow <= 0, JSON.stringify(phoneEstimate));
     await page.evaluate(() => window.scrollTo(0, 0));
 
     await page.locator('.games-btn').tap();
