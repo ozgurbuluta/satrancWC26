@@ -18,7 +18,7 @@ bağımsız bir hayran sitesi.
 - **Bulmaca köşesi:** Lichess bulmacaları (günün bulmacası, karışık, 1 ve 2 hamlede mat, kısa, oyun sonu). Yalnızca kurallı hamleler oynanır; ipucu, çözümü göster, baştan ve skor vardır. Lichess'e ulaşılamazsa hazır bulmacalar gösterilir.
 - **Tahtayı çevir ve paylaş:** tahtanın yanında boş yer varsa iki düğme orada, küçük bir bölmede durur; yer yoksa tahtanın altındadır. Paylaş düğmesi ekrandaki oyunun o hamlesine giden bağlantıyı kopyalar (`?parti=3&hamle=24`; adresteki `parti` adı eski bağlantılar çalışsın diye aynı kalır). Bulmaca köşesinin bağlantısı `#bulmaca` ile biter. Bağlantıda bunlardan başka hiçbir şey olmaz. Tarayıcı kopyalamaya izin vermezse bağlantı seçili olarak gösterilir, elle kopyalarsın. Aynı turda birden çok tahta olan günlerde (eşitlik bozma) bağlantı hangi tahtayı gösterdiğini söyleyemeyeceği için düğme gösterilmez.
 - **Maçı kendi takip eder:** yeni oyun başlayınca kısa bir duyurudan sonra o oyuna geçer (sen tahtada kendi hamlelerine bakarken geçmez); her günün yayınını kanalın canlı yayın listesinden kendi bulur. Üstteki şeritte maç skoru ve her oyun için bir kare vardır; tüm oyunların listesi bir düğme uzaklıktadır.
-- **Klavye:** ← ve → hamle hamle ilerler, ↑ ya da End canlı konuma döner, Home ilk konuma gider, F tahtayı çevirir.
+- **Klavye:** ← ve → hamle hamle ilerler, ↑ ya da End canlı konuma döner, Home ilk konuma gider, F tahtayı çevirir. Videoya tıkladıktan sonra tahtaya ya da sayfada herhangi bir yere tıklaman yeter, ok tuşları yine tahtayı oynatır.
 
 ## İstatistik
 

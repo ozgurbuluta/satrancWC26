@@ -73,6 +73,8 @@ const pgn = (round, id, sans, result, opts = {}) => {
       if (u.pathname.startsWith('/api/broadcast/-/-/')) return json({ round: {}, games: [] });
       return route.fulfill({ status: 404, headers: cors, body: '{}' });
     });
+    // A plain page in place of the video, where a check clicks in it: the frame takes the keyboard like the real one, and nothing plays.
+    if (opts.blankVideo) await ctx.route(/youtube\.com|youtube-nocookie\.com/, route => route.fulfill({ status: 200, contentType: 'text/html', body: '<body style="margin:0;background:#3a342e"></body>' }));
     // The masters database answered here, where a check needs known numbers: 53 games, 14 won by White, 32 drawn, 7 by Black.
     if (opts.masters) {
       await ctx.route('https://explorer.lichess.ovh/**', route => {
@@ -629,6 +631,68 @@ const pgn = (round, id, sans, result, opts = {}) => {
     });
     check('each setting is one block with its note inside it, and the rule is between settings, never between a row and its note', settings.blocks >= 7 && settings.notes >= 2 && settings.notesInside && settings.bottomRules === 0 && settings.rules === ['0', ...Array(settings.blocks - 1).fill('1')].join(',') && settings.noteGaps.split(',').every(g => Number(g) >= 0 && Number(g) <= 10) && settings.padding === '12px/12px', JSON.stringify(settings));
     check('no page errors in these tabs', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+
+  // ---- 6e. after a click in the video, a press on the page brings the arrow keys back
+  {
+    const { ctx, page, errors } = await open({ blankVideo: true });
+    const activeMove = async () => (await page.locator('.strip-track .move.active').first().innerText().catch(() => '')).trim();
+    const focus = () => page.evaluate(() => document.activeElement?.tagName);
+    const intoVideo = async () => {
+      const box = await page.locator('.player iframe').boundingBox();
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      await page.waitForTimeout(200);
+    };
+    const arrowLeft = async () => {
+      await page.keyboard.press('ArrowLeft');
+      await page.waitForTimeout(250);
+    };
+    const toLive = async () => {
+      await page.keyboard.press('ArrowUp');
+      await page.waitForTimeout(250);
+    };
+    const live = await activeMove();
+
+    await intoVideo();
+    await arrowLeft();
+    check('a click in the video hands the keyboard to the video: the arrow keys do not reach the board', (await focus()) === 'IFRAME' && (await activeMove()) === live, `${await focus()}, ${await activeMove()}`);
+
+    // an empty square of the board
+    {
+      const [x, y] = await centre(page, 'h4');
+      await page.mouse.click(x, y);
+      await page.waitForTimeout(200);
+      const where = await focus();
+      await arrowLeft();
+      check('a click on an empty square of the board brings the arrow keys back', where === 'BODY' && (await activeMove()) !== live, `${where}, ${live} -> ${await activeMove()}`);
+      await toLive();
+    }
+    // somewhere else on the page
+    for (const [name, selector] of [['a card beside the board', '.win-chance'], ['the footer', '.foot'], ['a move number in the list of moves', '.side-col .move-list .move-num']]) {
+      await intoVideo();
+      const box = await page.locator(selector).first().boundingBox();
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      await page.waitForTimeout(200);
+      const where = await focus();
+      await arrowLeft();
+      check(`so does a click on ${name}`, where === 'BODY' && (await activeMove()) !== live, `${where}, ${live} -> ${await activeMove()}`);
+      await toLive();
+    }
+    // the press that brings the keyboard back is still the press it was: a piece dragged straight after the video is played
+    await intoVideo();
+    await drag(page, 'd2', 'd3');
+    check('a piece dragged straight after a click in the video is still played', /6\. ?d3/.test(await ownLine(page)) && (await focus()) !== 'IFRAME', `${await ownLine(page)}, ${await focus()}`);
+    await arrowLeft();
+    check('and the arrow keys then step back through it: the pawn is on d2 again', /pawn/.test((await pieceAt(page, 'd2')) || '') && (await pieceAt(page, 'd3')) === null, `d2 ${await pieceAt(page, 'd2')}, d3 ${await pieceAt(page, 'd3')}`);
+    // a field keeps the keyboard: the page takes it back from a frame, from nothing else
+    await page.locator('.move-strip .go-live').click().catch(() => {});
+    const select = page.locator('.stream-pick select');
+    await select.focus();
+    const [bx, by] = await centre(page, 'h4');
+    await page.mouse.move(bx, by);
+    check('a control that has the keyboard keeps it until the viewer clicks elsewhere', (await focus()) === 'SELECT');
+    check('no page errors around the video', errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
 

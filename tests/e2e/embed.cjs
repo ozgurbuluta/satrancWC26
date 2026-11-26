@@ -84,6 +84,29 @@ const run = async (label, opts = {}) => {
   await page.keyboard.press('ArrowLeft');
   await frame.waitForTimeout(300);
   out.arrowKeyMoved = (await frame.locator('.strip-track .move.active').first().innerText().catch(() => null)) !== before;
+  // after a click in the video, a click on the board brings the arrow keys back, inside the frame as well
+  if (!opts.device) {
+    const active = () => frame.locator('.strip-track .move.active').first().innerText().catch(() => null);
+    const video = await frame.locator('.player iframe').boundingBox();
+    if (video) {
+      await page.mouse.click(video.x + video.width / 2, video.y + video.height / 2);
+      await frame.waitForTimeout(600);
+      const inVideo = await frame.evaluate(() => document.activeElement?.tagName);
+      const beforeKeys = await active();
+      await page.keyboard.press('ArrowRight');
+      await frame.waitForTimeout(300);
+      const stuck = (await active()) === beforeKeys;
+      const board = await frame.locator('.board-col cg-board').boundingBox();
+      await page.mouse.click(board.x + board.width * 0.94, board.y + board.height * 0.56);
+      await frame.waitForTimeout(300);
+      const afterClick = await frame.evaluate(() => document.activeElement?.tagName);
+      await page.keyboard.press('ArrowRight');
+      await frame.waitForTimeout(300);
+      out.keysAfterVideo = { focusInVideo: inVideo, arrowsHeldByVideo: stuck, focusAfterBoardClick: afterClick, arrowMovedAgain: (await active()) !== beforeKeys };
+      await page.keyboard.press('ArrowLeft');
+      await frame.waitForTimeout(200);
+    }
+  }
   // outbound link opens a normal tab
   if (!opts.device) {
     // the page's one link to somewhere else: the source code, in the footer

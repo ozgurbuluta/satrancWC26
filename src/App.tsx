@@ -13,7 +13,7 @@ import { SettingsPanel } from './components/SettingsPanel';
 import { ShareButton } from './components/ShareButton';
 import { StreamPanel } from './components/StreamPanel';
 import { TimePanel } from './components/TimePanel';
-import { GAME_SQUARES, useEval, useIsMobile, useMedia, useNow, useT, WIDE_LAYOUT } from './hooks';
+import { GAME_SQUARES, useEval, useIsMobile, useKeyboardBackFromFrames, useMedia, useNow, useT, WIDE_LAYOUT } from './hooks';
 import { setContext, track, trackOutbound } from './lib/analytics';
 import { displayName, firstMoveSquares, materialFromFen, pvToSan, shortName } from './lib/format';
 import { seedGameScores } from './lib/quality';
@@ -87,6 +87,8 @@ export default function App() {
   const layoutRef = useRef<HTMLElement>(null);
 
   useEffect(() => init(), [init]);
+  // After a click in the video, a press on the board or anywhere else on the page brings the arrow keys back.
+  useKeyboardBackFromFrames();
 
   // The board is as large as the height allows, so a wide window leaves room on both sides of it. The rail is laid
   // over that room and takes nothing from the board; where there is none, the two buttons stay under the board.
