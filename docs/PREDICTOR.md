@@ -6,12 +6,82 @@ the board. It is experimental, and labelled so. The page itself carries no
 explanation of it any more: what it is, how it was measured and where it
 falls short is on this page and in the report.
 
-This is its second version. What was measured, with every table, is in
-[PREDICTOR-REPORT.md](PREDICTOR-REPORT.md), which the training script writes.
-How it was to be built and measured was fixed beforehand in
-[PREDICTOR-V2-PROTOCOL.md](PREDICTOR-V2-PROTOCOL.md). The first version's
-report is kept as [PREDICTOR-REPORT-V1.md](PREDICTOR-REPORT-V1.md). This
-page says what the model is and what it is not.
+This is its third version: the second version's model of the board, with
+opening theory and the match's own games laid over it. That part is
+described first, below; the rest of the page is the second version, which
+is still what the board model is. Reports, each written by the training
+script: [third](PREDICTOR-V3-REPORT.md), [second](PREDICTOR-REPORT.md),
+[first](PREDICTOR-REPORT-V1.md). The plans written before each was fitted:
+[third](PREDICTOR-V3-PROTOCOL.md), [second](PREDICTOR-V2-PROTOCOL.md).
+
+## Third version: theory, and this match
+
+The second version knew no openings. Where a player had not been in a
+position before, it fell back on a model that looks at the board and
+nothing else, which in an opening is a poor guess. And it knew nothing of
+the match it is used on.
+
+Two things are laid over the board model now:
+
+`base(move) = (theory + ν · board) / (all theory + ν)`
+
+`p(move) = (own + μ · same + κ · base) / (all own + μ · all same + κ)`
+
+- `theory`: how often players rated 2600 or more played the move in this
+  position, in 10,761 classical games since 2020 (the two players' own games
+  left out), newer games counting for more;
+- `own`: how often this player did, in earlier tournaments, as before;
+- `same`: how often this player did in the earlier games of this match. The
+  page reads those from the broadcast as they are played; nothing of the
+  open game or a later one is used.
+
+Chosen on the 2025 games: ν 0.5 (theory is trusted from very few games), a
+theory half-life of 4 years, μ 2, κ 2, and the player's own games now halving
+every 0.5 years, so the last months dominate.
+
+**The theory table is cut to fit.** Whole, it has 243,288 positions and
+would make the file over 4 MB. It is kept for the first 12 moves, for
+positions that occurred at least twice: 21,100 positions. That costs about a
+quarter of what theory is worth (selection log loss 2.151 against 2.122
+whole, and 2.245 for the second version). The file is 590 KB and loads
+after the page.
+
+**Measured**, the second version beside it on the same decisions:
+
+| | Decisions | Log loss | First choice right | In the first three | Calibration error |
+|---|---|---|---|---|---|
+| January to August 2026, third | 4,240 | 2.125 | 36.5 % | 61.2 % | 3.4 % |
+| January to August 2026, second | 4,240 | 2.205 | 34.7 % | 59.4 % | 2.9 % |
+| September 2026, third | 963 | 2.299 | 33.8 % | 59.0 % | 6.5 % |
+| September 2026, second | 963 | 2.376 | 31.6 % | 56.8 % | 6.2 % |
+| The match so far (2 games), third | 116 | 2.038 | 31.0 % | 60.3 % | |
+| The match so far, second | 116 | 2.290 | 22.4 % | 56.0 % | |
+
+- On January to August 2026 the difference in log loss is -0.080
+  (-0.104 to -0.058, by drawing whole games again), and the first
+  choice is right 1.8 points more often. All of it comes from the first twelve
+  moves; after that the two versions are the same model.
+- **Calibration error is not better**: 3.4 % against 2.9 %, a difference of
+  +0.5 points whose interval (-0.2 to 1.2) includes zero. The rule
+  written beforehand asked for lower log loss and a calibration error that
+  is not higher. The first is met, the second is not, by the point
+  estimate. By that rule alone the third version would not replace the
+  second; whether it goes on the page is Özgür's decision.
+- The January to August games are not untouched for this version: the
+  second version's result on them had been seen. The match games are
+  unseen by any version, and they are two games.
+
+Tried on the 2025 games and not adopted: the two players' rapid and blitz
+games (worth 0.0007 of log loss, for ten thousand more positions), and
+other players' moves in the two players' own games (theory says the same
+from more games).
+
+Not done yet, and in the plan: the score learned from World Cup two-game
+matches instead of the written rule below, and whether a title match
+changes how much a player repeats his own openings.
+
+## Second version: the model of the board and the player's own games
+
 
 ## What it is
 
@@ -224,6 +294,26 @@ model. It lowered the selection log loss by 0.0003 against a threshold of
   engine, which is a different thing and is labelled as one.
 
 ## Running it
+
+The third version sits on top of the second, so the second's committed
+selection has to be in place. Then:
+
+```sh
+python3 scripts/prepare-v3-games.py
+node scripts/train-predictor.mjs --v3
+node scripts/train-predictor.mjs --v3 --final
+```
+
+The first reads the archives once (cached, about 770 MB) for the elite,
+knockout and title-match games. The second makes the third version's
+choices on the 2025 games and writes `data/predictor-v3/selection.json`. The
+third repeats that, stops unless it comes out identical, measures, and
+writes `src/data/predictor.json` and `docs/PREDICTOR-V3-REPORT.md`. About
+two minutes each.
+
+For the second version alone (these write the second version's model file
+over the third's; run the two `--v3` commands again afterwards):
+
 
 ```sh
 node scripts/train-predictor.mjs

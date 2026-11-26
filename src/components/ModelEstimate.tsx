@@ -4,7 +4,7 @@ import { useT } from '../hooks';
 import { localizeSan, shortName } from '../lib/format';
 import type { GameData } from '../lib/pgn';
 import { predict, shares, type PredictorModel } from '../lib/predictor/model';
-import { clocksAt, referencesHeld, selectStakes, useStore } from '../store';
+import { clocksAt, referencesHeld, selectRoundNo, selectStakes, useStore } from '../store';
 
 const MODEL = model as unknown as PredictorModel;
 /** A share as the list prints it. A legal move with a share is never printed as 0. */
@@ -52,6 +52,19 @@ export function ModelEstimate({ game, fen }: Props) {
   const moverPoints = useStore(pointsOf(mover.fideId));
   const opponentPoints = useStore(pointsOf(opponent.fideId));
   const gamesLeft = useStore(s => selectStakes(s)?.gamesLeft);
+  // What the two have already played against each other in this match: earlier games only, never the open one or a later one.
+  const roundNo = useStore(selectRoundNo);
+  const matchGames = useStore(s => s.matchGames);
+  const earlier = useMemo(
+    () =>
+      gamesLeft === undefined
+        ? []
+        : matchGames
+            .filter(mg => mg.roundNo < roundNo && mg.moves.length > 0)
+            .sort((a, b) => a.roundNo - b.roundNo)
+            .map(mg => ({ whiteId: mg.white.fideId, blackId: mg.black.fideId, moves: mg.moves })),
+    [matchGames, roundNo, gamesLeft],
+  );
 
   const prediction = useMemo(
     () =>
@@ -62,8 +75,9 @@ export function ModelEstimate({ game, fen }: Props) {
         moverId: mover.fideId,
         secondsLeft,
         match: moverPoints !== undefined && opponentPoints !== undefined && gamesLeft !== undefined ? { moverPoints, opponentPoints, gamesLeft } : undefined,
+        earlier,
       }),
-    [fen, lastMove, ownLastMove, mover.fideId, secondsLeft, moverPoints, opponentPoints, gamesLeft],
+    [fen, lastMove, ownLastMove, mover.fideId, secondsLeft, moverPoints, opponentPoints, gamesLeft, earlier],
   );
   const shown = useMemo(() => shares(prediction), [prediction]);
   const moveNo = `${Number(fen.split(' ')[5]) || 1}${whiteToMove ? '.' : '…'}`;

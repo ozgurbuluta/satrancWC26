@@ -165,6 +165,35 @@ describe('the estimate under the board', () => {
     expect(text()).toMatch(/Sindarov için, 2\. hamle/);
   });
 
+  it('reads what the player did in the earlier games of this match, and nothing of the open or later ones', async () => {
+    // game 1: Sindarov, with White, opened 1. c4, which he does not usually play. Game 3 is his next White.
+    const share = async (firstGame: string[]) => {
+      resetWorld();
+      world.rounds = [round(R1, 1, T0 - 49 * HOUR, { finished: true }), round(R2, 2, T0 - 25 * HOUR, { finished: true }), round(R3, 3, T0 - HOUR, { ongoing: true })];
+      world.defaultRoundId = R3;
+      world.tournamentPgn = game({ round: 1, id: 'g1', sans: firstGame, result: '1/2-1/2' }) + game({ round: 2, id: 'g2', sans: ['d4', 'd5'], result: '1/2-1/2', whiteIsSindarov: false });
+      const mod = await boot();
+      push(R3, game({ round: 3, id: 'g3', sans: [] }));
+      const { ModelEstimate } = await import('../src/components/ModelEstimate');
+      const Host = () => {
+        const g = mod.useStore(mod.selectGameData);
+        const fen = mod.useStore(mod.selectGuessFen);
+        return g && fen ? <ModelEstimate game={g} fen={fen} /> : null;
+      };
+      await act(() => root.render(<Host />));
+      expect(text()).toMatch(/Sindarov için, 1\. hamle/);
+      const c4 = rows().find(li => li.querySelector('strong')?.textContent === 'c4');
+      const shown = c4 ? Number(c4.querySelector('.num')!.textContent!.replace(/\D/g, '')) : 0;
+      await act(() => root.render(<></>));
+      return shown;
+    };
+    const after = await share(['c4', 'e5']);
+    const before = await share(['e4', 'e5']);
+    // his c4 of game 1 counts; Gukesh's 1. d4 of game 2 is not Sindarov's move and changes nothing for him
+    expect(after).toBeGreaterThan(before + 5);
+    expect(after).toBeGreaterThanOrEqual(10);
+  });
+
   it('is a title, a label and a list, with no explanation under it', async () => {
     await mount(game({ round: 1, id: 'g1', sans: ITALIAN.slice(0, 4) }));
     const card = host.querySelector('.model-estimate')!;

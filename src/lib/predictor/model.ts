@@ -1,30 +1,34 @@
-// The move predictor: a base choice model over the legal moves, blended with
-// what the player has played in the position before.
+// The move predictor: a model of the board, pulled towards what strong
+// players play in the position, and then towards what this player has played
+// there before.
 //
-// The base model gives every legal move a score, a weighted sum of features
+// The board model gives every legal move a score, a weighted sum of features
 // read off the board, and turns the scores into probabilities. Its weights
 // were fitted on the two players' earlier classical games (see
-// scripts/train-predictor.mjs and docs/PREDICTOR.md): one set shared by
-// everyone, a correction for each of the two players where the selection
-// games supported one, and a correction that grows as the clock runs down.
+// scripts/train-predictor.mjs and docs/PREDICTOR.md).
 //
-// Where the player has been in the position before, the estimate is pulled
-// towards what they played there:
+// In the opening it knows no theory, so two things are laid over it:
 //
-//   p(m) = (own(m) + w · others(m) + κ · base(m)) / (own + w · others + κ)
+//   base(m) = (theory(m) + ν · board(m)) / (all theory + ν)
+//   p(m)    = (own(m) + μ · same(m) + κ · base(m)) / (own + μ · same + κ)
 //
-// Up to this point the estimate lies between the base model and the share
-// actually played (other people's moves counted at their discount w): it is
-// the base model where there are no earlier games, and close to the played
-// share where there are many. A last step then spreads a small share ε
-// evenly over every legal move, a third ingredient that is neither of the
-// two. Counts are aged, so a game of last month weighs more than one of
-// three years ago.
+//   theory  how often players rated 2600 or more played m here;
+//   own     how often this player did, in earlier tournaments;
+//   same    how often this player did in the earlier games of this match,
+//           read from the games as they are played.
 //
-// The match situation (score and games left) is not something the data can
-// teach: the earlier games are tournaments, not matches. It enters through
-// one rule that is written down here and labelled as a rule wherever it is
-// shown, never as something the model learned.
+// Every count is aged, so a game of last month weighs more than one of three
+// years ago. A last step spreads a small share ε evenly over every legal
+// move. Up to that step the estimate lies between the three ingredients:
+// the board model where nothing else is known, theory where strong players
+// have been, the player's own habits where the player has.
+//
+// The match situation (score and games left) is not something these games
+// can teach: they are tournaments, not matches. It enters through one rule
+// that is written down here, never as something the model learned.
+import { Chess } from 'chessops/chess';
+import { makeFen } from 'chessops/fen';
+import { parseUci } from 'chessops/util';
 import { candidates, FEATURES, positionKey, type Candidate } from './features';
 
 export interface PredictorModel {
@@ -39,16 +43,22 @@ export interface PredictorModel {
   };
   /** The base model's scores are divided by this before they become probabilities. Chosen on the selection games. */
   temperature: number;
-  /** How earlier moves are blended with the base model. All of it chosen on the selection games. */
+  /** How the estimate is put together. All of it chosen on the selection games. */
   blend: {
-    /** How many earlier games the base model is worth. */
+    /** How many of the player's own games the base is worth. */
     kappa: number;
-    /** What a move played here by someone else counts for, next to one of the player's own. */
-    others: number;
-    /** Counts halve with every this many years of age; null for no ageing. Already applied to the tables. */
+    /** The player's own counts halve with every this many years; null for no ageing. Already applied to the table. */
     halfLifeYears: number | null;
     /** A small share spread evenly over every legal move. */
     epsilon: number;
+    /** How many theory games the board model is worth; null where no theory is used. */
+    nu: number | null;
+    /** Theory counts halve with every this many years; already applied to the table. */
+    theoryHalfLifeYears: number | null;
+    /** Theory is used for the first this many half-moves of a game. */
+    theoryPlies: number;
+    /** What a move of the player in an earlier game of this match counts for, next to one in an earlier tournament. */
+    same: number;
     /** The day the tables are aged as of. */
     asOf: string;
   };
@@ -60,9 +70,12 @@ export interface PredictorModel {
    * Moves played before, as one text: "key=move,move;key=move". A move is
    * its UCI followed by a letter and a count for each column that has one:
    * "e2e4g2.5x1" is e2e4, 2.5 times by the player of column g and once by
-   * column x. Counts are already aged.
+   * column x. Counts are already aged. Keys are the last eight characters
+   * of the position key.
    */
   priors: string;
+  /** What players rated 2600 or more played, the same way: "key=move12.5,move3;…", a count right after each move. */
+  theory: string;
   /** The match-situation rule: the most it can add to or take from a move's score. */
   stakesMax: number;
   /** Seconds on the clock below which pressure starts to count. */
@@ -85,6 +98,16 @@ export interface PredictInput {
   /** Seconds on the mover's clock before this move, when known. */
   secondsLeft?: number;
   match?: MatchSituation;
+  /** The earlier games of this match, oldest first: what the two have already played against each other. */
+  earlier?: EarlierGame[];
+}
+
+/** A finished game of the match being followed. */
+export interface EarlierGame {
+  whiteId?: string;
+  blackId?: string;
+  /** Its moves in UCI, from the first. */
+  moves: string[];
 }
 
 export interface PredictedMove {
@@ -143,25 +166,30 @@ export const softmax = (scores: number[]): number[] => {
   return e.map(x => x / sum);
 };
 
-/** The tables of a model by position key, read from its text once and kept. */
-const tables = new WeakMap<PredictorModel, Map<string, string>>();
-const tableOf = (model: PredictorModel): Map<string, string> => {
-  let table = tables.get(model);
+/** The key a position is stored under in the tables: the last eight characters of its position key. */
+export const tableKey = (fen: string): string => positionKey(fen).slice(-8);
+
+/** A table of a model by key, read from its text once and kept. */
+const tables = new WeakMap<PredictorModel, Record<string, Map<string, string>>>();
+const tableOf = (model: PredictorModel, which: 'priors' | 'theory'): Map<string, string> => {
+  let both = tables.get(model);
+  if (!both) tables.set(model, (both = {}));
+  let table = both[which];
   if (!table) {
     table = new Map();
-    for (const part of model.priors.split(';')) {
+    for (const part of (model[which] ?? '').split(';')) {
       const at = part.indexOf('=');
       if (at > 0) table.set(part.slice(0, at), part.slice(at + 1));
     }
-    tables.set(model, table);
+    both[which] = table;
   }
   return table;
 };
 
-/** What was played before in a position: for each move, how often by each column ("gukesh", "sindarov", "others"). */
+/** What the two players played before in a position: for each move, how often by each of them. */
 export const earlierMoves = (model: PredictorModel, key: string): Map<string, Record<string, number>> => {
   const moves = new Map<string, Record<string, number>>();
-  const entry = tableOf(model).get(key);
+  const entry = tableOf(model, 'priors').get(key);
   if (!entry) return moves;
   for (const part of entry.split(',')) {
     const move = /^([a-h][1-8][a-h][1-8][qrbn]?)(.*)$/.exec(part);
@@ -174,6 +202,35 @@ export const earlierMoves = (model: PredictorModel, key: string): Map<string, Re
     moves.set(move[1], counts);
   }
   return moves;
+};
+
+/** What strong players played in a position: for each move, how often (aged). */
+export const theoryMoves = (model: PredictorModel, key: string): Map<string, number> => {
+  const moves = new Map<string, number>();
+  const entry = tableOf(model, 'theory').get(key);
+  if (!entry) return moves;
+  for (const part of entry.split(',')) {
+    const move = /^([a-h][1-8][a-h][1-8][qrbn]?)(\d*\.?\d+)$/.exec(part);
+    if (move) moves.set(move[1], Number(move[2]));
+  }
+  return moves;
+};
+
+/** The first half-moves of a game as positions and the moves played in them. Stops at a move it cannot play. */
+const replays = new WeakMap<string[], { key: string; uci: string; white: boolean }[]>();
+export const positionsOf = (moves: string[], limit = 40): { key: string; uci: string; white: boolean }[] => {
+  const known = replays.get(moves);
+  if (known) return known;
+  const out: { key: string; uci: string; white: boolean }[] = [];
+  const pos = Chess.default();
+  for (const uci of moves.slice(0, limit)) {
+    const move = parseUci(uci);
+    if (!move || !pos.isLegal(move)) break;
+    out.push({ key: tableKey(makeFen(pos.toSetup())), uci, white: pos.turn === 'white' });
+    pos.play(move);
+  }
+  replays.set(moves, out);
+  return out;
 };
 
 /** The model's estimate for the next move in a position. */
@@ -190,20 +247,38 @@ export const predict = (model: PredictorModel, input: PredictInput): Prediction 
   let p = softmax(scores);
   let seenBefore = false;
   if (playerKey && Object.values(model.priorColumns).includes(playerKey)) {
-    // the player's own earlier moves here, other people's at a discount, and the base model as kappa games' worth
-    const { kappa, others, epsilon } = model.blend;
-    const played = earlierMoves(model, positionKey(input.fen));
+    const { kappa, epsilon, nu, theoryPlies, same } = model.blend;
+    const key = tableKey(input.fen);
+    const fields = input.fen.trim().split(/\s+/);
+    const ply = ((Number(fields[5]) || 1) - 1) * 2 + (fields[1] === 'b' ? 1 : 0);
+    // the board model, pulled towards what strong players played here
+    if (nu !== null && ply < theoryPlies) {
+      const theory = theoryMoves(model, key);
+      if (theory.size) {
+        const played = cands.map(c => theory.get(c.uci) ?? 0);
+        const total = played.reduce((sum, x) => sum + x, nu);
+        p = p.map((q, i) => (played[i] + nu * q) / total);
+      }
+    }
+    // then towards the player's own earlier moves here: in earlier tournaments, and in this match's earlier games
+    const own = earlierMoves(model, key);
     const mass = p.map(q => kappa * q);
     let total = kappa;
-    cands.forEach((c, i) => {
-      const counts = played.get(c.uci);
-      if (!counts) return;
-      const own = counts[playerKey] ?? 0;
-      const rest = Object.values(counts).reduce((sum, x) => sum + x, 0) - own;
-      if (own > 0) seenBefore = true;
-      mass[i] += own + others * rest;
-      total += own + others * rest;
-    });
+    const add = (uci: string, weight: number) => {
+      const at = cands.findIndex(c => c.uci === uci);
+      if (at < 0 || weight <= 0) return;
+      seenBefore = true;
+      mass[at] += weight;
+      total += weight;
+    };
+    for (const [uci, counts] of own) add(uci, counts[playerKey] ?? 0);
+    if (same > 0) {
+      for (const game of input.earlier ?? []) {
+        const moverIsWhite = game.whiteId === input.moverId ? true : game.blackId === input.moverId ? false : undefined;
+        if (moverIsWhite === undefined) continue;
+        for (const step of positionsOf(game.moves)) if (step.white === moverIsWhite && step.key === key) add(step.uci, same);
+      }
+    }
     p = mass.map(m => ((1 - epsilon) * m) / total + epsilon / cands.length);
   }
   const moves = cands.map((c, i) => ({ uci: c.uci, san: c.san, p: p[i] })).sort((a, b) => b.p - a.p || a.uci.localeCompare(b.uci));

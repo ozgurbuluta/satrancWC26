@@ -32,7 +32,7 @@ model's tables, counts and measurements) and its panel (the score it may
 use, every hidden and refused state), the wording of the page, the time
 control said in the viewer's language, and what the engine card says about
 the choice of move, who is winning, and the win chances counted from real
-games: 305 tests.
+games: 312 tests.
 Also in CI: the secret check over the whole history, the type check, and
 builds for `/` and `/satranc/`.
 
@@ -190,7 +190,7 @@ Sindarov is to play move 6 of a Ruy Lopez.
 
 | Model estimate, under the board | Result |
 |---|---|
-| Rows | three different legal moves and "Diğer hamleler"; 49 + 23 + 20 + 8 = 100 |
+| Rows | three different legal moves and "Diğer hamleler"; 65 + 27 + 5 + 3 = 100 with the third version of the model |
 | Label | "Deneysel", and "Sindarov için, 6. hamle" |
 | Place | in the board column, below the board and its controls, in the flow of the page, not fixed or sticky; on a phone (390 px) under the board and above the tabs, inside the screen width |
 | Its moves | text, not buttons: they cannot be mistaken for a guess |
@@ -211,8 +211,11 @@ percent, which reads "<1 %" and never 0.
 
 `share.cjs` 61 of 61 and `puzzles.cjs` 33 of 33 on the same build.
 
-The model file loads after the page as a part of its own (317 KB, 168 KB
-compressed); the page's own script is unchanged in size.
+The model file loads after the page as a part of its own (612 KB, 316 KB
+compressed, with the third version's theory table); the page's own script
+is unchanged in size. A unit test replays the two finished games of the
+match through the browser's own code and gets the numbers the training
+script measured, to within the three weeks between the two ageing dates.
 
 Not covered: real Safari, a real phone, and the estimate against the
 production feed.
