@@ -451,6 +451,43 @@ const pgn = (round, id, sans, result, opts = {}) => {
     check('one square per game, each with its name', (await squares.count()) === 14 && /^1\. oyun: Sindarov – Gukesh, ½–½$/.test(await squares.nth(0).getAttribute('aria-label')), await squares.nth(0).getAttribute('aria-label'));
     check('the played, live and coming games are told apart', /won-a/.test(await squares.nth(1).getAttribute('class')) && /live/.test(await squares.nth(2).getAttribute('class')) && /ahead/.test(await squares.nth(5).getAttribute('class')));
     check('the open game is marked', (await squares.nth(2).getAttribute('aria-current')) === 'true' && /3\. oyun/.test(await page.locator('.match-strip .game-now').innerText()));
+    // the match as a scoreboard: a row for each player, a tile for each game
+    const score = await page.evaluate(() => {
+      const r = el => el.getBoundingClientRect();
+      const mid = el => Math.round(r(el).top + r(el).height / 2);
+      const strip = document.querySelector('.match-strip');
+      const bar = r(document.querySelector('.top'));
+      const labels = [...strip.querySelectorAll('.who-label')];
+      const pts = [...strip.querySelectorAll('.pts')];
+      const tiles = [...strip.querySelectorAll('.sq')];
+      const half = (t, i) => {
+        const h = t.querySelectorAll('.half')[i];
+        return h ? { text: h.textContent, cls: h.className.replace('half', '').trim(), mid: mid(h), bg: getComputedStyle(h).backgroundColor } : null;
+      };
+      return {
+        inBar: r(strip).top >= bar.top && r(strip).bottom <= bar.bottom,
+        barHeight: Math.round(bar.height),
+        names: [...strip.querySelectorAll('.who-name')].map(n => n.textContent),
+        rows: labels.map(mid),
+        ptsRows: pts.map(mid),
+        ptsText: pts.map(p => p.textContent),
+        ptsFont: getComputedStyle(pts[0]).fontFamily,
+        order: r(labels[0]).right <= r(tiles[0]).left && r(tiles.at(-1)).right <= r(pts[0]).left && r(labels[0]).left === r(labels[1]).left,
+        g1: [half(tiles[0], 0), half(tiles[0], 1)],
+        g2: [half(tiles[1], 0), half(tiles[1], 1)],
+        g3: [half(tiles[2], 0), half(tiles[2], 1)],
+        light: !!tiles[2].querySelector('.sq-live'),
+        g6: { text: tiles[5].textContent, halves: tiles[5].querySelectorAll('.half').length, height: Math.round(r(tiles[5]).height), tileHeight: Math.round(r(tiles[0]).height) },
+        gap: Math.round(r(tiles[7]).left - r(tiles[6]).right) > Math.round(r(tiles[6]).left - r(tiles[5]).right),
+        stripBg: getComputedStyle(strip).backgroundColor,
+      };
+    });
+    const near = (x, y) => Math.abs(x - y) <= 2;
+    check('the match is a scoreboard inside the bar: a row for each player, the name on the left and the total on the right', score.inBar && score.barHeight === 60 && score.names.join(',') === 'Gukesh,Sindarov' && score.rows[0] < score.rows[1] && near(score.rows[0], score.ptsRows[0]) && near(score.rows[1], score.ptsRows[1]) && score.order && score.ptsText.join(',') === '1½,½' && /Fraunces/.test(score.ptsFont), JSON.stringify({ ...score, g1: 0, g2: 0, g3: 0 }));
+    check('a played game is a tile of two halves, each in its player’s row, in the colour of the pieces they had', score.g1.map(h => `${h.cls}:${h.text}`).join(' ') === 'black:½ white:½' && near(score.g1[0].mid, score.rows[0]) && near(score.g1[1].mid, score.rows[1]) && score.g1[0].bg !== score.g1[1].bg, JSON.stringify(score.g1));
+    check('a win and a loss are a 1 and a 0 in their rows', score.g2.map(h => `${h.cls}:${h.text}`).join(' ') === 'white won:1 black lost:0', JSON.stringify(score.g2));
+    check('the game in progress shows the pieces, no points, and a red light', score.g3.map(h => `${h.cls}:${h.text}`).join(' ') === 'black: white:' && score.light, JSON.stringify(score.g3));
+    check('a game to come is one tall tile with its number, and the second half starts after a wider gap', score.g6.text === '6' && score.g6.halves === 0 && score.g6.height === score.g6.tileHeight && score.gap, JSON.stringify(score.g6));
     await squares.nth(1).click();
     await page.waitForFunction(() => /2\. oyun/.test(document.querySelector('.match-strip .game-now')?.textContent ?? ''), null, { timeout: 10000 }).catch(() => {});
     check('a square opens its game', /2\. oyun/.test(await page.locator('.match-strip .game-now').innerText()) && (await squares.nth(1).getAttribute('aria-current')) === 'true');
@@ -576,8 +613,9 @@ const pgn = (round, id, sans, result, opts = {}) => {
       const h1 = document.querySelector('.brand h1');
       const tops = new Set([...h1.querySelectorAll('span')].map(sp => Math.round(sp.getBoundingClientRect().top)));
       const top = document.querySelector('.top');
-      return { lines: tops.size, halves: [...h1.querySelectorAll('span')].map(sp => sp.textContent), barOverflow: top.scrollWidth - top.clientWidth, brandRight: Math.round(document.querySelector('.brand').getBoundingClientRect().right), stripLeft: Math.round(document.querySelector('.match-strip').getBoundingClientRect().left) };
+      return { lines: tops.size, halves: [...h1.querySelectorAll('span')].map(sp => sp.textContent), barOverflow: top.scrollWidth - top.clientWidth, brandRight: Math.round(document.querySelector('.brand').getBoundingClientRect().right), stripLeft: Math.round(document.querySelector('.match-strip').getBoundingClientRect().left), stripRight: Math.round(document.querySelector('.match-strip').getBoundingClientRect().right), navLeft: Math.round(document.querySelector('.viewnav').getBoundingClientRect().left), tiles: document.querySelectorAll('.game-squares .sq').length };
     });
+    check('and the scoreboard still has its fourteen tiles there, clear of the view switch', narrow.tiles === 14 && narrow.stripRight < narrow.navLeft, JSON.stringify(narrow));
     check('on a shorter bar it takes exactly two lines and runs into nothing', narrow.lines === 2 && narrow.halves.join('|') === 'Dünya Satranç|Şampiyonası 2026' && narrow.barOverflow <= 0 && narrow.brandRight <= narrow.stripLeft, JSON.stringify(narrow));
     check('no page errors in the top bar', errors.length === 0, errors.join(' | '));
     await ctx.close();
@@ -709,6 +747,12 @@ const pgn = (round, id, sans, result, opts = {}) => {
     const phoneTabs = (await page.locator('.tabs button').allInnerTexts()).map(t => t.trim());
     check('on a phone guessing is a tab, after Stockfish', phoneTabs.join(',') === 'Stockfish,Tahmin,Benzer,Grafik,Maç,Ayarlar', phoneTabs.join(','));
     check('and the two board buttons stay under the board', (await page.locator('.board-tools').count()) === 0 && (await page.locator('.move-strip > .nav-btn').count()) === 1);
+    const phoneScore = await page.evaluate(() => {
+      const strip = document.querySelector('.match-strip');
+      const tops = [...strip.querySelectorAll('.who-label')].map(l => Math.round(l.getBoundingClientRect().top));
+      return { rows: tops[0] < tops[1], text: [...strip.querySelectorAll('.who')].map(w => w.querySelector('.who-name').textContent + ' ' + w.querySelector('.pts').textContent).join(', '), tiles: strip.querySelectorAll('.sq').length, right: Math.round(strip.getBoundingClientRect().right), pillLeft: Math.round(document.querySelector('.top-right').getBoundingClientRect().left) };
+    });
+    check('on a phone the scoreboard is the two rows of names and totals, with no tiles', phoneScore.rows && phoneScore.text === 'Gukesh 1½, Sindarov ½' && phoneScore.tiles === 0 && phoneScore.right <= phoneScore.pillLeft, JSON.stringify(phoneScore));
 
     // a swipe that starts on a piece scrolls the page and plays nothing
     const client = await ctx.newCDPSession(page);

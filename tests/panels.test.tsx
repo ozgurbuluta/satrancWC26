@@ -442,4 +442,98 @@ describe('the top bar', () => {
     expect(brand.querySelector('h1')!.textContent).toBe('Dünya Satranç Şampiyonası 2026');
     expect(brand.querySelector('p')!.textContent).toBe('Cenevre');
   });
+
+  describe('the match as a scoreboard', () => {
+    const R4 = 'round004';
+    const threeGames = () => {
+      world.rounds = [round(R1, 1, T0 - 49 * HOUR, { finished: true }), round(R2, 2, T0 - 25 * HOUR, { finished: true }), round(R3, 3, T0 - HOUR, { ongoing: true }), round(R4, 4, T0 + 23 * HOUR)];
+      world.defaultRoundId = R3;
+      // game 1: Sindarov wins with White. game 2: a draw, Gukesh with White.
+      world.tournamentPgn = game({ round: 1, id: 'g1', sans: QGD, result: '1-0' }) + game({ round: 2, id: 'g2', whiteIsSindarov: false, sans: ITALIAN, result: '1/2-1/2' });
+    };
+    const mount = async (squares: boolean) => {
+      threeGames();
+      const mod = await boot();
+      const { Header } = await import('../src/components/Header');
+      await act(() => root.render(<Header squares={squares} />));
+      await act(async () => push(R3, game({ round: 3, id: 'g3', sans: ITALIAN.slice(0, 5) })));
+      return mod;
+    };
+    const halves = (tile: Element) => [...tile.querySelectorAll('.half')].map(h => `${h.className.replace('half', '').trim().replace(/\s+/g, ' ')}:${h.textContent}`);
+
+    it('has a row for each player, read as name then total, the champion first', async () => {
+      await mount(true);
+      const who = [...host.querySelectorAll('.match-strip .who')];
+      expect(who.map(w => w.className)).toEqual(['who a', 'who b']);
+      expect(who.map(w => w.querySelector('.who-name')!.textContent)).toEqual(['Gukesh', 'Sindarov']);
+      expect(who.map(w => w.querySelector('.pts')!.textContent)).toEqual(['½', '1½']);
+      // names that are capitalised by the stylesheet are marked as not Turkish
+      for (const w of who) expect(w.querySelector('.who-name')!.getAttribute('lang')).toBe('en');
+      // both players come before the tiles, so the score is heard before the list of games
+      const strip = host.querySelector('.match-strip')!;
+      expect([...strip.children].map(c => c.className.split(' ')[0])).toEqual(['who', 'who', 'game-squares', 'game-now']);
+      expect(strip.querySelector('.game-now')!.textContent).toBe('3. oyun');
+    });
+
+    it('gives every game a tile: two halves once it has started, its number while it is to come', async () => {
+      await mount(true);
+      const tiles = [...host.querySelectorAll('.game-squares .sq')];
+      expect(tiles).toHaveLength(4);
+      // game 1: Gukesh (top row) lost with Black, Sindarov won with White
+      expect(tiles[0].className).toMatch(/split done won-b/);
+      expect(halves(tiles[0])).toEqual(['black lost:0', 'white won:1']);
+      // game 2: a draw, Gukesh with White
+      expect(tiles[1].className).toMatch(/split done draw/);
+      expect(halves(tiles[1])).toEqual(['white:½', 'black:½']);
+      // game 3, in progress: the pieces each has, no points yet, and the red light
+      expect(tiles[2].className).toMatch(/split live/);
+      expect(halves(tiles[2])).toEqual(['black:', 'white:']);
+      expect(tiles[2].querySelector('.sq-live')).not.toBeNull();
+      expect(tiles[2].getAttribute('aria-current')).toBe('true');
+      // game 4, to come: one tile with its number, and nothing about colours
+      expect(tiles[3].className).toMatch(/whole ahead/);
+      expect(tiles[3].querySelector('.half')).toBeNull();
+      expect(tiles[3].textContent).toBe('4');
+      // what a tile shows is for the eye; its name says the same in words
+      expect(tiles[0].getAttribute('aria-label')).toBe('1. oyun: Sindarov – Gukesh, 1–0');
+      for (const t of tiles) for (const part of t.children) expect(part.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('opens a game from its tile', async () => {
+      const mod = await mount(true);
+      const tiles = () => [...host.querySelectorAll<HTMLButtonElement>('.game-squares .sq')];
+      await act(async () => tiles()[0].click());
+      expect(mod.useStore.getState().roundId).toBe(R1);
+      expect(tiles()[0].getAttribute('aria-current')).toBe('true');
+      expect(tiles()[2].getAttribute('aria-current')).toBeNull();
+      expect(host.querySelector('.match-strip .game-now')!.textContent).toBe('1. oyun');
+    });
+
+    it('keeps the names and totals where there is no room for the tiles', async () => {
+      await mount(false);
+      expect(host.querySelector('.game-squares')).toBeNull();
+      expect(host.querySelector('.match-strip')!.className).not.toMatch(/with-games/);
+      expect([...host.querySelectorAll('.match-strip .pts')].map(p => p.textContent)).toEqual(['½', '1½']);
+    });
+
+    it('says nothing of a result the viewer has not reached', async () => {
+      // watching game 1 from its start while game 2 is already over
+      world.rounds = [round(R1, 1, T0 - 25 * HOUR, { finished: true }), round(R2, 2, T0 - HOUR, { finished: true }), round(R3, 3, T0 + 23 * HOUR)];
+      world.defaultRoundId = R1;
+      world.tournamentPgn = game({ round: 1, id: 'g1', sans: QGD, result: '1/2-1/2' }) + game({ round: 2, id: 'g2', whiteIsSindarov: false, sans: ITALIAN, result: '0-1' });
+      const mod = await boot();
+      const { Header } = await import('../src/components/Header');
+      await act(() => root.render(<Header squares />));
+      await act(async () => {
+        mod.useStore.getState().selectRound(R1);
+        push(R1, game({ round: 1, id: 'g1', sans: QGD, result: '1/2-1/2' }));
+        mod.useStore.getState().restart();
+      });
+      const tiles = [...host.querySelectorAll('.game-squares .sq')];
+      expect(tiles[1].className).toMatch(/whole hidden/);
+      expect(tiles[1].textContent).toBe('2');
+      expect(tiles[1].querySelector('.half')).toBeNull();
+      expect([...host.querySelectorAll('.match-strip .pts')].map(p => p.textContent)).toEqual(['0', '0']);
+    });
+  });
 });

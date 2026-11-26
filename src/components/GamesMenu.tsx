@@ -4,7 +4,7 @@ import { useT } from '../hooks';
 import type { Strings } from '../i18n';
 import { fedFlag, formatPoints, shortName } from '../lib/format';
 import type { PlayerInfo } from '../lib/pgn';
-import { selectGameRows, selectRoundNo, selectScore, useStore, type GameRow } from '../store';
+import { samePlayer, selectGameRows, selectRoundNo, selectScore, useStore, type GameRow } from '../store';
 
 const resultText = (r: string) => (r === '1/2-1/2' ? '½–½' : r === '1-0' ? '1–0' : r === '0-1' ? '0–1' : '');
 
@@ -159,11 +159,22 @@ export function GameList({ onPick }: { onPick?: () => void }) {
   );
 }
 
+/** One player's half of a game's tile: the pieces they had, and what the game gave them once it may be shown. */
+export const tileHalf = (row: GameRow, player: PlayerInfo): { pieces: 'white' | 'black'; points: '' | '1' | '½' | '0' } | undefined => {
+  if (!row.white || !row.black || row.several) return undefined;
+  const white = samePlayer(row.white, player);
+  if (!white && !samePlayer(row.black, player)) return undefined;
+  const points = row.result === '1/2-1/2' ? '½' : row.result === '1-0' ? (white ? '1' : '0') : row.result === '0-1' ? (white ? '0' : '1') : '';
+  return { pieces: white ? 'white' : 'black', points };
+};
+
 /**
- * The match at a glance, across the top: the score, and one small square per
- * game that opens it. Played games show who won, the game in progress is
- * marked, games to come are empty. `squares` is off where there is no room;
- * the full list is then one button away.
+ * The match as a scoreboard, across the top: a row for each player with the
+ * total at its end, and a tile for each game that opens it. A game that has
+ * started is a tile of two halves, one in each player's row, in the colour
+ * of the pieces that player had, with what the game gave them. A game still
+ * to come is one tall tile with its number. `squares` is off where there is
+ * no room for the tiles; the full list is then one button away.
  */
 export function MatchStrip({ squares }: { squares: boolean }) {
   const t = useT();
@@ -177,50 +188,61 @@ export function MatchStrip({ squares }: { squares: boolean }) {
   const half = Math.ceil(rows.filter(r => !r.tiebreak).length / 2);
 
   if (!score && rows.length === 0) return null;
-  return (
-    <div className="match-strip">
-      {score && (
-        <span className="who">
-          <span className="flag" aria-hidden="true">
-            {flag(score.a)}
-          </span>
-          <span className="who-name" lang="en">
-            {shortName(score.a)}
-          </span>
-          <b className="pts">{formatPoints(score.aPoints)}</b>
+  const who = (side: 'a' | 'b', player: PlayerInfo, points: number) => (
+    <span className={`who ${side}`}>
+      <span className="who-label">
+        <span className="flag" aria-hidden="true">
+          {flag(player)}
         </span>
-      )}
+        <span className="who-name" lang="en">
+          {shortName(player)}
+        </span>
+      </span>
+      <b className="pts">{formatPoints(points)}</b>
+    </span>
+  );
+  return (
+    <div className={`match-strip ${squares ? 'with-games' : ''} ${score ? '' : 'bare'}`}>
+      {score && who('a', score.a, score.aPoints)}
+      {score && who('b', score.b, score.bPoints)}
       {squares && (
         <ol className="game-squares" aria-label={t.games}>
-          {rows.map(row => (
-            <li key={row.roundId} className={row.n === half + 1 ? 'second-half' : undefined}>
-              <button
-                type="button"
-                className={`sq ${row.status} ${row.winner ? `won-${row.winner}` : row.status === 'done' ? 'draw' : ''} ${row.current ? 'current' : ''}`}
-                aria-current={row.current ? 'true' : undefined}
-                aria-label={rowLabel(row, t, locale)}
-                title={rowLabel(row, t, locale)}
-                onClick={() => {
-                  selectRound(row.roundId);
-                  if (view !== 'live') setView('live');
-                }}
-              >
-                {row.status === 'live' && <i className="sq-live" aria-hidden="true" />}
-              </button>
-            </li>
-          ))}
+          {rows.map(row => {
+            // a game that has not started, or whose result is kept back, says nothing but its number
+            const started = row.status === 'done' || row.status === 'live' || row.status === 'paused';
+            const top = started && score ? tileHalf(row, score.a) : undefined;
+            const bottom = started && score ? tileHalf(row, score.b) : undefined;
+            const halves = top && bottom ? [top, bottom] : undefined;
+            return (
+              <li key={row.roundId} className={row.n === half + 1 ? 'second-half' : row.tiebreak && row.n === rows.findIndex(r => r.tiebreak) + 1 ? 'tiebreaks' : undefined}>
+                <button
+                  type="button"
+                  className={`sq ${halves ? 'split' : 'whole'} ${row.status} ${row.winner ? `won-${row.winner}` : row.status === 'done' ? 'draw' : ''} ${row.current ? 'current' : ''}`}
+                  aria-current={row.current ? 'true' : undefined}
+                  aria-label={rowLabel(row, t, locale)}
+                  title={rowLabel(row, t, locale)}
+                  onClick={() => {
+                    selectRound(row.roundId);
+                    if (view !== 'live') setView('live');
+                  }}
+                >
+                  {halves ? (
+                    halves.map((h, i) => (
+                      <span key={i} className={`half ${h.pieces} ${h.points === '0' ? 'lost' : h.points === '1' ? 'won' : ''}`} aria-hidden="true">
+                        {h.points}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="sq-no" aria-hidden="true">
+                      {row.n}
+                    </span>
+                  )}
+                  {row.status === 'live' && <i className="sq-live" aria-hidden="true" />}
+                </button>
+              </li>
+            );
+          })}
         </ol>
-      )}
-      {score && (
-        <span className="who">
-          <b className="pts">{formatPoints(score.bPoints)}</b>
-          <span className="who-name" lang="en">
-            {shortName(score.b)}
-          </span>
-          <span className="flag" aria-hidden="true">
-            {flag(score.b)}
-          </span>
-        </span>
       )}
       {roundNo > 0 && <span className="game-now">{t.gameNo.replace('{n}', String(roundNo))}</span>}
     </div>

@@ -2980,9 +2980,12 @@ body {
 
 /* The tightest bar that still shows a square for every game. */
 @media (max-width: 1360px) {
-  .top,
-  .match-strip {
+  .top {
     gap: 10px;
+  }
+
+  .match-strip {
+    column-gap: 10px;
   }
 
   .brand h1 {
@@ -3006,109 +3009,239 @@ body {
   min-width: 0;
 }
 
-.match-strip {
-  flex: none;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  white-space: nowrap;
-}
-
 .top .viewnav,
 .top .top-right {
   flex: none;
   margin-left: 0;
 }
 
+/* ---------- the match as a scoreboard ---------- */
+
+/* A dark board in the bar, like the one in a playing hall: a row for each player, the total at its end. */
+.match-strip {
+  --score-bg: var(--player-a);
+  --score-text: var(--on-black);
+  --score-faint: rgba(247, 241, 232, 0.62);
+  --score-edge: rgba(247, 241, 232, 0.3);
+  --score-black: #17120e;
+  --score-win: #e3ae45;
+  --score-row: 21px;
+  flex: none;
+  margin: 0 auto;
+  display: grid;
+  grid-template-rows: repeat(2, var(--score-row));
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 2px;
+  padding: 5px 13px 5px 11px;
+  border-radius: 12px;
+  background: var(--score-bg);
+  color: var(--score-text);
+  white-space: nowrap;
+}
+
+/* Name and total are read together, one player after the other; on the board they stand in their columns. */
 .match-strip .who {
+  display: contents;
+}
+
+.match-strip .who.a > * {
+  grid-row: 1;
+}
+
+.match-strip .who.b > * {
+  grid-row: 2;
+}
+
+.match-strip .who-label {
+  grid-column: 1;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 7px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 
 .match-strip .flag {
-  font-size: 16px;
+  font-size: 14px;
+  line-height: 1;
   letter-spacing: 0;
 }
 
 .match-strip .pts {
+  grid-column: 2;
+  justify-self: end;
+  min-width: 1.5em;
+  text-align: right;
+  font-family: 'Fraunces Variable', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
   font-size: 19px;
-  font-weight: 800;
-  letter-spacing: 0;
+  font-weight: 600;
+  line-height: var(--score-row);
   font-variant-numeric: tabular-nums;
 }
 
 .match-strip .game-now {
-  font-size: 13px;
-  color: var(--muted);
+  grid-column: 3;
+  grid-row: 1 / 3;
+  font-size: 12px;
+  color: var(--score-faint);
   font-variant-numeric: tabular-nums;
 }
 
+.match-strip.with-games .pts {
+  grid-column: 3;
+}
+
+/* Before the first game there are no names and no totals: the tiles stand alone. */
+.match-strip.bare .game-squares {
+  grid-column: 1;
+}
+
+.match-strip.bare .game-now {
+  grid-column: 2;
+}
+
+.match-strip.with-games .game-now {
+  grid-column: 4;
+}
+
 .game-squares {
+  grid-column: 2;
+  grid-row: 1 / 3;
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
-/* The second half of the match starts after a thin rule, as on a scoresheet. */
-.game-squares .second-half {
-  margin-left: 6px;
-  padding-left: 10px;
-  border-left: 2px solid var(--text);
+/* The second half of the match, and the tie-breaks after it, start after a wider gap. */
+.game-squares .second-half,
+.game-squares .tiebreaks {
+  margin-left: 9px;
 }
 
+/* One game: a tile across both rows. */
 .sq {
+  position: relative;
+  display: grid;
+  grid-template-rows: repeat(2, var(--score-row));
+  row-gap: 2px;
+  width: 24px;
+  border-radius: 6px;
+  color: inherit;
+}
+
+/* Started: a half in each player's row, in the colour of the pieces they had, with what the game gave them. */
+.sq .half {
   display: grid;
   place-items: center;
-  width: 20px;
-  height: 22px;
-  border-radius: 5px;
-  background: var(--panel-3);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.sq .half:first-child {
+  border-radius: 6px 6px 2px 2px;
+}
+
+/* the second half, whether or not the red light comes after it */
+.sq .half:nth-child(2) {
+  border-radius: 2px 2px 6px 6px;
+}
+
+.sq .half.white {
+  background: var(--white-piece);
+  color: var(--on-white);
+}
+
+.sq .half.black {
+  background: var(--score-black);
+  color: var(--on-black);
+  box-shadow: inset 0 0 0 1px var(--score-edge);
+}
+
+.sq .half.lost {
+  font-weight: 500;
+}
+
+/* A win is the one thing on the board in gold. */
+.sq .half.won {
+  box-shadow: inset 0 0 0 2px var(--score-win);
+}
+
+.sq .half.white.lost {
+  color: #6f665b;
+}
+
+.sq .half.black.lost {
+  color: #a59b8e;
+}
+
+/* Still to come: one tall tile with the game's number. */
+.sq.whole {
+  grid-template-rows: 1fr;
+  height: calc(2 * var(--score-row) + 2px);
+  place-items: center;
+  box-shadow: inset 0 0 0 1px var(--score-edge);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--score-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Played, but kept back while the viewer is behind: hatched, and it says nothing. */
+.sq.whole.hidden {
+  background: repeating-linear-gradient(135deg, transparent 0 3px, var(--score-edge) 3px 5px);
 }
 
 .sq:hover {
-  box-shadow: 0 0 0 2px var(--line-strong);
+  box-shadow: 0 0 0 2px var(--score-faint);
 }
 
-.sq.done.won-a {
-  background: var(--player-a);
+.sq.whole:hover {
+  box-shadow: inset 0 0 0 1px var(--score-edge), 0 0 0 2px var(--score-faint);
+  color: var(--score-text);
 }
 
-.sq.done.won-b {
-  background: var(--player-b);
-}
-
-.sq.done.draw {
-  background: linear-gradient(135deg, var(--player-a) 50%, var(--player-b) 50%);
-}
-
-.sq.hidden {
-  background: repeating-linear-gradient(135deg, var(--panel-3) 0 3px, var(--line-strong) 3px 5px);
-}
-
-.sq.live {
-  background: var(--panel);
-  box-shadow: inset 0 0 0 1.5px var(--danger);
-}
-
+/* The game open on the board. */
 .sq.current {
-  outline: 2px solid var(--text);
+  outline: 2px solid var(--score-text);
   outline-offset: 2px;
 }
 
+.sq:focus-visible {
+  outline: 2px solid #9fd07a;
+  outline-offset: 2px;
+}
+
+/* In progress: a red light where the two halves meet. */
 .sq-live {
-  width: 7px;
-  height: 7px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
   border-radius: 50%;
   background: var(--danger);
+  box-shadow: 0 0 0 2px var(--score-bg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sq-live {
+    animation: sq-live 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes sq-live {
+  50% {
+    transform: scale(0.72);
+  }
 }
 
 .viewnav {
@@ -4010,21 +4143,23 @@ body {
 
   .brand,
   .match-strip .game-now,
-  .match-strip .flag,
   .pill.soon .lbl {
     display: none;
   }
 
-  /* First row: the score and the status. */
+  /* First row: the scoreboard and the status. */
   .match-strip {
+    --score-row: 18px;
     margin: 0;
-    gap: 8px;
+    column-gap: 10px;
+    padding: 4px 10px 4px 9px;
+    border-radius: 10px;
   }
 
-  .match-strip .who {
+  .match-strip .who-label {
     gap: 6px;
-    font-size: 12px;
-    letter-spacing: 0.04em;
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
   }
 
   .match-strip .pts {
