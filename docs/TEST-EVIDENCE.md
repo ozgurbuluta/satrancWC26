@@ -32,8 +32,10 @@ match worked out by hand, rounding, the shipped model's tables, counts,
 measurements and the score weights from the knockout study) and its panel (the score it may
 use, every hidden and refused state), the wording of the page, the time
 control said in the viewer's language, and what the engine card says about
-the choice of move, who is winning, and the win chances counted from real
-games: 314 tests.
+the choice of move, who is winning, the win chances counted from real
+games, the list of broadcasts (and what a choice that is no longer offered
+falls back to), the moves as a table, the button that turns the board in
+its two places, and the top bar's mark and title: 319 tests.
 Also in CI: the secret check over the whole history, the type check, and
 builds for `/` and `/satranc/`.
 
@@ -159,7 +161,7 @@ board's own DOM and not only about the final position.
 | Game squares | 14, each named ("1. oyun: Sindarov – Gukesh, ½–½"); played, live and coming told apart; the open one marked |
 | A square, and a row of the full list | opens its game |
 | The full list | a dialog that takes the focus; Escape closes it and returns the focus |
-| Broadcast | a labelled dropdown of the four channels and "Kendi bağlantım"; choosing changes the video; works from the keyboard |
+| Broadcast | a labelled dropdown of the three listed channels; choosing changes the video; works from the keyboard; no link of the viewer's own and no button to another tab (both removed on 26 November 2026) |
 | Time per move | both players named, longest think shown, one bar per move with a known time |
 
 | Phone (390 px) and tablet (1024 px) | Result |
@@ -186,19 +188,19 @@ and for tapping moves on the board.
 ## The model estimate (issues 4 and 13)
 
 Run on 26 November 2026 in headless Chromium against the preview build, in
-`tests/e2e/board.cjs` (93 of 93 checks), against a simulated match in which
-Sindarov is to play move 6 of a Ruy Lopez.
+`tests/e2e/board.cjs` (113 of 113 checks), against a simulated match in
+which Sindarov is to play move 6 of a Ruy Lopez.
 
 | Model estimate, under the board | Result |
 |---|---|
 | Rows | three different legal moves and "Diğer hamleler"; 65 + 27 + 5 + 3 = 100 with the third version of the model |
-| Label | "Deneysel", and "Sindarov için, 6. hamle" |
+| Title line | "Model tahmini" and "Sindarov için, 6. hamle"; no "Deneysel" label any more |
 | Place | in the board column, below the board and its controls, in the flow of the page, not fixed or sticky; on a phone (390 px) under the board and above the tabs, inside the screen width |
 | Its moves | text, not buttons: they cannot be mistaken for a guess |
 | Explanation | none: no details block and no link |
-| Tahmin tab | no estimate and no note under the masters' moves |
-| Guess mode on, no guess yet | hidden, with a "Tahmin etmeden göster" button |
-| After a guess | shown again |
+| Guess panel | no estimate and no note under the masters' moves |
+| Guess mode on, no guess yet | shown at once, all four rows, with no button and nothing to wait for |
+| After a guess | as it was |
 | A move of the viewer's own on the board | leaves the estimate about the game, not about the board |
 | Board column | apart from the model's card, nothing there asks for a guess |
 | Page errors | none |
@@ -210,7 +212,47 @@ is shown), the match score (earlier games only, never the open game or a
 later one, also while paused), and a legal move with a share under one
 percent, which reads "<1 %" and never 0.
 
-`share.cjs` 61 of 61 and `puzzles.cjs` 33 of 33 on the same build.
+`share.cjs` 61 of 61 and `puzzles.cjs` 33 of 33 on the same build, and
+`embed.cjs` in its three modes (desktop, storage refused, phone) with no
+page errors: the outbound link it opens from inside the frame is now the
+footer's, and the language switch is read off the last tab.
+
+## The layout of 26 November 2026
+
+Same run, same script.
+
+| Columns and tabs (1440 × 900) | Result |
+|---|---|
+| Beside the board | win chance, the guess panel where the engine was, then time per move; no engine card there |
+| Tabs | Stockfish, Benzer, Grafik, Maç, Ayarlar; Stockfish open by default; guessing is not a tab |
+| First tab | the engine's lines, and under them the moves as a table of three columns (number, White, Black): ten moves in five rows |
+| Guess mode | asks in its own card; the engine in its tab is not hidden by it |
+
+| The right side made wider (1600 × 820) | Result |
+|---|---|
+| Free room beside the board | the buttons that turn the board and share sit there in a small rail, between the board and the divider; neither is under the board |
+| The board with the rail | 546 × 546, exactly as without it |
+| The rail's buttons | the first turns the board; sharing shows the link under the board, inside the column |
+| Divider dragged as far left as it goes | the right side grows from 480 to 752 px; the board stops at 480 × 480 and stays square; nothing overflows |
+| No room left beside the board | the two buttons are back under it |
+| A saved width of 1400 px, after a reload | held to the same limit: board 480 × 480, nothing overflows |
+
+Before this change the same drag left a board 323 px wide at 1728 × 1000
+and 226 px at 1440 × 900. In Chromium it stayed square; in Özgür's
+screenshot it did not (a board about half as wide as it was tall). The
+board is now a plain block with a square aspect ratio rather than a
+stretched flex item, which is the part that differs between browsers.
+
+| Top bar | Result |
+|---|---|
+| Title | set in Fraunces, loaded from the site's own origin under the production content security policy (`font-src 'self'`) |
+| 1728 px | one line, the place under it in capitals |
+| 1280 px | exactly two lines ("Dünya Satranç" / "Şampiyonası 2026"), running into nothing |
+| Phone | guessing is a tab after Stockfish; the two board buttons stay under the board |
+
+Looked at by eye in screenshots at 1024, 1280, 1440, 1600 and 1728 px and
+on a 390 px phone. Not covered: real Safari (the board's shape there rests
+on the stylesheet change above, not on a test), and a real phone.
 
 The model file loads after the page as a part of its own (612 KB, 316 KB
 compressed, with the third version's theory table); the page's own script

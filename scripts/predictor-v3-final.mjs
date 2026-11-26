@@ -316,7 +316,7 @@ The rule was written down beforehand: the third version replaces the second if i
 - Log loss: ${f3(results.holdout.v3.logLoss)} against ${f3(results.holdout.v2.logLoss)}, difference ${results.holdout.v3.difference.logLoss.value.toFixed(3)} (${span(results.holdout.v3.difference.logLoss.interval, f3)}).
 - Calibration error: ${pct(results.holdout.v3.ece)} against ${pct(results.holdout.v2.ece)}.
 
-**${adopted ? 'Both conditions are met.' : 'The conditions are not both met.'}** The gain is in the first ${c.theoryPlies / 2} moves, where theory speaks; after that the two versions are the same model. The probabilities are not claimed to be calibrated, and the label stays "Deneysel".
+**${adopted ? 'Both conditions are met.' : 'The conditions are not both met.'}** The gain is in the first ${c.theoryPlies / 2} moves, where theory speaks; after that the two versions are the same model. The probabilities are not claimed to be calibrated. The plan kept the "Deneysel" label on the page; it was taken off on 26 November 2026 at Özgür's request, which changes nothing that was measured here.
 
 ## Limits
 

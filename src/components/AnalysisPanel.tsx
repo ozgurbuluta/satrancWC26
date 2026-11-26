@@ -17,7 +17,7 @@ interface Props {
   lineFrom?: number;
 }
 
-/** The moves of the game, with the opening's name and a mark on moves the engine thinks little of. */
+/** The moves of the game as a table (number, White, Black), with the opening's name and a mark on moves the engine thinks little of. */
 export function MovesPanel({ game, shown, lineFrom }: Props) {
   const t = useT();
   const notation = useStore(s => s.settings.notation);
@@ -75,6 +75,8 @@ export function MovesPanel({ game, shown, lineFrom }: Props) {
           return (
             <span className="mv" key={i}>
               {(whiteMove || i === 0) && <span className="move-num">{whiteMove ? `${moveNo}.` : `${moveNo}…`}</span>}
+              {/* a game that starts with Black to move: White's cell of the first row stays empty */}
+              {!whiteMove && i === 0 && <span aria-hidden="true" />}
               <button
                 ref={active || branch ? activeRef : undefined}
                 className={`move ${active ? 'active' : ''} ${branch ? 'branch' : ''}`}

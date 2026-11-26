@@ -29,7 +29,6 @@ export interface Settings {
   engineLines: number;
   arrow: boolean;
   streamId: string;
-  customStream: string;
   streamHidden: boolean;
   /** Width of the side column in px on desktop (0 = automatic). */
   sideWidth: number;
@@ -48,7 +47,6 @@ const DEFAULTS: Settings = {
   engineLines: 3,
   arrow: true,
   streamId: 'yt-chesscomtr',
-  customStream: '',
   streamHidden: false,
   sideWidth: 0,
   spoilerShield: false,
@@ -822,7 +820,7 @@ export const useStore = create<State>((set, get) => {
         track('guess_mode', { on: !!value });
       } else if (key === 'streamId') track('stream_select', { stream: String(value) });
       else if (key === 'streamHidden') track('stream_toggle', { hidden: !!value });
-      else if (key !== 'customStream' && key !== 'sideWidth' && key !== 'engineLines') track('setting_change', { setting: key, value: String(value) });
+      else if (key !== 'sideWidth' && key !== 'engineLines') track('setting_change', { setting: key, value: String(value) });
     },
   };
 });

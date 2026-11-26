@@ -23,7 +23,7 @@ describe('Turkish wording', () => {
   it('keeps the footer to two short sentences, and leaves the removed explanations out', () => {
     expect(STRINGS.tr.footer).toBe("Hamleler Lichess'ten, analiz Stockfish'ten. Bağımsız bir hayran sitesi.");
     expect(STRINGS.en.footer).toBe('Moves from Lichess, analysis by Stockfish. An independent fan site.');
-    expect(STRINGS.tr.guessModeHelp).toBe('Sıradaki hamleyi oynanmadan önce bu sekmede tahmin et.');
+    expect(STRINGS.tr.guessModeHelp).toBe('Sıradaki hamleyi oynanmadan önce tahmin et.');
     const all = Object.values(STRINGS.tr).join(' | ');
     expect(all).not.toContain('usta ve motor bilgileri');
     expect(all).not.toContain('olasılık değil');

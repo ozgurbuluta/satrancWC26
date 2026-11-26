@@ -47,7 +47,7 @@ describe('privacy contract: what an event may carry', () => {
     expect(sanitize(EVENTS.tab_open, { tab: 'analysis' })).toEqual({ tab: 'analysis' });
     expect(sanitize(EVENTS.tab_open, { tab: 'https://evil.example/?q=1' })).toEqual({});
     expect(sanitize(EVENTS.setting_change, { setting: 'lang', value: 'tr' })).toEqual({ setting: 'lang', value: 'tr' });
-    expect(sanitize(EVENTS.setting_change, { setting: 'customStream', value: 'https://youtu.be/abc?si=xyz' })).toEqual({});
+    expect(sanitize(EVENTS.setting_change, { setting: 'streamId', value: 'https://youtu.be/abc?si=xyz' })).toEqual({});
   });
 
   it('rejects numbers that are out of range, fractional or not numbers', () => {
@@ -58,10 +58,12 @@ describe('privacy contract: what an event may carry', () => {
     expect(sanitize(EVENTS.sync_delay_set, { seconds: Number.NaN })).toEqual({});
   });
 
-  it('a pasted stream link is recorded as its platform only', () => {
+  it('a link has no event of its own any more, and one slipped into another event does not leave the page', () => {
     const pasted = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&si=SHARE_ID&list=PRIVATE_LIST';
-    const out = gate({ event: 'stream_link_paste', properties: { platform: 'youtube', link: pasted, link_url: pasted } }, page);
-    expect(out?.properties).toMatchObject({ platform: 'youtube' });
+    // the event that recorded a pasted link's platform went with the field for it
+    expect(gate({ event: 'stream_link_paste', properties: { platform: 'youtube', link: pasted } }, page)).toBeNull();
+    const out = gate({ event: 'stream_select', properties: { stream: 'yt-chesscomtr', link: pasted, link_url: pasted } }, page);
+    expect(out?.properties).toMatchObject({ stream: 'yt-chesscomtr' });
     expect(wire(out)).not.toContain('dQw4w9WgXcQ');
     expect(wire(out)).not.toContain('SHARE_ID');
     expect(wire(out)).not.toContain('PRIVATE_LIST');

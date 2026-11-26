@@ -46,7 +46,8 @@ interface Props {
  *
  * Everything about a prediction happens in this panel. The board is not
  * involved: a move made there is analysis, and choosing a move here moves
- * nothing there.
+ * nothing there. Beside the board on wide screens it is a card of the left
+ * column; elsewhere it is a tab.
  */
 export function PredictPanel({ game, fen, evaluation, boardElsewhere }: Props) {
   const t = useT();
@@ -107,11 +108,11 @@ export function PredictPanel({ game, fen, evaluation, boardElsewhere }: Props) {
 
   return (
     <div className="predict">
-      <div className="setting">
-        <span>
-          <strong>{t.guessMode}</strong>
-          <span className="muted small block">{t.guessModeHelp}</span>
-        </span>
+      {/* The same head beside the board and in the tab: the name, the switch, and one line of what it does. */}
+      <div className="predict-head">
+        <h2 className="eyebrow" id="predict-title">
+          {t.guessMode}
+        </h2>
         <div className="seg" role="group" aria-label={t.guessMode}>
           <button className={guessMode ? 'active' : ''} aria-pressed={guessMode} onClick={() => setSetting('guessMode', true)}>
             {t.on}
@@ -121,6 +122,7 @@ export function PredictPanel({ game, fen, evaluation, boardElsewhere }: Props) {
           </button>
         </div>
       </div>
+      <p className="muted small predict-help">{t.guessModeHelp}</p>
 
       {guessMode && (
         <section className="guess-card" aria-live="polite">
@@ -246,8 +248,6 @@ export function PredictPanel({ game, fen, evaluation, boardElsewhere }: Props) {
           </ol>
         </section>
       )}
-
-      {/* The site's own estimate, last in the tab. It is shown, never acted on. */}
     </div>
   );
 }

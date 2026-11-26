@@ -86,7 +86,8 @@ const run = async (label, opts = {}) => {
   out.arrowKeyMoved = (await frame.locator('.strip-track .move.active').first().innerText().catch(() => null)) !== before;
   // outbound link opens a normal tab
   if (!opts.device) {
-    await frame.locator('a.icon-btn').first().click().catch(e => (out.popupError = String(e).slice(0, 120)));
+    // the page's one link to somewhere else: the source code, in the footer
+    await frame.locator('.foot a').first().click().catch(e => (out.popupError = String(e).slice(0, 120)));
     await page.waitForTimeout(1500);
     out.popupOpened = popups.length;
     if (popups[0]) out.popupUrl = popups[0].url().slice(0, 50);
@@ -100,8 +101,8 @@ const run = async (label, opts = {}) => {
   out.persistenceNotice = (await frame.locator('.notice').count()) > 0;
   await frame.locator('.settings .seg button', { hasText: 'English' }).click();
   await frame.waitForTimeout(300);
-  // the first tab is the move list on wide screens and the analysis elsewhere
-  out.languageSwitched = /^(Analysis|Moves)$/.test(await frame.locator('.tabs button').first().innerText());
+  // the first tab is "Stockfish" in both languages; the last one is not
+  out.languageSwitched = (await frame.locator('.tabs button').last().innerText()).trim() === 'Settings';
   if (opts.shot) await page.screenshot({ path: opts.shot });
 
   console.log(`\n=== ${label}`);

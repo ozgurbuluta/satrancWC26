@@ -98,8 +98,7 @@ credentials in paths and query strings and a browser that refuses storage.
 | `game_select` | another game is opened | `how`: `manual` or `auto`, `game_no` (or `board` on tie-break days) |
 | `next_game_dismiss` | "Burada kal" on the next-game announcement | |
 | `move_browse` | first time earlier moves are browsed in a game | |
-| `stream_select` | a stream preset is chosen | `stream`: preset id or `custom` |
-| `stream_link_paste` | a pasted link is accepted | `platform`: `youtube`, `twitch`, `kick` |
+| `stream_select` | a stream preset is chosen | `stream`: preset id |
 | `stream_toggle` | the video is hidden or shown | `hidden` |
 | `stream_uncover` | the video is shown while the board is paused | |
 | `sync_delay_set` | the board delay comes to rest on a value | `seconds` |

@@ -6,7 +6,7 @@ import { CatchUpBar } from './components/CatchUpBar';
 import { EngineCard, EvalStrip, WinChance } from './components/EnginePanel';
 import { Header } from './components/Header';
 import { MatchPanel } from './components/MatchPanel';
-import { MoveStrip } from './components/MoveStrip';
+import { FlipButton, MoveStrip } from './components/MoveStrip';
 import { PromotionPicker, usePromotion } from './components/MoveEntry';
 import { PlayerBar } from './components/PlayerBar';
 import { SettingsPanel } from './components/SettingsPanel';
@@ -31,7 +31,11 @@ const PuzzleBoard = lazy(() => import('./components/PuzzleView').then(m => ({ de
 const PuzzlePanel = lazy(() => import('./components/PuzzleView').then(m => ({ default: m.PuzzlePanel })));
 
 type Tab = 'analysis' | 'predict' | 'similar' | 'charts' | 'match' | 'settings';
-const TABS: Tab[] = ['analysis', 'predict', 'similar', 'charts', 'match', 'settings'];
+/** Beside the board there is a column for guessing the move; without that column it is a tab. */
+const TABS_BESIDE: Tab[] = ['analysis', 'similar', 'charts', 'match', 'settings'];
+const TABS_ALONE: Tab[] = ['analysis', 'predict', 'similar', 'charts', 'match', 'settings'];
+/** Free width, in pixels, that the rail of board buttons needs to the right of the board. */
+const BOARD_RAIL_ROOM = 64;
 
 export default function App() {
   const t = useT();
@@ -69,18 +73,37 @@ export default function App() {
   const guessFen = useStore(selectGuessFen);
   const [boardSync, setBoardSync] = useState(0);
   const [shareSlot, setShareSlot] = useState<HTMLDivElement | null>(null);
+  // Turning the board and sharing sit in a small rail beside the board when there is free room there.
+  const [toolsBeside, setToolsBeside] = useState(false);
   const [tab, setTabState] = useState<Tab>('analysis');
   const setTab = (id: Tab) => {
     setTabState(id);
     track('tab_open', { tab: id });
   };
   const isMobile = useIsMobile();
-  // Engine and time sit beside the board on wide screens; elsewhere they live in the tabs.
+  // Win chance, guessing and move times sit beside the board on wide screens; elsewhere they live in the tabs.
   const wide = useMedia(WIDE_LAYOUT);
   const squares = useMedia(GAME_SQUARES);
   const layoutRef = useRef<HTMLElement>(null);
 
   useEffect(() => init(), [init]);
+
+  // The board is as large as the height allows, so a wide window leaves room on both sides of it. The rail is laid
+  // over that room and takes nothing from the board; where there is none, the two buttons stay under the board.
+  useEffect(() => {
+    const layout = layoutRef.current;
+    if (!layout || typeof ResizeObserver === 'undefined') return;
+    const measure = () => {
+      const col = layout.querySelector<HTMLElement>('.board-col');
+      const divider = layout.querySelector<HTMLElement>('.divider');
+      setToolsBeside(!!col && !!divider && divider.getBoundingClientRect().left - col.getBoundingClientRect().right >= BOARD_RAIL_ROOM);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(layout);
+    for (const el of layout.children) ro.observe(el);
+    return () => ro.disconnect();
+  }, [view, isMobile, wide, !!game]);
 
   useEffect(() => {
     document.documentElement.lang = settings.lang;
@@ -177,8 +200,17 @@ export default function App() {
     const layout = layoutRef.current;
     if (!layout) return;
     e.preventDefault();
-    const right = layout.getBoundingClientRect().right;
-    const widthAt = (clientX: number) => Math.round(Math.max(320, Math.min(right - clientX - 16, window.innerWidth * 0.6)));
+    const box = layout.getBoundingClientRect();
+    const style = getComputedStyle(layout);
+    const px = (name: string) => parseFloat(style.getPropertyValue(name)) || 0;
+    // What the right side may take: everything but the left column, the divider and a board that is still comfortable.
+    // The stylesheet holds the same limit, so a width saved on a larger window cannot cramp the board either.
+    const inner = box.width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    const left = layout.querySelector<HTMLElement>('.left-col');
+    const leftWidth = left ? left.getBoundingClientRect().width + parseFloat(getComputedStyle(left).marginRight) : 0;
+    const most = Math.max(320, inner - leftWidth - 12 - (px('--board-min') || 480));
+    const right = box.right - parseFloat(style.paddingRight);
+    const widthAt = (clientX: number) => Math.round(Math.max(320, Math.min(right - clientX, most)));
     const move = (ev: PointerEvent) => layout.style.setProperty('--side-w', `${widthAt(ev.clientX)}px`);
     const up = (ev: PointerEvent) => {
       window.removeEventListener('pointermove', move);
@@ -244,9 +276,23 @@ export default function App() {
     );
   };
 
-  // With the engine in its own column, the first tab is the list of moves.
+  // The first tab is the engine with the moves under it.
   const tabLabel = (id: Tab) =>
-    ({ analysis: wide ? t.tabMoves : t.tabAnalysis, predict: t.tabPredict, similar: t.tabSimilar, charts: t.tabCharts, match: t.tabMatch, settings: t.tabSettings })[id];
+    ({ analysis: t.tabEngine, predict: t.tabPredict, similar: t.tabSimilar, charts: t.tabCharts, match: t.tabMatch, settings: t.tabSettings })[id];
+
+  const shareButton = (compact: boolean) =>
+    game &&
+    shareable && (
+      <ShareButton
+        // a new game starts with no panel: a link copied for another game is not left on screen
+        key={game.id}
+        compact={compact}
+        panelHost={shareSlot}
+        // the position on the board, which is never beyond what this viewer has been shown
+        target={{ view: 'live', gameNo: roundNo, ply: shown }}
+        describe={(shown === 0 ? t.shareGame : t.sharePosition).replace('{g}', String(roundNo)).replace('{m}', String(Math.ceil(shown / 2)))}
+      />
+    );
 
   const boardColumn = (
     <section className="board-col">
@@ -276,6 +322,12 @@ export default function App() {
               touch="tap"
             />
             {promo.pending && <PromotionPicker onChoose={promo.choose} />}
+            {toolsBeside && !preview && (
+              <div className="board-tools" role="group" aria-label={t.boardTools}>
+                <FlipButton className="tool-btn" />
+                {shareButton(true)}
+              </div>
+            )}
           </div>
           <PlayerBar
             game={game}
@@ -304,19 +356,10 @@ export default function App() {
                 ownMoves={ownMoves}
                 backLabel={backLabel}
                 atNewest={atLiveEdge && !line}
+                flip={!toolsBeside}
               />
               <div className="board-actions">
-                {shareable && (
-                  <ShareButton
-                    // a new game starts with no panel: a link copied for another game is not left on screen
-                    key={game.id}
-                    compact={isMobile}
-                    panelHost={shareSlot}
-                    // the position on the board, which is never beyond what this viewer has been shown
-                    target={{ view: 'live', gameNo: roundNo, ply: shown }}
-                    describe={(shown === 0 ? t.shareGame : t.sharePosition).replace('{g}', String(roundNo)).replace('{m}', String(Math.ceil(shown / 2)))}
-                  />
-                )}
+                {!toolsBeside && shareButton(isMobile)}
                 {view === 'live' && liveNow && (
                   <button className="pause-btn" onClick={pause} title={t.pauseTitle}>
                     ⏸ {t.pauseBtn}
@@ -352,17 +395,26 @@ export default function App() {
     </section>
   );
 
-  // What the engine says about the position on the board. Beside the board on wide screens, in the first tab elsewhere.
-  const enginePanels = game && fen && (
-    <>
-      <WinChance game={game} evaluation={evaluation} />
-      <EngineCard game={game} fen={fen} shown={shown} evaluation={evaluation} inLine={inLine} />
-    </>
+  const threeColumns = wide && view === 'live';
+  const tabs = threeColumns ? TABS_BESIDE : TABS_ALONE;
+  // A tab that this layout does not have (guessing, once it has its own column) shows the first one.
+  const openTab = tabs.includes(tab) ? tab : 'analysis';
+  const winChance = game && fen && <WinChance game={game} evaluation={evaluation} />;
+  const predictPanel = game && guessFen && (
+    <Suspense fallback={<p className="muted pad">{t.loading}</p>}>
+      <PredictPanel game={game} fen={guessFen} evaluation={evaluation} boardElsewhere={fen !== guessFen} />
+    </Suspense>
   );
 
+  // Beside the board: how the game stands, the viewer's own guess of the next move, and the time each move took.
   const leftColumn = (
     <aside className="left-col" aria-label={t.tabAnalysis}>
-      {enginePanels}
+      {winChance}
+      {predictPanel && (
+        <section className="card predict-card" aria-labelledby="predict-title">
+          {predictPanel}
+        </section>
+      )}
       {game && <TimePanel game={game} shown={shown} />}
     </aside>
   );
@@ -380,33 +432,35 @@ export default function App() {
       ) : (
         <>
           <div className="tabs" role="tablist">
-            {TABS.map(id => (
-              <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>
+            {tabs.map(id => (
+              // "Stockfish" is a name: without the language mark Turkish capitals would make it "STOCKFİSH"
+              <button key={id} role="tab" aria-selected={openTab === id} className={openTab === id ? 'active' : ''} onClick={() => setTab(id)} lang={id === 'analysis' ? 'en' : undefined}>
                 {tabLabel(id)}
               </button>
             ))}
           </div>
           <div className="tab-body">
-            {tab === 'analysis' && game && fen && (
+            {openTab === 'analysis' && game && fen && (
               <>
-                {!wide && enginePanels}
+                {/* The engine's lines, and the moves of the game under them. */}
+                {!threeColumns && winChance}
+                <EngineCard game={game} fen={fen} shown={shown} evaluation={evaluation} inLine={inLine} />
                 <MovesPanel game={game} shown={shown} lineFrom={inLine && line ? line.rootPly : undefined} />
               </>
             )}
+            {openTab === 'predict' && predictPanel}
             <Suspense fallback={<p className="muted pad">{t.loading}</p>}>
-              {tab === 'predict' && game && guessFen && <PredictPanel game={game} fen={guessFen} evaluation={evaluation} boardElsewhere={fen !== guessFen} />}
-              {tab === 'similar' && game && gameFen && <SimilarPanel game={game} fen={gameFen} shown={shown} />}
-              {tab === 'charts' && game && <ChartsPanel game={game} shown={shown} withTime={!wide} />}
+              {openTab === 'similar' && game && gameFen && <SimilarPanel game={game} fen={gameFen} shown={shown} />}
+              {openTab === 'charts' && game && <ChartsPanel game={game} shown={shown} withTime={!wide} />}
             </Suspense>
-            {tab === 'match' && <MatchPanel />}
-            {tab === 'settings' && <SettingsPanel />}
+            {openTab === 'match' && <MatchPanel />}
+            {openTab === 'settings' && <SettingsPanel />}
           </div>
         </>
       )}
     </section>
   );
 
-  const threeColumns = wide && view === 'live';
   return (
     <div className="app">
       <Header squares={squares} />

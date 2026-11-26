@@ -15,13 +15,15 @@ and is not affiliated with FIDE, with Vidit Gujrathi or with Lichess.
 
 ## What this site does
 
-The site has an experimental model of its own for the next move of the two
-players, now in its second version. It is described in
+The site has a model of its own for the next move of the two players, now
+in its third version. It is described in
 [PREDICTOR.md](PREDICTOR.md), with everything that was measured in
 [PREDICTOR-REPORT.md](PREDICTOR-REPORT.md). It is not Kibitz, uses no engine
 and no third-party weights, and its accuracy is modest and stated.
 
-The site keeps four things apart, the first three in the Tahmin tab:
+The site keeps four things apart. The first three are in the guess panel,
+which is a card beside the board on wide screens and the Tahmin tab
+elsewhere:
 
 1. **The viewer's own guess.** With guess mode on, the viewer picks the move
    they expect, and when the real move is shown it is a hit or a miss.
@@ -33,10 +35,10 @@ The site keeps four things apart, the first three in the Tahmin tab:
    shows no numbers.
 3. **What the engine prefers.** The strongest moves according to the engine.
    This is about quality, not about what a person will choose.
-4. **The model estimate.** Not in the tab any more: it is on the main page,
-   under the board. Three legal moves with a share each and the rest as
-   "other", labelled experimental. Its measured accuracy and its limits are
-   in [PREDICTOR.md](PREDICTOR.md), not on the page.
+4. **The model estimate.** On the main page, under the board. Three legal
+   moves with a share each and the rest as "other". It carries no label and
+   no explanation (Özgür's decisions of 26 November 2026); its measured
+   accuracy and its limits are in [PREDICTOR.md](PREDICTOR.md).
 
 The second and third are not probabilities of the player's next move. Only
 the fourth is an estimate of that, and it is never
@@ -45,16 +47,17 @@ neither is a count from the masters database.
 
 ## Fairness and spoilers
 
-- A prediction is made only in the Tahmin tab, by picking a move from the
+- A prediction is made only in the guess panel, by picking a move from the
   list of legal moves or typing it. A move on the main board is the viewer's
   own analysis and is never a prediction; picking a prediction moves nothing
   on the board.
 - A prediction is about the newest visible position of the game, whatever
   the board shows (an earlier move, a line of the viewer's own).
-- Inside the Tahmin tab, what masters played and what the engine prefers
+- Inside the guess panel, what masters played and what the engine prefers
   are held back until the viewer has predicted, or has given the move up to
-  see them. Nothing outside that tab is hidden by guess mode: the engine
-  beside the board is the viewer's to look at.
+  see them. Nothing outside that panel is hidden by guess mode: the engine
+  in its tab is the viewer's to look at, and the model estimate under the
+  board is shown at once (until 26 November 2026 it waited for the guess).
 - A guess is settled only by the next move the viewer is shown. While the
   board is paused, moves already played but still hidden never settle it.
 - The other online-player database on Lichess would cover more positions,
@@ -63,8 +66,8 @@ neither is a count from the masters database.
 ## Research plan: a real human-move predictor
 
 *Background.* This plan was written before the site had a model of its own,
-and looked at third-party models. The site now ships its own experimental
-model instead ([PREDICTOR.md](PREDICTOR.md)). The survey of third-party
+and looked at third-party models. The site now ships its own model
+instead ([PREDICTOR.md](PREDICTOR.md)). The survey of third-party
 models and their licences below stays as it was written; none of them is
 used.
 
