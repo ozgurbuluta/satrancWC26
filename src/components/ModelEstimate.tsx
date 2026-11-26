@@ -1,25 +1,12 @@
 import { useMemo } from 'react';
-import { REPO_URL } from '../config';
 import model from '../data/predictor.json';
 import { useT } from '../hooks';
-import { trackOutbound } from '../lib/analytics';
 import { localizeSan, shortName } from '../lib/format';
 import type { GameData } from '../lib/pgn';
 import { predict, shares, type PredictorModel } from '../lib/predictor/model';
 import { clocksAt, referencesHeld, selectStakes, useStore } from '../store';
 
-interface Measured {
-  n: number;
-  games: number;
-  top1: number;
-  top3: number;
-  whenSure: { n: number; said: number; happened: number };
-}
-const MODEL = model as unknown as PredictorModel & {
-  report: { selection: { selected: number }; shown: Measured; benchmark: { v2: { n: number; sure70: { n: number; said: number; happened: number } } } };
-};
-const DOCS = `${REPO_URL}/blob/main/docs/PREDICTOR.md`;
-const whole = (x: number) => String(Math.round(x * 100));
+const MODEL = model as unknown as PredictorModel;
 /** A share as the list prints it. A legal move with a share is never printed as 0. */
 const share = (percent: number, belowOne: boolean) => (belowOne ? '<1 %' : `${percent} %`);
 
@@ -30,19 +17,21 @@ interface Props {
 }
 
 /**
- * The site's own estimate of the next move: three legal moves with a share
- * each, and the rest as "other". It is an experimental model fitted on the
- * two players' earlier games; what it can and cannot do is in the details
- * under it, in numbers that were measured.
+ * The site's own estimate of the next move, under the board: three legal
+ * moves with a share each, and the rest as "other". It is an experimental
+ * model fitted on the two players' earlier games, and labelled as one; what
+ * it is and how it was measured is in docs/PREDICTOR.md.
  *
  * It only ever uses what the viewer has been shown: the visible position,
- * the visible clock, and the match score before this game. It is display
- * only: nothing here makes a guess or moves a piece.
+ * the visible clock, and the match score before this game. It is about the
+ * game, not about a line the viewer is trying on the board. It is display
+ * only: nothing here makes a guess or moves a piece. Where there is nothing
+ * to estimate (the game is over, the player is not one of the two, no legal
+ * move) it shows nothing at all.
  */
 export function ModelEstimate({ game, fen }: Props) {
   const t = useT();
   const notation = useStore(s => s.settings.notation);
-  const lang = useStore(s => s.settings.lang);
   const revealed = useStore(s => s.revealed);
   const resultVisible = useStore(s => s.resultVisible);
   const held = useStore(referencesHeld);
@@ -78,25 +67,22 @@ export function ModelEstimate({ game, fen }: Props) {
   );
   const shown = useMemo(() => shares(prediction), [prediction]);
   const moveNo = `${Number(fen.split(' ')[5]) || 1}${whiteToMove ? '.' : '…'}`;
-  const report = MODEL.report;
 
-  let body: React.ReactNode;
-  if (resultVisible) body = <p className="muted">{t.modelOver}</p>;
-  else if (!prediction.supported) body = <p className="muted">{t.modelUnsupported}</p>;
-  else if (prediction.moves.length === 0) body = <p className="muted">{t.modelNone}</p>;
-  else if (held)
-    body = (
-      <>
-        <p className="muted">{t.modelHeld}</p>
-        <button type="button" className="btn ghost" onClick={peekEngine}>
-          {t.modelReveal}
-        </button>
-      </>
-    );
-  else
-    body = (
-      <>
-        <p className="model-for">{t.modelFor.replace('{player}', shortName(mover)).replace('{move}', moveNo)}</p>
+  if (resultVisible || !prediction.supported || prediction.moves.length === 0) return null;
+  return (
+    <section className="card model-estimate" aria-labelledby="model-title">
+      <h3 id="model-title">
+        {t.modelTitle} <span className="tag experimental">{t.experimental}</span>
+        {!held && <span className="model-for">{t.modelFor.replace('{player}', shortName(mover)).replace('{move}', moveNo)}</span>}
+      </h3>
+      {held ? (
+        <p className="model-held">
+          <span className="muted">{t.modelHeld}</span>
+          <button type="button" className="btn ghost" onClick={peekEngine}>
+            {t.modelReveal}
+          </button>
+        </p>
+      ) : (
         <ol className="model-moves">
           {shown.top.map(m => (
             <li key={m.uci}>
@@ -117,52 +103,7 @@ export function ModelEstimate({ game, fen }: Props) {
             </li>
           )}
         </ol>
-      </>
-    );
-
-  const behind = prediction.urgency > 0;
-  return (
-    <section className="model-estimate" aria-labelledby="model-title">
-      <h3 id="model-title">
-        {t.modelTitle} <span className="tag experimental">{t.experimental}</span>
-      </h3>
-      {body}
-      <details className="model-details">
-        <summary>{t.modelHow}</summary>
-        <p>{t.modelWhat.replace('{games}', String(report.selection.selected))}</p>
-        <p>
-          {t.modelMeasured
-            .replace('{games}', String(report.shown.games))
-            .replace('{n}', new Intl.NumberFormat(lang === 'tr' ? 'tr-TR' : 'en-GB').format(report.shown.n))
-            .replace('{top1}', whole(report.shown.top1))
-            .replace('{top3}', whole(report.shown.top3))}
-        </p>
-        <p>
-          {t.modelSure.replace('{said}', whole(report.shown.whenSure.said)).replace('{happened}', whole(report.shown.whenSure.happened))}{' '}
-          {/* the same on the other measured event, where it was further off: one event is not all events */}
-          {t.modelSureElsewhere
-            .replace('{n}', String(report.benchmark.v2.n))
-            .replace('{said}', whole(report.benchmark.v2.sure70.said))
-            .replace('{happened}', whole(report.benchmark.v2.sure70.happened))}
-        </p>
-        <p>{t.modelStyle}</p>
-        <p>
-          {t.modelClock}{' '}
-          {prediction.pressure > 0 ? t.modelClockOn.replace('{p}', whole(prediction.pressure)) : secondsLeft === undefined ? t.modelClockUnknown : t.modelClockOff}
-        </p>
-        <p>
-          {t.modelStakes}{' '}
-          {prediction.urgency === 0
-            ? t.modelStakesOff
-            : (behind ? t.modelStakesBehind : t.modelStakesAhead).replace('{u}', String(Math.max(1, Math.round(Math.abs(prediction.urgency) * 100))))}
-        </p>
-        {prediction.supported && prediction.moves.length > 0 && !resultVisible && !held && <p>{prediction.seenBefore ? t.modelSeen : t.modelNotSeen}</p>}
-        <p>
-          <a href={DOCS} target="_blank" rel="noreferrer" onClick={() => trackOutbound(DOCS)}>
-            {t.modelDocs}
-          </a>
-        </p>
-      </details>
+      )}
     </section>
   );
 }

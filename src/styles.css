@@ -1487,16 +1487,16 @@ button.move:hover {
 /* ---------- the site's own estimate, at the bottom of the prediction tab ---------- */
 
 .model-estimate {
-  margin: 18px 0 4px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
+  margin: 12px 0 0;
 }
 
 .model-estimate h3 {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 8px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin: 0 0 10px;
+  font-size: 15px;
 }
 
 .tag.experimental {
@@ -1506,9 +1506,18 @@ button.move:hover {
 }
 
 .model-for {
-  margin: 0 0 8px;
-  font-size: 13.5px;
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 400;
   color: var(--muted);
+}
+
+.model-held {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0;
 }
 
 .model-moves {
@@ -1554,26 +1563,6 @@ button.move:hover {
   text-align: right;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
-
-.model-details {
-  margin-top: 12px;
-  font-size: 13.5px;
-  color: var(--muted);
-}
-
-.model-details summary {
-  cursor: pointer;
-  font-weight: 700;
-  color: var(--text);
-  min-height: 32px;
-  display: flex;
-  align-items: center;
-}
-
-.model-details p {
-  margin: 8px 0 0;
-  line-height: 1.5;
 }
 
 /* ---------- settings ---------- */

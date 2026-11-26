@@ -8,7 +8,6 @@ import type { GameData } from '../lib/pgn';
 import { moveByUci } from '../lib/position';
 import { canGuess, referencesHeld, useStore, type GuessEntry } from '../store';
 import { qualityLabel } from './AnalysisPanel';
-import { ModelEstimate } from './ModelEstimate';
 import { MoveChooser, MoveInput } from './MoveEntry';
 
 const moveNo = (ply: number) => `${Math.ceil(ply / 2)}${ply % 2 === 1 ? '.' : '…'}`;
@@ -202,7 +201,6 @@ export function PredictPanel({ game, fen, evaluation, boardElsewhere }: Props) {
             ) : (
               <p className="muted">{d ? t.mastersNoData : masters.error ? t.explorerError : t.loading}</p>
             )}
-            <p className="muted small">{t.mastersNote}</p>
           </section>
 
           <section>
@@ -250,7 +248,6 @@ export function PredictPanel({ game, fen, evaluation, boardElsewhere }: Props) {
       )}
 
       {/* The site's own estimate, last in the tab. It is shown, never acted on. */}
-      <ModelEstimate game={game} fen={fen} />
     </div>
   );
 }
