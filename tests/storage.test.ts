@@ -88,6 +88,19 @@ describe('when storage works', () => {
     }
   });
 
+  it('remembers a video height set by hand, and starts on automatic', async () => {
+    const { loadStore } = await import('./helpers');
+    const first = await loadStore();
+    expect(first.useStore.getState().settings.videoHeight).toBe(0);
+    first.useStore.getState().setSetting('videoHeight', 240);
+    expect(JSON.parse(localStorage.getItem('wcc26:settings')!).videoHeight).toBe(240);
+    const second = await loadStore();
+    expect(second.useStore.getState().settings.videoHeight).toBe(240);
+    // back to automatic
+    second.useStore.getState().setSetting('videoHeight', 0);
+    expect((await loadStore()).useStore.getState().settings.videoHeight).toBe(0);
+  });
+
   it('remembers the statistics choice for the next visit', async () => {
     const first = await import('../src/lib/analytics');
     expect(first.setOptedOut(true).persisted).toBe(true);

@@ -203,6 +203,8 @@ const tr = {
   liveShort: 'Canlı',
   tabEngine: 'Stockfish',
   boardTools: 'Tahta araçları',
+  resizeVideo: 'Video ile panelin yüksekliği',
+  resizeVideoTitle: 'Sürükle: video ile altındaki panelin yerini ayarla. Çift tıkla: otomatik.',
   // --- own moves on the board ---
   analysisTag: 'Analiz',
   analysisLine: 'Kendi hamlelerin',
@@ -485,6 +487,8 @@ const en: typeof tr = {
   liveShort: 'Live',
   tabEngine: 'Stockfish',
   boardTools: 'Board tools',
+  resizeVideo: 'Height of the video and the panel',
+  resizeVideoTitle: 'Drag to give the video or the panel under it more room. Double-click for automatic.',
   // --- own moves on the board ---
   analysisTag: 'Analysis',
   analysisLine: 'Your own moves',

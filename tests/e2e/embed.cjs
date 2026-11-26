@@ -89,6 +89,12 @@ const run = async (label, opts = {}) => {
     const active = () => frame.locator('.strip-track .move.active').first().innerText().catch(() => null);
     const video = await frame.locator('.player iframe').boundingBox();
     if (video) {
+      // what the page has under that point, in its own coordinates: the video's frame and nothing over it
+      const under = await frame.evaluate(() => {
+        const b = document.querySelector('.player iframe').getBoundingClientRect();
+        const at = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+        return `${at?.tagName} ${Math.round(b.width)}x${Math.round(b.height)}`;
+      });
       await page.mouse.click(video.x + video.width / 2, video.y + video.height / 2);
       await frame.waitForTimeout(600);
       const inVideo = await frame.evaluate(() => document.activeElement?.tagName);
@@ -102,7 +108,7 @@ const run = async (label, opts = {}) => {
       const afterClick = await frame.evaluate(() => document.activeElement?.tagName);
       await page.keyboard.press('ArrowRight');
       await frame.waitForTimeout(300);
-      out.keysAfterVideo = { focusInVideo: inVideo, arrowsHeldByVideo: stuck, focusAfterBoardClick: afterClick, arrowMovedAgain: (await active()) !== beforeKeys };
+      out.keysAfterVideo = { underTheClick: under, clickedAt: [Math.round(video.x + video.width / 2), Math.round(video.y + video.height / 2)], focusInVideo: inVideo, arrowsHeldByVideo: stuck, focusAfterBoardClick: afterClick, arrowMovedAgain: (await active()) !== beforeKeys };
       await page.keyboard.press('ArrowLeft');
       await frame.waitForTimeout(200);
     }

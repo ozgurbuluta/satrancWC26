@@ -696,6 +696,93 @@ const pgn = (round, id, sans, result, opts = {}) => {
     await ctx.close();
   }
 
+  // ---- 6f. the video and the panel under it share the column: more moves by default, and a bar to set it by hand
+  {
+    const { ctx, page, errors } = await open({ viewport: { width: 1600, height: 930 }, blankVideo: true });
+    // the right side as wide as Özgür had it
+    await page.evaluate(() => localStorage.setItem('wcc26:settings', JSON.stringify({ ...JSON.parse(localStorage.getItem('wcc26:settings') || '{}'), sideWidth: 640 })));
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('button.move');
+    await page.waitForTimeout(800);
+    const shape = () =>
+      page.evaluate(() => {
+        const box = sel => document.querySelector(sel).getBoundingClientRect();
+        const side = box('.side-col');
+        const video = box('.player iframe');
+        const engine = box('.side-col .engine-card');
+        const list = box('.side-col .move-list');
+        const lastRow = [...document.querySelectorAll('.side-col .move-list .move')].at(-1).getBoundingClientRect();
+        return {
+          side: Math.round(side.width),
+          video: Math.round(box('.player').height),
+          ratio: Math.round((video.width / video.height) * 100) / 100,
+          centred: Math.abs(video.left + video.width / 2 - (side.left + side.width / 2)) < 1,
+          engine: Math.round(engine.height),
+          engineWhole: engine.bottom <= list.top + 1 && [...document.querySelectorAll('.side-col .pv-list li')].every(li => li.getBoundingClientRect().bottom <= engine.bottom + 1),
+          list: Math.round(list.height),
+          lastMoveInView: lastRow.bottom <= list.bottom + 1 && list.bottom <= innerHeight,
+          panelBottom: Math.round(box('.tab-body').bottom),
+          saved: JSON.parse(localStorage.getItem('wcc26:settings') || '{}').videoHeight ?? 0,
+          overflowX: document.documentElement.scrollWidth - innerWidth,
+        };
+      });
+    const auto = await shape();
+    check('by default the list of moves has room for four rows or more, with the engine’s lines whole above it', auto.list >= 140 && auto.engineWhole && auto.lastMoveInView && auto.panelBottom <= 930, JSON.stringify(auto));
+    check('the room comes from the video: lower than its width would allow, still 16:9, in the middle of the column', auto.side === 640 && auto.video < 360 && auto.video >= 200 && auto.ratio === 1.78 && auto.centred, `${auto.video} high of 360, ratio ${auto.ratio}`);
+    // the engine goes on thinking and its lines change; the video must not change size with them
+    await page.waitForTimeout(2500);
+    const later = await shape();
+    check('the video keeps that height while the engine thinks', later.video === auto.video, `${auto.video} -> ${later.video}`);
+    const dragBar = async dy => {
+      const bar = await page.locator('.hsplit').boundingBox();
+      const x = bar.x + bar.width / 2;
+      const y = bar.y + bar.height / 2;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x, y + dy / 2, { steps: 4 });
+      await page.mouse.move(x, y + dy, { steps: 4 });
+      await page.mouse.up();
+      await page.waitForTimeout(300);
+    };
+    await dragBar(-100);
+    const up = await shape();
+    check('dragging the bar under the video up gives the moves that much more and the video that much less', up.video === auto.video - 100 && up.list === auto.list + 100 && up.engine === auto.engine && up.ratio === 1.78, `${auto.video}/${auto.list} -> ${up.video}/${up.list}`);
+    await dragBar(-600);
+    const top = await shape();
+    check('the video stops at a small size, and the engine’s lines are still whole', top.video === 120 && top.engineWhole && top.overflowX <= 0, JSON.stringify(top));
+    await dragBar(800);
+    const down = await shape();
+    check('dragged down, the video stops at the height its width allows, and the moves keep a strip', down.video === 360 && down.list >= 64 && down.lastMoveInView, JSON.stringify(down));
+    await dragBar(-60);
+    const chosen = await shape();
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('button.move');
+    await page.waitForTimeout(800);
+    const again = await shape();
+    check('the chosen height is remembered', chosen.saved === chosen.video && again.video === chosen.video && again.list === chosen.list, `${chosen.video} -> ${again.video}`);
+    await page.locator('.tabs button', { hasText: 'Ayarlar' }).click();
+    await page.waitForTimeout(300);
+    const otherTab = await page.evaluate(() => Math.round(document.querySelector('.player').getBoundingClientRect().height));
+    check('and it is the same under every tab', otherTab === chosen.video, String(otherTab));
+    await page.locator('.tabs button', { hasText: 'Stockfish' }).click();
+    await page.locator('.hsplit').dblclick();
+    await page.waitForTimeout(300);
+    const reset = await shape();
+    check('a double click on the bar goes back to automatic', reset.saved === 0 && reset.video === auto.video && reset.list === auto.list, JSON.stringify(reset));
+    check('no page errors while resizing the video', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+  {
+    // a column with room for everything: the video is as large as its width allows, as before
+    const { ctx, page } = await open({ viewport: { width: 1728, height: 1000 }, blankVideo: true });
+    const roomy = await page.evaluate(() => {
+      const video = document.querySelector('.player iframe').getBoundingClientRect();
+      return { side: Math.round(document.querySelector('.side-col').getBoundingClientRect().width), video: [Math.round(video.width), Math.round(video.height)], list: Math.round(document.querySelector('.side-col .move-list').getBoundingClientRect().height) };
+    });
+    check('where the column has room for both, the video keeps its full size', roomy.video[0] === roomy.side && roomy.video[1] === Math.round((roomy.side * 9) / 16) && roomy.list >= 140, JSON.stringify(roomy));
+    await ctx.close();
+  }
+
   // ---- 7. a phone
   {
     const { ctx, page, errors } = await open({ device: 'iPhone 14' });
@@ -709,6 +796,7 @@ const pgn = (round, id, sans, result, opts = {}) => {
     const phoneTabs = (await page.locator('.tabs button').allInnerTexts()).map(t => t.trim());
     check('on a phone guessing is a tab, after Stockfish', phoneTabs.join(',') === 'Stockfish,Tahmin,Benzer,Grafik,Maç,Ayarlar', phoneTabs.join(','));
     check('and the two board buttons stay under the board', (await page.locator('.board-tools').count()) === 0 && (await page.locator('.move-strip > .nav-btn').count()) === 1);
+    check('there is no bar to drag under the video on a phone', (await page.locator('.hsplit').count()) === 0);
 
     // a swipe that starts on a piece scrolls the page and plays nothing
     const client = await ctx.newCDPSession(page);

@@ -4,7 +4,7 @@ Gukesh Dommaraju – Javokhir Sindarov maçını Türkçe yayınla yan yana izle
 bağımsız bir hayran sitesi.
 
 - **Canlı tahta:** hamleler Lichess yayınının push akışından gelir (anahtar ve sunucu gerekmez).
-- **Yayın paneli:** Chess.com Türkçe, Chess.com (EN) ve FIDE YouTube yayınları açılır listeden seçilir.
+- **Yayın paneli:** Chess.com Türkçe, Chess.com (EN) ve FIDE YouTube yayınları açılır listeden seçilir. Videonun altındaki küçük çubuğu sürükleyerek videoya ya da altındaki panele (Stockfish ve hamleler) daha çok yer verebilirsin; çift tıklayınca otomatiğe döner.
 - **Stockfish:** önce Lichess bulut değerlendirmesi, bulunamazsa tarayıcıda çalışan Stockfish. Yayının altındaki ilk sekme Stockfish'tir ve açık gelir: üstte hatlar, altında oyunun hamleleri (numara, Beyaz, Siyah) durur; her hatta puan, oynayacağı hamle ve devamı görünür. Kazanma şansı tahtanın solundadır. İyi hamle sayısı bire ya da ikiye indiğinde hangileri olduğunu ve sıradaki seçeneğin neye mal olacağını söyler.
 - **Türkçe notasyon:** Ş V K F A (İngilizce notasyona geçilebilir).
 - **Spoilersız izleme:** tahtayı duraklat, sonra hamle hamle ya da otomatik oynatarak yetiş; sonuç, skor ve yayın gizli kalır.

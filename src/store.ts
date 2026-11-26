@@ -32,6 +32,8 @@ export interface Settings {
   streamHidden: boolean;
   /** Width of the side column in px on desktop (0 = automatic). */
   sideWidth: number;
+  /** Height of the video in px on desktop (0 = automatic: as large as its width allows, less when the moves need the room). */
+  videoHeight: number;
   /** Open every game paused at the last move you saw, so nothing is spoiled. */
   spoilerShield: boolean;
   /** Guess the next move before it is shown; engine suggestions wait until you have guessed. */
@@ -49,6 +51,7 @@ const DEFAULTS: Settings = {
   streamId: 'yt-chesscomtr',
   streamHidden: false,
   sideWidth: 0,
+  videoHeight: 0,
   spoilerShield: false,
   guessMode: false,
 };
@@ -820,7 +823,7 @@ export const useStore = create<State>((set, get) => {
         track('guess_mode', { on: !!value });
       } else if (key === 'streamId') track('stream_select', { stream: String(value) });
       else if (key === 'streamHidden') track('stream_toggle', { hidden: !!value });
-      else if (key !== 'sideWidth' && key !== 'engineLines') track('setting_change', { setting: key, value: String(value) });
+      else if (key !== 'sideWidth' && key !== 'videoHeight' && key !== 'engineLines') track('setting_change', { setting: key, value: String(value) });
     },
   };
 });
