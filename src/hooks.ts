@@ -64,7 +64,32 @@ export const useMedia = (query: string): boolean => {
   return matches;
 };
 
-/** Three columns: engine and time beside the board on the left, the broadcast and the tabs on the right. */
+/**
+ * Gives the keyboard back to the page when the viewer presses anywhere on it.
+ *
+ * A click in the video hands the keyboard to the video's frame: arrow keys
+ * then seek the video and never reach the board. A press on the page would
+ * normally take the keyboard back, but the board cancels the press it
+ * receives (it handles the drag itself), so the browser leaves the focus
+ * where it was, in the frame. Any press the page sees is outside the frame,
+ * so that is the moment to take the focus out of it. The press itself goes
+ * on as usual: a button is still pressed, a piece is still picked up.
+ */
+export const useKeyboardBackFromFrames = (): void => {
+  useEffect(() => {
+    const reclaim = () => {
+      const active = document.activeElement;
+      if (!(active instanceof HTMLIFrameElement)) return;
+      active.blur();
+      window.focus();
+    };
+    // while the event travels down, before the board has had it
+    window.addEventListener('pointerdown', reclaim, true);
+    return () => window.removeEventListener('pointerdown', reclaim, true);
+  }, []);
+};
+
+/** Three columns: win chance, guessing and time beside the board on the left, the broadcast and the tabs on the right. */
 export const WIDE_LAYOUT = '(min-width: 1180px)';
 /** Room in the top bar for one square per game. */
 export const GAME_SQUARES = '(min-width: 1280px)';

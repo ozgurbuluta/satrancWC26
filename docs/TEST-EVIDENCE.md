@@ -36,7 +36,8 @@ the choice of move, who is winning, the win chances counted from real
 games, the list of broadcasts (and what a choice that is no longer offered
 falls back to), the moves as a table, the button that turns the board in
 its two places, the top bar's mark and title and what is on its right, and
-the settings tab as one block for each setting: 322 tests.
+the settings tab as one block for each setting, and the page asking for the
+keyboard back from a frame on a press: 326 tests.
 Also in CI: the secret check over the whole history, the type check, and
 builds for `/` and `/satranc/`.
 
@@ -189,7 +190,7 @@ and for tapping moves on the board.
 ## The model estimate (issues 4 and 13)
 
 Run on 26 November 2026 in headless Chromium against the preview build, in
-`tests/e2e/board.cjs` (120 of 120 checks), against a simulated match in
+`tests/e2e/board.cjs` (129 of 129 checks), against a simulated match in
 which Sindarov is to play move 6 of a Ruy Lopez.
 
 | Model estimate, under the board | Result |
@@ -259,6 +260,15 @@ stretched flex item, which is the part that differs between browsers.
 | Benzer, removed | no "Bu maçta" block, and no line while every move is a known one |
 | Grafik | the chart's title with no line under it |
 | Ayarlar | one block for each setting with its note inside; a rule above every block but the first, none under any, so none between a row and its note; the same padding in every block |
+
+| The keyboard after a click in the video | Result |
+|---|---|
+| A click in the video | the keyboard is the video's: the focus is in its frame and the arrow keys do not reach the board (this is the browser's doing, and stays so) |
+| Then a click on an empty square of the board | the focus is back on the page and ← steps a move. Before the fix it stayed in the frame, because the board cancels the press it receives and the browser then leaves the focus where it was |
+| Then a click on a card, the footer or the list of moves | the same |
+| A piece dragged straight after a click in the video | is played as usual, and ← then steps back through that line |
+| A control that has the keyboard (the broadcast dropdown) | keeps it: the page takes the keyboard back from a frame and from nothing else |
+| Inside the sandboxed frame of `/satranc/`, with the real video (`embed.cjs`, both desktop modes) | focus in the video, arrows held by it; after a click on the board the focus is on the page and the arrow moves the board again |
 
 Looked at by eye in screenshots at 1024, 1280, 1440, 1600 and 1728 px and
 on a 390 px phone. Not covered: real Safari (the board's shape there rests
