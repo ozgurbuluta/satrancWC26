@@ -739,7 +739,7 @@ for (const family of ['A', 'B']) {
 log(`committed selection verified (${sha256(SELECTION).slice(0, 16)}…): family ${selection.chosen}; measuring`);
 if (V3) {
   const { runV3 } = await import('./predictor-v3.mjs');
-  await runV3({ FINAL, publishedV1, v1, round, byText, FEATURES, K, BOARD, PLAYERS, MOVER, AS_OF, PRIOR_PLIES, CLOCK_FULL_SECONDS, STAKES_MAX, selection, models, measure, uniform, logLoss, searchTemperature, scoresOf, softmaxInto, ownOf, rows, games, tournaments, history, sample, selectionCounts, yearsBetween, earlier, monthIndex, parseGame, positionKey, candidates, clockPressure, log, sha256 });
+  await runV3({ FINAL, splitGames, publishedV1, v1, round, byText, FEATURES, K, BOARD, PLAYERS, MOVER, AS_OF, PRIOR_PLIES, CLOCK_FULL_SECONDS, STAKES_MAX, selection, models, measure, uniform, logLoss, searchTemperature, scoresOf, softmaxInto, ownOf, rows, games, tournaments, history, sample, selectionCounts, yearsBetween, earlier, monthIndex, parseGame, positionKey, candidates, clockPressure, log, sha256 });
   await vite.close();
   process.exit(0);
 }

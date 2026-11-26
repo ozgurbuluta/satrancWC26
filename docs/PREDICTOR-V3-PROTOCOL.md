@@ -111,6 +111,23 @@ v3 replaces v2 on the page if its log loss is lower on January to August
 error is not higher. The label stays "Deneysel". Whatever is tried and not
 adopted is listed in the report.
 
+## Changes made on the selection games, before any other measurement
+
+After phase 1's selection stage had run (`data/predictor-v3/selection.json`),
+and before the third version was scored on anything else:
+
+1. **The rule for cutting the theory table is replaced.** The rule above
+   took the largest minimum that costs under 0.002. Every cut costs more
+   than that, and the table kept whole would make the file over 4 MB. The
+   rule used: of the tables that keep the whole file under 600 KB, the one
+   with the lowest selection log loss, over how deep into the game theory
+   goes (half-move 16, 20, 24, 30 or 40) and how many games a position
+   needs (1, 2, 3 or 5).
+2. **Faster games are not adopted.** They are worth 0.0007 of selection log
+   loss next to theory, and would add about ten thousand positions.
+3. **Other players' moves in the two players' own games are dropped**
+   (`w` = 0). Theory says the same from more games; the cost is 0.0003.
+
 ## Limits known in advance
 
 - Still no engine, no paid service, no viewer data.

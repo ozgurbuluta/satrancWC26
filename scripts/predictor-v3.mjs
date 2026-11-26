@@ -32,9 +32,10 @@ const GRID = {
   halfLife: [0.5, 1, 2, 4, null],
   epsilon: [0, 0.002, 0.005, 0.01, 0.02, 0.05],
 };
-/** Positions with fewer theory games than this are left out of the table; the largest that costs under TOLERANCE is taken. */
-const MIN_THEORY = [1, 2, 3, 5, 10];
-const TOLERANCE = 0.002;
+/** The model file has to stay under this, tables and all. */
+const BUDGET_BYTES = 600 * 1024;
+/** Weights, settings and the report in the file, apart from the two tables. */
+const FIXED_BYTES = 8 * 1024;
 
 export const runV3 = async ctx => {
   const { FINAL, round, K, BOARD, PLAYERS, MOVER, PRIOR_PLIES, selection, models, measure, uniform, logLoss, searchTemperature, scoresOf, softmaxInto, ownOf, history, sample, monthIndex, parseGame, positionKey, log } = ctx;
@@ -62,7 +63,7 @@ export const runV3 = async ctx => {
     for (const ply of game.plies) {
       const key = positionKey(fen);
       let entry = theory.get(key);
-      if (!entry) theory.set(key, (entry = { ucis: [], months: [] }));
+      if (!entry) theory.set(key, (entry = { ucis: [], months: [], ply: game.plies.indexOf(ply) }));
       entry.ucis.push(ply.uci);
       entry.months.push(month);
       fen = ply.fen;
@@ -133,7 +134,7 @@ export const runV3 = async ctx => {
       const p = new Float64Array(n);
       for (let j = 0; j < n; j++) p[j] = r.s[j] / c.temperature;
       softmaxInto(p, n);
-      if (c.nu !== null && r.th && r.thN >= c.minTheory) {
+      if (c.nu !== null && r.th && r.thN >= c.minTheory && r.ply < (c.theoryPlies ?? Infinity)) {
         // the board model, pulled towards what strong players played here
         let total = c.nu;
         const played = new Float64Array(n);
@@ -197,11 +198,76 @@ export const runV3 = async ctx => {
   };
   const all = search(start, ['nu', 'theoryHalfLife', 'same', 'faster', ...blend]);
   for (const [name, c] of Object.entries({ ...alone, all })) log(`v3 on selection, ${name}: log loss ${c.loss.toFixed(4)} (second version ${v2.loss.toFixed(4)}) with ν ${c.nu}, theory half-life ${c.theoryHalfLife}, same ${c.same}, faster ${c.faster}, κ ${c.kappa}, w ${c.others}, half-life ${c.halfLife}, ε ${c.epsilon}, T ${c.temperature}`);
-  // how small can the theory table be?
-  const byMinimum = MIN_THEORY.map(k => ({ minimum: k, loss: logLoss(selRows, v3({ ...all, minTheory: k })) }));
-  const minTheory = byMinimum.filter(x => x.loss <= byMinimum[0].loss + TOLERANCE).at(-1).minimum;
-  const chosen = { ...all, minTheory, loss: logLoss(selRows, v3({ ...all, minTheory })) };
-  log(`v3: theory table from positions with at least ${minTheory} games: ${byMinimum.map(x => `${x.minimum}: ${x.loss.toFixed(4)}`).join(', ')}`);
+  // ---------- the tables as they ship, and a rule for how much theory fits
+  // Keys are the last eight characters of the position key; a count is written right after its move.
+  const shortKey = key => key.slice(-8);
+  const number = x => {
+    const text = x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2);
+    const trimmed = text.includes('.') ? text.replace(/0+$/, '').replace(/\.$/, '') : text;
+    return trimmed.startsWith('0.') ? trimmed.slice(1) : trimmed;
+  };
+  const asOfMonth = monthIndex(ctx.AS_OF.slice(0, 7));
+  /** Theory as one text, "key=move12.5,move3;…": games of months before `asOf`, aged, for positions the rule keeps. */
+  const theoryTable = c => {
+    const byYear = Array.from({ length: YEARS }, (_, y) => ageOf(y + 0.5, c.theoryHalfLife));
+    const parts = new Map();
+    let moves = 0;
+    for (const [key, e] of theory) {
+      if (e.ply >= c.theoryPlies || e.ucis.length < c.minTheory) continue;
+      const counts = new Map();
+      for (let i = 0; i < e.ucis.length; i++) {
+        const age = asOfMonth - e.months[i];
+        if (age > 0) counts.set(e.ucis[i], (counts.get(e.ucis[i]) ?? 0) + byYear[Math.min(YEARS - 1, Math.floor((age - 1) / 12))]);
+      }
+      const kept = [...counts].filter(([, x]) => number(x) !== '0').sort((a, b) => ctx.byText(a[0], b[0]));
+      // two positions with the same short key: the first is kept (rare, and then one of them goes without theory)
+      if (!kept.length || parts.has(shortKey(key))) continue;
+      moves += kept.length;
+      parts.set(shortKey(key), kept.map(([uci, x]) => uci + number(x)).join(','));
+    }
+    return { text: [...parts].sort((a, b) => ctx.byText(a[0], b[0])).map(([k, v]) => `${k}=${v}`).join(';'), positions: parts.size, moves };
+  };
+  /** The two players' own earlier moves as one text, aged as of the shipping day: "key=moveg1.5s2;…". */
+  const ownTable = c => {
+    const parts = new Map();
+    let moves = 0;
+    for (const [key, entries] of history) {
+      const counts = new Map();
+      for (const e of entries) {
+        if (e.mover === 0) continue;
+        const m = counts.get(e.uci) ?? counts.set(e.uci, [0, 0]).get(e.uci);
+        m[e.mover - 1] += ageOf(ctx.yearsBetween(e.t.end, ctx.AS_OF), c.halfLife);
+      }
+      const kept = [...counts].map(([uci, [g, sx]]) => `${uci}${number(g) !== '0' ? `g${number(g)}` : ''}${number(sx) !== '0' ? `s${number(sx)}` : ''}`).filter(text => /[gs]/.test(text.slice(4))).sort();
+      if (!kept.length || parts.has(shortKey(key))) continue;
+      moves += kept.length;
+      parts.set(shortKey(key), kept.join(','));
+    }
+    return { text: [...parts].sort((a, b) => ctx.byText(a[0], b[0])).map(([k, v]) => `${k}=${v}`).join(';'), positions: parts.size, moves };
+  };
+
+  // Others' moves in the two players' games, and the faster games, are weighed against what they cost.
+  const withoutOthers = logLoss(selRows, v3({ ...all, others: 0 }));
+  const withoutFaster = logLoss(selRows, v3({ ...all, faster: 0 }));
+  log(`v3: without others' moves ${withoutOthers.toFixed(4)}, without faster games ${withoutFaster.toFixed(4)} (with both ${all.loss.toFixed(4)})`);
+  // The theory rule: how deep into the game, and how many games a position needs. The lowest loss that fits.
+  const lean = { ...all, others: 0, faster: 0 };
+  const ownBytes = ownTable(lean).text.length;
+  const rules = [];
+  for (const theoryPlies of [16, 20, 24, 30, 40]) {
+    for (const minimum of [1, 2, 3, 5]) {
+      const c = { ...lean, theoryPlies, minTheory: minimum };
+      const table = theoryTable(c);
+      rules.push({ theoryPlies, minimum, loss: logLoss(selRows, v3(c)), positions: table.positions, theoryBytes: table.text.length, fileBytes: table.text.length + ownBytes + FIXED_BYTES });
+    }
+  }
+  const fitting = rules.filter(x => x.fileBytes <= BUDGET_BYTES).sort((a, b) => a.loss - b.loss);
+  const rule = fitting[0];
+  for (const x of rules) log(`   theory to half-move ${x.theoryPlies}, at least ${x.minimum} games: log loss ${x.loss.toFixed(4)}, ${x.positions} positions, file ${(x.fileBytes / 1024).toFixed(0)} KB${x === rule ? '  <- chosen' : ''}`);
+  // every other setting again, with that rule in place
+  const chosenFull = search({ ...lean, theoryPlies: rule.theoryPlies, minTheory: rule.minimum }, ['nu', 'theoryHalfLife', 'same', 'kappa', 'halfLife', 'epsilon']);
+  const chosen = chosenFull;
+  log(`v3 chosen: theory to half-move ${chosen.theoryPlies} from ${chosen.minTheory} games, ν ${chosen.nu}, theory half-life ${chosen.theoryHalfLife}, same ${chosen.same}, κ ${chosen.kappa}, half-life ${chosen.halfLife}, ε ${chosen.epsilon}, T ${chosen.temperature}: log loss ${chosen.loss.toFixed(4)}`);
 
   const v3Selection = {
     protocol: 'docs/PREDICTOR-V3-PROTOCOL.md',
@@ -210,13 +276,14 @@ export const runV3 = async ctx => {
     grid: GRID,
     alone,
     all,
-    theoryMinimum: { candidates: byMinimum, tolerance: TOLERANCE, chosen: minTheory },
+    costs: { withoutOthers, withoutFaster, budgetBytes: BUDGET_BYTES, ownTableBytes: ownBytes },
+    rules,
     chosen,
     onSelection: {
       v3: measure(selRows, v3(chosen), { against: models.v2 }),
       v2: measure(selRows, models.v2),
       withEarlierGames: selRows.filter(r => r.known).length,
-      withTheory: selRows.filter(r => r.thN >= minTheory).length,
+      withTheory: selRows.filter(r => r.th && r.thN >= chosen.minTheory && r.ply < chosen.theoryPlies).length,
       withSameTournament: selRows.filter(r => r.sj.length > 0).length,
       withFaster: selRows.filter(r => r.fj.length > 0).length,
     },
@@ -224,7 +291,7 @@ export const runV3 = async ctx => {
   const text = JSON.stringify(v3Selection, (key, value) => (typeof value === 'number' && !Number.isInteger(value) ? round(value, 6) : value), 1) + '\n';
   const m = v3Selection.onSelection;
   log(`v3 on selection: log loss ${m.v3.logLoss.toFixed(4)} against ${m.v2.logLoss.toFixed(4)}; first ${(100 * m.v3.top1).toFixed(1)} % against ${(100 * m.v2.top1).toFixed(1)} %; three ${(100 * m.v3.top3).toFixed(1)} % against ${(100 * m.v2.top3).toFixed(1)} %; calibration error ${(100 * m.v3.ece).toFixed(1)} % against ${(100 * m.v2.ece).toFixed(1)} %`);
-  log(`   decisions with: own earlier games ${m.withEarlierGames}, theory ${m.withTheory}, same tournament ${m.withSameTournament}, faster games ${m.withFaster}, of ${selRows.length}`);
+  log(`   decisions with: own earlier games ${m.withEarlierGames}, theory ${m.withTheory}, same tournament ${m.withSameTournament}, of ${selRows.length}`);
   if (!FINAL) {
     mkdirSync('data/predictor-v3', { recursive: true });
     writeFileSync(SELECTION_V3, text);
@@ -233,5 +300,5 @@ export const runV3 = async ctx => {
   }
   if (!existsSync(SELECTION_V3) || readFileSync(SELECTION_V3, 'utf8') !== text) throw new Error(`${SELECTION_V3} is missing or is not what this stage gives. Run --v3 without --final and commit it first.`);
   const { writeV3 } = await import('./predictor-v3-final.mjs');
-  await writeV3({ ...ctx, v3, prepare, theory, faster, chosen: JSON.parse(text).chosen, v3Selection: JSON.parse(text), YEARS, ageOf, replay });
+  await writeV3({ ...ctx, v3, prepare, theory, theoryTable, ownTable, chosen: JSON.parse(text).chosen, v3Selection: JSON.parse(text), replay });
 };

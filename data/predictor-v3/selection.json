@@ -1,0 +1,701 @@
+{
+ "protocol": "docs/PREDICTOR-V3-PROTOCOL.md",
+ "base": {
+  "from": "data/predictor-v2/selection.json",
+  "family": "B",
+  "loss": 2.244946
+ },
+ "data": {
+  "eliteGames": 10761,
+  "theoryPositions": 243288,
+  "fasterGames": 709,
+  "fasterPositions": 10859,
+  "selection": {
+   "tournaments": 11,
+   "games": 118,
+   "decisions": 5733,
+   "gukesh": 3124,
+   "sindarov": 2609,
+   "withEarlierGames": 492
+  }
+ },
+ "grid": {
+  "nu": [
+   null,
+   0.5,
+   1,
+   2,
+   5,
+   10,
+   20
+  ],
+  "theoryHalfLife": [
+   1,
+   2,
+   4,
+   null
+  ],
+  "same": [
+   0,
+   0.5,
+   1,
+   2,
+   4
+  ],
+  "faster": [
+   0,
+   0.1,
+   0.25,
+   0.5,
+   1
+  ],
+  "kappa": [
+   0.25,
+   0.5,
+   1,
+   2,
+   4,
+   8,
+   16
+  ],
+  "others": [
+   0,
+   0.05,
+   0.1,
+   0.25,
+   0.5,
+   1
+  ],
+  "halfLife": [
+   0.5,
+   1,
+   2,
+   4,
+   null
+  ],
+  "epsilon": [
+   0,
+   0.002,
+   0.005,
+   0.01,
+   0.02,
+   0.05
+  ]
+ },
+ "alone": {
+  "theory": {
+   "temperature": 0.98,
+   "kappa": 2,
+   "others": 0.05,
+   "halfLife": 0.5,
+   "epsilon": 0.005,
+   "nu": 0.5,
+   "theoryHalfLife": 4,
+   "same": 0,
+   "faster": 0,
+   "minTheory": 1,
+   "loss": 2.124143
+  },
+  "same": {
+   "temperature": 0.971,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 4,
+   "epsilon": 0.005,
+   "nu": null,
+   "theoryHalfLife": null,
+   "same": 4,
+   "faster": 0,
+   "minTheory": 1,
+   "loss": 2.24064
+  },
+  "faster": {
+   "temperature": 0.972,
+   "kappa": 0.5,
+   "others": 0.5,
+   "halfLife": 2,
+   "epsilon": 0.005,
+   "nu": null,
+   "theoryHalfLife": null,
+   "same": 0,
+   "faster": 1,
+   "minTheory": 1,
+   "loss": 2.236501
+  }
+ },
+ "all": {
+  "temperature": 0.979,
+  "kappa": 2,
+  "others": 0.1,
+  "halfLife": 0.5,
+  "epsilon": 0.005,
+  "nu": 0.5,
+  "theoryHalfLife": 4,
+  "same": 4,
+  "faster": 0.5,
+  "minTheory": 1,
+  "loss": 2.121902
+ },
+ "costs": {
+  "withoutOthers": 2.12223,
+  "withoutFaster": 2.122565,
+  "budgetBytes": 614400,
+  "ownTableBytes": 130423
+ },
+ "rules": [
+  {
+   "theoryPlies": 16,
+   "minimum": 1,
+   "loss": 2.159713,
+   "positions": 27243,
+   "theoryBytes": 531551,
+   "fileBytes": 670166
+  },
+  {
+   "theoryPlies": 16,
+   "minimum": 2,
+   "loss": 2.17084,
+   "positions": 11338,
+   "theoryBytes": 261166,
+   "fileBytes": 399781
+  },
+  {
+   "theoryPlies": 16,
+   "minimum": 3,
+   "loss": 2.174584,
+   "positions": 6561,
+   "theoryBytes": 168745,
+   "fileBytes": 307360
+  },
+  {
+   "theoryPlies": 16,
+   "minimum": 5,
+   "loss": 2.182528,
+   "positions": 3871,
+   "theoryBytes": 109813,
+   "fileBytes": 248428
+  },
+  {
+   "theoryPlies": 20,
+   "minimum": 1,
+   "loss": 2.142545,
+   "positions": 53280,
+   "theoryBytes": 998339,
+   "fileBytes": 1136954
+  },
+  {
+   "theoryPlies": 20,
+   "minimum": 2,
+   "loss": 2.158872,
+   "positions": 16931,
+   "theoryBytes": 380407,
+   "fileBytes": 519022
+  },
+  {
+   "theoryPlies": 20,
+   "minimum": 3,
+   "loss": 2.166421,
+   "positions": 9085,
+   "theoryBytes": 227557,
+   "fileBytes": 366172
+  },
+  {
+   "theoryPlies": 20,
+   "minimum": 5,
+   "loss": 2.176141,
+   "positions": 4933,
+   "theoryBytes": 137233,
+   "fileBytes": 275848
+  },
+  {
+   "theoryPlies": 24,
+   "minimum": 1,
+   "loss": 2.134002,
+   "positions": 86301,
+   "theoryBytes": 1575425,
+   "fileBytes": 1714040
+  },
+  {
+   "theoryPlies": 24,
+   "minimum": 2,
+   "loss": 2.150914,
+   "positions": 21100,
+   "theoryBytes": 467009,
+   "fileBytes": 605624
+  },
+  {
+   "theoryPlies": 24,
+   "minimum": 3,
+   "loss": 2.160682,
+   "positions": 10785,
+   "theoryBytes": 265845,
+   "fileBytes": 404460
+  },
+  {
+   "theoryPlies": 24,
+   "minimum": 5,
+   "loss": 2.172041,
+   "positions": 5534,
+   "theoryBytes": 151737,
+   "fileBytes": 290352
+  },
+  {
+   "theoryPlies": 30,
+   "minimum": 1,
+   "loss": 2.126766,
+   "positions": 143002,
+   "theoryBytes": 2551270,
+   "fileBytes": 2689885
+  },
+  {
+   "theoryPlies": 30,
+   "minimum": 2,
+   "loss": 2.145317,
+   "positions": 24945,
+   "theoryBytes": 544302,
+   "fileBytes": 682917
+  },
+  {
+   "theoryPlies": 30,
+   "minimum": 3,
+   "loss": 2.157364,
+   "positions": 12052,
+   "theoryBytes": 293278,
+   "fileBytes": 431893
+  },
+  {
+   "theoryPlies": 30,
+   "minimum": 5,
+   "loss": 2.170149,
+   "positions": 5882,
+   "theoryBytes": 159829,
+   "fileBytes": 298444
+  },
+  {
+   "theoryPlies": 40,
+   "minimum": 1,
+   "loss": 2.122896,
+   "positions": 243288,
+   "theoryBytes": 4262436,
+   "fileBytes": 4401051
+  },
+  {
+   "theoryPlies": 40,
+   "minimum": 2,
+   "loss": 2.143369,
+   "positions": 27510,
+   "theoryBytes": 594210,
+   "fileBytes": 732825
+  },
+  {
+   "theoryPlies": 40,
+   "minimum": 3,
+   "loss": 2.156908,
+   "positions": 12631,
+   "theoryBytes": 305352,
+   "fileBytes": 443967
+  },
+  {
+   "theoryPlies": 40,
+   "minimum": 5,
+   "loss": 2.169825,
+   "positions": 6020,
+   "theoryBytes": 162818,
+   "fileBytes": 301433
+  }
+ ],
+ "chosen": {
+  "temperature": 0.978,
+  "kappa": 2,
+  "others": 0,
+  "halfLife": 0.5,
+  "epsilon": 0.005,
+  "nu": 0.5,
+  "theoryHalfLife": 4,
+  "same": 2,
+  "faster": 0,
+  "minTheory": 2,
+  "loss": 2.150763,
+  "theoryPlies": 24
+ },
+ "onSelection": {
+  "v3": {
+   "n": 5733,
+   "logLoss": 2.150763,
+   "brier": 0.761979,
+   "top1": 0.35723,
+   "top3": 0.609803,
+   "ece": 0.033374,
+   "bins": [
+    {
+     "n": 523,
+     "said": 0.08267,
+     "happened": 0.133843
+    },
+    {
+     "n": 1448,
+     "said": 0.147868,
+     "happened": 0.163674
+    },
+    {
+     "n": 1001,
+     "said": 0.246679,
+     "happened": 0.234765
+    },
+    {
+     "n": 678,
+     "said": 0.346119,
+     "happened": 0.328909
+    },
+    {
+     "n": 494,
+     "said": 0.449424,
+     "happened": 0.431174
+    },
+    {
+     "n": 397,
+     "said": 0.545081,
+     "happened": 0.476071
+    },
+    {
+     "n": 307,
+     "said": 0.647294,
+     "happened": 0.530945
+    },
+    {
+     "n": 269,
+     "said": 0.750463,
+     "happened": 0.66171
+    },
+    {
+     "n": 259,
+     "said": 0.846461,
+     "happened": 0.776062
+    },
+    {
+     "n": 357,
+     "said": 0.960367,
+     "happened": 0.94958
+    }
+   ],
+   "sure70": {
+    "n": 885,
+    "said": 0.86323,
+    "happened": 0.811299
+   },
+   "sure90": {
+    "n": 357,
+    "said": 0.960367,
+    "happened": 0.94958
+   },
+   "shownEce": 0.023296,
+   "shownBins": [
+    {
+     "n": 7315,
+     "said": 0.06,
+     "happened": 0.084484
+    },
+    {
+     "n": 4791,
+     "said": 0.141432,
+     "happened": 0.160718
+    },
+    {
+     "n": 1818,
+     "said": 0.243598,
+     "happened": 0.242024
+    },
+    {
+     "n": 1008,
+     "said": 0.344838,
+     "happened": 0.343254
+    },
+    {
+     "n": 586,
+     "said": 0.448172,
+     "happened": 0.428328
+    },
+    {
+     "n": 403,
+     "said": 0.54441,
+     "happened": 0.471464
+    },
+    {
+     "n": 307,
+     "said": 0.647294,
+     "happened": 0.530945
+    },
+    {
+     "n": 269,
+     "said": 0.750463,
+     "happened": 0.66171
+    },
+    {
+     "n": 259,
+     "said": 0.846461,
+     "happened": 0.776062
+    },
+    {
+     "n": 357,
+     "said": 0.960367,
+     "happened": 0.94958
+    }
+   ],
+   "games": 118,
+   "intervals": {
+    "logLoss": [
+     2.108339,
+     2.194686
+    ],
+    "brier": [
+     0.749975,
+     0.773771
+    ],
+    "top1": [
+     0.342678,
+     0.373045
+    ],
+    "top3": [
+     0.595242,
+     0.624245
+    ],
+    "ece": [
+     0.025386,
+     0.044549
+    ],
+    "shownEce": [
+     0.019986,
+     0.029744
+    ],
+    "gap70": [
+     0.027106,
+     0.078162
+    ],
+    "gap90": [
+     -0.011653,
+     0.036377
+    ]
+   },
+   "difference": {
+    "logLoss": {
+     "value": -0.094182,
+     "interval": [
+      -0.113756,
+      -0.074678
+     ]
+    },
+    "brier": {
+     "value": -0.025024,
+     "interval": [
+      -0.031058,
+      -0.019305
+     ]
+    },
+    "top1": {
+     "value": 0.022327,
+     "interval": [
+      0.016854,
+      0.028452
+     ]
+    },
+    "top3": {
+     "value": 0.023025,
+     "interval": [
+      0.017455,
+      0.028774
+     ]
+    },
+    "ece": {
+     "value": 0.002003,
+     "interval": [
+      -0.003372,
+      0.006535
+     ]
+    },
+    "shownEce": {
+     "value": 0.00114,
+     "interval": [
+      -0.001162,
+      0.003841
+     ]
+    },
+    "gap70": {
+     "value": 0.004806,
+     "interval": [
+      -0.012788,
+      0.022763
+     ]
+    },
+    "gap90": {
+     "value": -0.024479,
+     "interval": [
+      -0.047928,
+      -0.00259
+     ]
+    }
+   }
+  },
+  "v2": {
+   "n": 5733,
+   "logLoss": 2.244946,
+   "brier": 0.787003,
+   "top1": 0.334903,
+   "top3": 0.586778,
+   "ece": 0.031371,
+   "bins": [
+    {
+     "n": 544,
+     "said": 0.083295,
+     "happened": 0.137868
+    },
+    {
+     "n": 1526,
+     "said": 0.147302,
+     "happened": 0.162516
+    },
+    {
+     "n": 1061,
+     "said": 0.246855,
+     "happened": 0.234684
+    },
+    {
+     "n": 705,
+     "said": 0.345607,
+     "happened": 0.321986
+    },
+    {
+     "n": 506,
+     "said": 0.451316,
+     "happened": 0.444664
+    },
+    {
+     "n": 414,
+     "said": 0.545227,
+     "happened": 0.483092
+    },
+    {
+     "n": 303,
+     "said": 0.648612,
+     "happened": 0.528053
+    },
+    {
+     "n": 264,
+     "said": 0.747756,
+     "happened": 0.693182
+    },
+    {
+     "n": 210,
+     "said": 0.849056,
+     "happened": 0.8
+    },
+    {
+     "n": 200,
+     "said": 0.960266,
+     "happened": 0.925
+    }
+   ],
+   "sure70": {
+    "n": 674,
+    "said": 0.842377,
+    "happened": 0.795252
+   },
+   "sure90": {
+    "n": 200,
+    "said": 0.960266,
+    "happened": 0.925
+   },
+   "shownEce": 0.022156,
+   "shownBins": [
+    {
+     "n": 7442,
+     "said": 0.062995,
+     "happened": 0.087611
+    },
+    {
+     "n": 4830,
+     "said": 0.141124,
+     "happened": 0.157971
+    },
+    {
+     "n": 1860,
+     "said": 0.243923,
+     "happened": 0.246774
+    },
+    {
+     "n": 1004,
+     "said": 0.343852,
+     "happened": 0.337649
+    },
+    {
+     "n": 580,
+     "said": 0.450089,
+     "happened": 0.437931
+    },
+    {
+     "n": 420,
+     "said": 0.544581,
+     "happened": 0.478571
+    },
+    {
+     "n": 303,
+     "said": 0.648612,
+     "happened": 0.528053
+    },
+    {
+     "n": 264,
+     "said": 0.747756,
+     "happened": 0.693182
+    },
+    {
+     "n": 210,
+     "said": 0.849056,
+     "happened": 0.8
+    },
+    {
+     "n": 200,
+     "said": 0.960266,
+     "happened": 0.925
+    }
+   ],
+   "games": 118,
+   "intervals": {
+    "logLoss": [
+     2.202897,
+     2.287469
+    ],
+    "brier": [
+     0.776285,
+     0.797444
+    ],
+    "top1": [
+     0.32124,
+     0.349615
+    ],
+    "top3": [
+     0.572032,
+     0.60177
+    ],
+    "ece": [
+     0.024301,
+     0.042832
+    ],
+    "shownEce": [
+     0.01824,
+     0.028557
+    ],
+    "gap70": [
+     0.018729,
+     0.077545
+    ],
+    "gap90": [
+     -0.000833,
+     0.077864
+    ]
+   }
+  },
+  "withEarlierGames": 492,
+  "withTheory": 836,
+  "withSameTournament": 222,
+  "withFaster": 438
+ }
+}
