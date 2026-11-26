@@ -13,7 +13,13 @@ one game per line as JSON:
 - knockout.jsonl  classical games of the FIDE World Cups (open and women):
                   two-game matches, where the second game is played knowing
                   the score;
-- matches.jsonl   classical games of world championship matches.
+- matches.jsonl   classical games of world championship matches;
+- champions.jsonl every classical game of the seven players of those
+                  matches: what they played in tournaments, to compare with
+                  what they played for the title. By FIDE ID where the game
+                  carries one. The archives before 2023 carry none, so there
+                  a game counts when the name is the player's and the rating
+                  on it is 2400 or more.
 
 Standard chess from the initial position only. "Classical" is the rule used
 everywhere here: the larger of the first two clock readings is at least 45
@@ -40,6 +46,30 @@ MIN_RATING = 2600
 WORLD_CUP = re.compile(r"^FIDE (Women's )?World Cup( \d{4})?( (Open|Women's) Section)?$")
 TITLE_MATCH = re.compile(r"^(FIDE )?(Women['’]s )?World (Chess )?Championship( \d{4})?$")
 RESULTS = {'1-0', '0-1', '1/2-1/2'}
+# The players of the title matches in the archives: FIDE ID, and the words of the name as broadcasts write it
+CHAMPIONS = {
+    '1503014': {'carlsen', 'magnus'},
+    '4168119': {'nepomniachtchi', 'ian'},
+    '8603677': {'ding', 'liren'},
+    '46616543': {'gukesh'},
+    '8603006': {'ju', 'wenjun'},
+    '8605114': {'lei', 'tingjie'},
+    '8603642': {'tan', 'zhongyi'},
+}
+CHAMPION_MIN_RATING = 2400
+
+
+def champion(fide_id, name, elo):
+    """The FIDE ID of the title-match player this is, or ''."""
+    if fide_id:
+        return fide_id if fide_id in CHAMPIONS else ''
+    if elo < CHAMPION_MIN_RATING:
+        return ''
+    words = {w for w in re.split(r'[\s,.]+', (name or '').lower()) if len(w) > 1}
+    for who, expected in CHAMPIONS.items():
+        if words == expected or (who == '46616543' and 'gukesh' in words and words <= {'gukesh', 'dommaraju'}):
+            return who
+    return ''
 
 
 def moves_san(raw):
@@ -65,7 +95,7 @@ def rating(text):
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     periods = [f'{year}-{month:02d}' for year in range(2020, 2027) for month in range(1, 13) if (year, month) <= (2026, 10)]
-    files = {name: open(OUT / f'{name}.jsonl', 'w') for name in ('elite', 'faster', 'knockout', 'matches')}
+    files = {name: open(OUT / f'{name}.jsonl', 'w') for name in ('elite', 'faster', 'knockout', 'matches', 'champions')}
     seen = {name: set() for name in files}
     sources = []
     for period in periods:
@@ -90,6 +120,10 @@ def main():
                 into.append('knockout')
             if classical and TITLE_MATCH.match(name) and h.get('Result') in RESULTS:
                 into.append('matches')
+            white_who = champion(h.get('WhiteFideId'), h.get('White'), rating(h.get('WhiteElo')))
+            black_who = champion(h.get('BlackFideId'), h.get('Black'), rating(h.get('BlackElo')))
+            if classical and (white_who or black_who) and h.get('Result') in RESULTS:
+                into.append('champions')
             if not into:
                 continue
             moves = moves_san(raw)
@@ -114,6 +148,9 @@ def main():
                 'url': h.get('GameURL', ''),
                 'moves': ' '.join(moves),
             }
+            if white_who or black_who:
+                game['whiteWho'] = white_who
+                game['blackWho'] = black_who
             for target in into:
                 if key in seen[target]:
                     continue
@@ -128,7 +165,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     (out / 'sources.json').write_text(json.dumps({
         **history.SOURCE,
-        'about': 'Games read for the third version of the move predictor, by archive: classical games between players rated 2600 or more (elite), the two players\' faster games (faster), classical games of the FIDE World Cups (knockout) and of world championship matches (matches). The games are rebuilt by scripts/prepare-v3-games.py into .cache/predictor-v3/ and are not committed.',
+        'about': 'Games read for the third version of the move predictor, by archive: classical games between players rated 2600 or more (elite), the two players\' faster games (faster), classical games of the FIDE World Cups (knockout) and of world championship matches (matches), and every classical game of the players of those matches (champions). The games are rebuilt by scripts/prepare-v3-games.py into .cache/predictor-v3/ and are not committed.',
         'games': {name: len(seen[name]) for name in files},
         'sources': sources,
     }, indent=1) + '\n')

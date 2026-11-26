@@ -1,0 +1,257 @@
+{
+ "about": "What the score does to a player's moves, from the second games of World Cup two-game matches. See scripts/predictor-v3-situation.mjs and docs/PREDICTOR-V3-PROTOCOL.md.",
+ "events": {
+  "FIDE World Cup": {
+   "matches": 197,
+   "firstDecisive": 114,
+   "decisions": 10649
+  },
+  "FIDE Women's World Cup": {
+   "matches": 99,
+   "firstDecisive": 55,
+   "decisions": 5574
+  },
+  "FIDE World Cup 2023 Open Section": {
+   "matches": 203,
+   "firstDecisive": 91,
+   "decisions": 8692
+  },
+  "FIDE World Cup 2023 Women's Section": {
+   "matches": 99,
+   "firstDecisive": 60,
+   "decisions": 5755
+  },
+  "FIDE Women's World Cup 2025": {
+   "matches": 107,
+   "firstDecisive": 63,
+   "decisions": 5976
+  },
+  "FIDE World Cup 2025": {
+   "matches": 202,
+   "firstDecisive": 85,
+   "decisions": 7538
+  }
+ },
+ "fit": {
+  "events": [
+   "FIDE World Cup",
+   "FIDE Women's World Cup",
+   "FIDE World Cup 2023 Open Section",
+   "FIDE World Cup 2023 Women's Section"
+  ],
+  "decisions": 30670
+ },
+ "test": {
+  "events": [
+   "FIDE World Cup 2025",
+   "FIDE Women's World Cup 2025"
+  ],
+  "decisions": 13514
+ },
+ "penalties": [
+  {
+   "penalty": 0.001,
+   "leftOutLoss": 2.416062
+  },
+  {
+   "penalty": 0.003,
+   "leftOutLoss": 2.415956
+  },
+  {
+   "penalty": 0.01,
+   "leftOutLoss": 2.415766
+  },
+  {
+   "penalty": 0.03,
+   "leftOutLoss": 2.415548
+  },
+  {
+   "penalty": 0.1,
+   "leftOutLoss": 2.415433
+  },
+  {
+   "penalty": 0.3,
+   "leftOutLoss": 2.415522
+  },
+  {
+   "penalty": 1,
+   "leftOutLoss": 2.415663
+  }
+ ],
+ "leftOutWithoutCorrection": 2.415777,
+ "penalty": 0.1,
+ "temperature": 0.978,
+ "features": [
+  "knight",
+  "bishop",
+  "rook",
+  "queen",
+  "king",
+  "capture",
+  "captureValue",
+  "exchange",
+  "losesMaterial",
+  "recapture",
+  "trade",
+  "check",
+  "mate",
+  "castle",
+  "promotion",
+  "leftHanging",
+  "escape",
+  "threat",
+  "forward",
+  "centre",
+  "develop",
+  "pawnDouble",
+  "pawnAdvanced",
+  "kingWalk",
+  "kingActive",
+  "samePiece",
+  "undo",
+  "repPlayer",
+  "repAny"
+ ],
+ "weights": [
+  -0.013,
+  0.0082,
+  0.0223,
+  -0.0105,
+  0.0037,
+  -0.041,
+  -0.0107,
+  0.0002,
+  0.0027,
+  -0.0034,
+  -0.0127,
+  -0.0058,
+  -0.0003,
+  0.0109,
+  -0.0008,
+  -0.0186,
+  0.0082,
+  -0.0231,
+  -0.0075,
+  -0.0003,
+  -0.0018,
+  -0.0001,
+  -0.012,
+  0.013,
+  -0.0006,
+  -0.0295,
+  -0.0281,
+  0,
+  0
+ ],
+ "on2025": {
+  "withoutCorrection": {
+   "n": 13514,
+   "games": 148,
+   "logLoss": 2.4048,
+   "top1": 0.2923,
+   "top3": 0.5456
+  },
+  "writtenRule": {
+   "n": 13514,
+   "games": 148,
+   "logLoss": 2.4055,
+   "top1": 0.2923,
+   "top3": 0.5449,
+   "difference": {
+    "logLoss": {
+     "value": 0.0007,
+     "interval": [
+      -0.0004,
+      0.0019
+     ]
+    },
+    "top1": {
+     "value": 0,
+     "interval": [
+      -0.0013,
+      0.0013
+     ]
+    }
+   }
+  },
+  "learned": {
+   "n": 13514,
+   "games": 148,
+   "logLoss": 2.4041,
+   "top1": 0.2924,
+   "top3": 0.5436,
+   "difference": {
+    "logLoss": {
+     "value": -0.0007,
+     "interval": [
+      -0.0012,
+      -0.0002
+     ]
+    },
+    "top1": {
+     "value": 0.0001,
+     "interval": [
+      -0.0009,
+      0.0012
+     ]
+    }
+   }
+  },
+  "learnedMinusWritten": {
+   "logLoss": {
+    "value": -0.0014,
+    "interval": [
+     -0.0024,
+     -0.0004
+    ]
+   }
+  },
+  "mustWin": {
+   "n": 6755,
+   "games": 148,
+   "logLoss": 2.3868,
+   "top1": 0.2896,
+   "top3": 0.5442,
+   "difference": {
+    "logLoss": {
+     "value": -0.0004,
+     "interval": [
+      -0.001,
+      0.0002
+     ]
+    },
+    "top1": {
+     "value": 0.0001,
+     "interval": [
+      -0.0012,
+      0.0015
+     ]
+    }
+   }
+  },
+  "drawEnough": {
+   "n": 6759,
+   "games": 148,
+   "logLoss": 2.4213,
+   "top1": 0.2953,
+   "top3": 0.543,
+   "difference": {
+    "logLoss": {
+     "value": -0.001,
+     "interval": [
+      -0.0016,
+      -0.0003
+     ]
+    },
+    "top1": {
+     "value": 0.0001,
+     "interval": [
+      -0.0015,
+      0.0017
+     ]
+    }
+   }
+  }
+ },
+ "adopted": true
+}

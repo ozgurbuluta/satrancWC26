@@ -1,0 +1,1207 @@
+{
+ "about": "Do title matches change what a player opens with? The first fifteen moves of the players of the title matches in the archives, in those matches and in their other events of the twelve months before each. See scripts/predictor-v3-title.mjs and docs/PREDICTOR-V3-PROTOCOL.md.",
+ "players": {
+  "Carlsen": 217,
+  "Nepomniachtchi": 176,
+  "Ju": 179,
+  "Tan": 250,
+  "Ding": 129,
+  "Lei": 112,
+  "Gukesh": 410
+ },
+ "matchesInTheArchives": [
+  {
+   "match": "Women's World Chess Championship 2020",
+   "month": "2020-01",
+   "games": 12,
+   "measured": false
+  },
+  {
+   "match": "World Chess Championship 2021",
+   "month": "2021-11",
+   "games": 11,
+   "measured": true
+  },
+  {
+   "match": "FIDE World Chess Championship 2023",
+   "month": "2023-04",
+   "games": 14,
+   "measured": true
+  },
+  {
+   "match": "FIDE Women's World Championship",
+   "month": "2023-07",
+   "games": 12,
+   "measured": true
+  },
+  {
+   "match": "FIDE World Championship 2024",
+   "month": "2024-11",
+   "games": 14,
+   "measured": true
+  },
+  {
+   "match": "FIDE Women’s World Chess Championship 2025",
+   "month": "2025-04",
+   "games": 9,
+   "measured": true
+  }
+ ],
+ "settings": {
+  "kappa": 2,
+  "halfLifeYears": 0.5,
+  "same": 2,
+  "nu": 0.5,
+  "theoryHalfLifeYears": 4,
+  "theoryPlies": 24,
+  "minTheory": 2,
+  "epsilon": 0.005,
+  "temperature": 0.978,
+  "multipliers": [
+   0.125,
+   0.25,
+   0.5,
+   1,
+   2,
+   4,
+   8,
+   16,
+   32,
+   64
+  ],
+  "sameMultipliers": [
+   0.25,
+   0.5,
+   1,
+   2,
+   4,
+   8,
+   16
+  ]
+ },
+ "titleMatches": {
+  "decisions": 1800,
+  "games": 60,
+  "known": 0.2028,
+  "repeated": 0.6712,
+  "leavesOwnGamesAtMove": 3.89,
+  "sameKnown": 0.1489,
+  "sameRepeated": 0.8097,
+  "inTheory": 0.4533,
+  "theoryMostPlayed": 0.701,
+  "logLoss": 1.7492,
+  "byMultiplier": [
+   {
+    "multiplier": 0.125,
+    "logLoss": 1.7812
+   },
+   {
+    "multiplier": 0.25,
+    "logLoss": 1.7666
+   },
+   {
+    "multiplier": 0.5,
+    "logLoss": 1.7558
+   },
+   {
+    "multiplier": 1,
+    "logLoss": 1.7492
+   },
+   {
+    "multiplier": 2,
+    "logLoss": 1.747
+   },
+   {
+    "multiplier": 4,
+    "logLoss": 1.7482
+   },
+   {
+    "multiplier": 8,
+    "logLoss": 1.7513
+   },
+   {
+    "multiplier": 16,
+    "logLoss": 1.7549
+   },
+   {
+    "multiplier": 32,
+    "logLoss": 1.7579
+   },
+   {
+    "multiplier": 64,
+    "logLoss": 1.7601
+   }
+  ],
+  "best": 2,
+  "bySameMultiplier": [
+   {
+    "multiplier": 0.25,
+    "logLoss": 1.7554
+   },
+   {
+    "multiplier": 0.5,
+    "logLoss": 1.7513
+   },
+   {
+    "multiplier": 1,
+    "logLoss": 1.7492
+   },
+   {
+    "multiplier": 2,
+    "logLoss": 1.751
+   },
+   {
+    "multiplier": 4,
+    "logLoss": 1.7575
+   },
+   {
+    "multiplier": 8,
+    "logLoss": 1.7683
+   },
+   {
+    "multiplier": 16,
+    "logLoss": 1.7823
+   }
+  ],
+  "bestSame": 1
+ },
+ "otherEvents": {
+  "decisions": 4757,
+  "games": 314,
+  "known": 0.2289,
+  "repeated": 0.6933,
+  "leavesOwnGamesAtMove": 4.29,
+  "sameKnown": 0.0788,
+  "sameRepeated": 0.7013,
+  "inTheory": 0.478,
+  "theoryMostPlayed": 0.7058,
+  "logLoss": 1.6964,
+  "byMultiplier": [
+   {
+    "multiplier": 0.125,
+    "logLoss": 1.7144
+   },
+   {
+    "multiplier": 0.25,
+    "logLoss": 1.7051
+   },
+   {
+    "multiplier": 0.5,
+    "logLoss": 1.6992
+   },
+   {
+    "multiplier": 1,
+    "logLoss": 1.6964
+   },
+   {
+    "multiplier": 2,
+    "logLoss": 1.6963
+   },
+   {
+    "multiplier": 4,
+    "logLoss": 1.6978
+   },
+   {
+    "multiplier": 8,
+    "logLoss": 1.7001
+   },
+   {
+    "multiplier": 16,
+    "logLoss": 1.7024
+   },
+   {
+    "multiplier": 32,
+    "logLoss": 1.7043
+   },
+   {
+    "multiplier": 64,
+    "logLoss": 1.7056
+   }
+  ],
+  "best": 2,
+  "bySameMultiplier": [
+   {
+    "multiplier": 0.25,
+    "logLoss": 1.6952
+   },
+   {
+    "multiplier": 0.5,
+    "logLoss": 1.6951
+   },
+   {
+    "multiplier": 1,
+    "logLoss": 1.6964
+   },
+   {
+    "multiplier": 2,
+    "logLoss": 1.7
+   },
+   {
+    "multiplier": 4,
+    "logLoss": 1.7064
+   },
+   {
+    "multiplier": 8,
+    "logLoss": 1.7157
+   },
+   {
+    "multiplier": 16,
+    "logLoss": 1.7272
+   }
+  ],
+  "bestSame": 0.5
+ },
+ "perMatch": [
+  {
+   "match": "World Chess Championship 2021",
+   "month": "2021-11",
+   "players": [
+    "Nepomniachtchi",
+    "Carlsen"
+   ],
+   "decisions": 330,
+   "games": 11,
+   "known": 0.2606,
+   "repeated": 0.8256,
+   "leavesOwnGamesAtMove": 4.91,
+   "sameKnown": 0.2242,
+   "sameRepeated": 0.8784,
+   "inTheory": 0.4515,
+   "theoryMostPlayed": 0.7919,
+   "logLoss": 1.6154,
+   "byMultiplier": [
+    {
+     "multiplier": 0.125,
+     "logLoss": 1.6365
+    },
+    {
+     "multiplier": 0.25,
+     "logLoss": 1.6242
+    },
+    {
+     "multiplier": 0.5,
+     "logLoss": 1.6168
+    },
+    {
+     "multiplier": 1,
+     "logLoss": 1.6154
+    },
+    {
+     "multiplier": 2,
+     "logLoss": 1.6195
+    },
+    {
+     "multiplier": 4,
+     "logLoss": 1.6277
+    },
+    {
+     "multiplier": 8,
+     "logLoss": 1.6373
+    },
+    {
+     "multiplier": 16,
+     "logLoss": 1.6459
+    },
+    {
+     "multiplier": 32,
+     "logLoss": 1.6523
+    },
+    {
+     "multiplier": 64,
+     "logLoss": 1.6565
+    }
+   ],
+   "best": 1,
+   "bySameMultiplier": [
+    {
+     "multiplier": 0.25,
+     "logLoss": 1.629
+    },
+    {
+     "multiplier": 0.5,
+     "logLoss": 1.6209
+    },
+    {
+     "multiplier": 1,
+     "logLoss": 1.6154
+    },
+    {
+     "multiplier": 2,
+     "logLoss": 1.6145
+    },
+    {
+     "multiplier": 4,
+     "logLoss": 1.6192
+    },
+    {
+     "multiplier": 8,
+     "logLoss": 1.6289
+    },
+    {
+     "multiplier": 16,
+     "logLoss": 1.6421
+    }
+   ],
+   "bestSame": 2,
+   "control": {
+    "decisions": 684,
+    "games": 44,
+    "known": 0.1491,
+    "repeated": 0.7353,
+    "leavesOwnGamesAtMove": 3.22,
+    "sameKnown": 0.1009,
+    "sameRepeated": 0.7826,
+    "inTheory": 0.402,
+    "theoryMostPlayed": 0.72,
+    "logLoss": 1.8444,
+    "byMultiplier": [
+     {
+      "multiplier": 0.125,
+      "logLoss": 1.8665
+     },
+     {
+      "multiplier": 0.25,
+      "logLoss": 1.8569
+     },
+     {
+      "multiplier": 0.5,
+      "logLoss": 1.8495
+     },
+     {
+      "multiplier": 1,
+      "logLoss": 1.8444
+     },
+     {
+      "multiplier": 2,
+      "logLoss": 1.8416
+     },
+     {
+      "multiplier": 4,
+      "logLoss": 1.8406
+     },
+     {
+      "multiplier": 8,
+      "logLoss": 1.8406
+     },
+     {
+      "multiplier": 16,
+      "logLoss": 1.841
+     },
+     {
+      "multiplier": 32,
+      "logLoss": 1.8414
+     },
+     {
+      "multiplier": 64,
+      "logLoss": 1.8417
+     }
+    ],
+    "best": 8,
+    "bySameMultiplier": [
+     {
+      "multiplier": 0.25,
+      "logLoss": 1.8417
+     },
+     {
+      "multiplier": 0.5,
+      "logLoss": 1.8423
+     },
+     {
+      "multiplier": 1,
+      "logLoss": 1.8444
+     },
+     {
+      "multiplier": 2,
+      "logLoss": 1.849
+     },
+     {
+      "multiplier": 4,
+      "logLoss": 1.8564
+     },
+     {
+      "multiplier": 8,
+      "logLoss": 1.8663
+     },
+     {
+      "multiplier": 16,
+      "logLoss": 1.8779
+     }
+    ],
+    "bestSame": 0.25
+   },
+   "chosenOnTheOthers": 4,
+   "logLossWithIt": 1.6277,
+   "sameChosenOnTheOthers": 1,
+   "logLossWithThatSame": 1.6154
+  },
+  {
+   "match": "FIDE World Chess Championship 2023",
+   "month": "2023-04",
+   "players": [
+    "Nepomniachtchi",
+    "Ding"
+   ],
+   "decisions": 420,
+   "games": 14,
+   "known": 0.2048,
+   "repeated": 0.7907,
+   "leavesOwnGamesAtMove": 4.07,
+   "sameKnown": 0.2,
+   "sameRepeated": 0.8571,
+   "inTheory": 0.4667,
+   "theoryMostPlayed": 0.7194,
+   "logLoss": 1.7455,
+   "byMultiplier": [
+    {
+     "multiplier": 0.125,
+     "logLoss": 1.7718
+    },
+    {
+     "multiplier": 0.25,
+     "logLoss": 1.7594
+    },
+    {
+     "multiplier": 0.5,
+     "logLoss": 1.7504
+    },
+    {
+     "multiplier": 1,
+     "logLoss": 1.7455
+    },
+    {
+     "multiplier": 2,
+     "logLoss": 1.7447
+    },
+    {
+     "multiplier": 4,
+     "logLoss": 1.7468
+    },
+    {
+     "multiplier": 8,
+     "logLoss": 1.7503
+    },
+    {
+     "multiplier": 16,
+     "logLoss": 1.7538
+    },
+    {
+     "multiplier": 32,
+     "logLoss": 1.7566
+    },
+    {
+     "multiplier": 64,
+     "logLoss": 1.7584
+    }
+   ],
+   "best": 2,
+   "bySameMultiplier": [
+    {
+     "multiplier": 0.25,
+     "logLoss": 1.7518
+    },
+    {
+     "multiplier": 0.5,
+     "logLoss": 1.7477
+    },
+    {
+     "multiplier": 1,
+     "logLoss": 1.7455
+    },
+    {
+     "multiplier": 2,
+     "logLoss": 1.7475
+    },
+    {
+     "multiplier": 4,
+     "logLoss": 1.7544
+    },
+    {
+     "multiplier": 8,
+     "logLoss": 1.7658
+    },
+    {
+     "multiplier": 16,
+     "logLoss": 1.7804
+    }
+   ],
+   "bestSame": 1,
+   "control": {
+    "decisions": 675,
+    "games": 44,
+    "known": 0.1881,
+    "repeated": 0.7323,
+    "leavesOwnGamesAtMove": 3.64,
+    "sameKnown": 0.0756,
+    "sameRepeated": 0.7059,
+    "inTheory": 0.5274,
+    "theoryMostPlayed": 0.7584,
+    "logLoss": 1.542,
+    "byMultiplier": [
+     {
+      "multiplier": 0.125,
+      "logLoss": 1.5581
+     },
+     {
+      "multiplier": 0.25,
+      "logLoss": 1.5499
+     },
+     {
+      "multiplier": 0.5,
+      "logLoss": 1.5447
+     },
+     {
+      "multiplier": 1,
+      "logLoss": 1.542
+     },
+     {
+      "multiplier": 2,
+      "logLoss": 1.5415
+     },
+     {
+      "multiplier": 4,
+      "logLoss": 1.5426
+     },
+     {
+      "multiplier": 8,
+      "logLoss": 1.5442
+     },
+     {
+      "multiplier": 16,
+      "logLoss": 1.5458
+     },
+     {
+      "multiplier": 32,
+      "logLoss": 1.5469
+     },
+     {
+      "multiplier": 64,
+      "logLoss": 1.5477
+     }
+    ],
+    "best": 2,
+    "bySameMultiplier": [
+     {
+      "multiplier": 0.25,
+      "logLoss": 1.5392
+     },
+     {
+      "multiplier": 0.5,
+      "logLoss": 1.5397
+     },
+     {
+      "multiplier": 1,
+      "logLoss": 1.542
+     },
+     {
+      "multiplier": 2,
+      "logLoss": 1.547
+     },
+     {
+      "multiplier": 4,
+      "logLoss": 1.555
+     },
+     {
+      "multiplier": 8,
+      "logLoss": 1.5656
+     },
+     {
+      "multiplier": 16,
+      "logLoss": 1.578
+     }
+    ],
+    "bestSame": 0.25
+   },
+   "chosenOnTheOthers": 2,
+   "logLossWithIt": 1.7447,
+   "sameChosenOnTheOthers": 1,
+   "logLossWithThatSame": 1.7455
+  },
+  {
+   "match": "FIDE Women's World Championship",
+   "month": "2023-07",
+   "players": [
+    "Lei",
+    "Ju"
+   ],
+   "decisions": 360,
+   "games": 12,
+   "known": 0.1694,
+   "repeated": 0.6557,
+   "leavesOwnGamesAtMove": 3.21,
+   "sameKnown": 0.1194,
+   "sameRepeated": 0.7674,
+   "inTheory": 0.4861,
+   "theoryMostPlayed": 0.6743,
+   "logLoss": 1.7104,
+   "byMultiplier": [
+    {
+     "multiplier": 0.125,
+     "logLoss": 1.7462
+    },
+    {
+     "multiplier": 0.25,
+     "logLoss": 1.731
+    },
+    {
+     "multiplier": 0.5,
+     "logLoss": 1.7187
+    },
+    {
+     "multiplier": 1,
+     "logLoss": 1.7104
+    },
+    {
+     "multiplier": 2,
+     "logLoss": 1.7063
+    },
+    {
+     "multiplier": 4,
+     "logLoss": 1.7059
+    },
+    {
+     "multiplier": 8,
+     "logLoss": 1.7077
+    },
+    {
+     "multiplier": 16,
+     "logLoss": 1.7102
+    },
+    {
+     "multiplier": 32,
+     "logLoss": 1.7124
+    },
+    {
+     "multiplier": 64,
+     "logLoss": 1.7139
+    }
+   ],
+   "best": 4,
+   "bySameMultiplier": [
+    {
+     "multiplier": 0.25,
+     "logLoss": 1.7137
+    },
+    {
+     "multiplier": 0.5,
+     "logLoss": 1.7108
+    },
+    {
+     "multiplier": 1,
+     "logLoss": 1.7104
+    },
+    {
+     "multiplier": 2,
+     "logLoss": 1.714
+    },
+    {
+     "multiplier": 4,
+     "logLoss": 1.7221
+    },
+    {
+     "multiplier": 8,
+     "logLoss": 1.734
+    },
+    {
+     "multiplier": 16,
+     "logLoss": 1.7485
+    }
+   ],
+   "bestSame": 1,
+   "control": {
+    "decisions": 494,
+    "games": 33,
+    "known": 0.2247,
+    "repeated": 0.7658,
+    "leavesOwnGamesAtMove": 4.33,
+    "sameKnown": 0.0931,
+    "sameRepeated": 0.7826,
+    "inTheory": 0.5182,
+    "theoryMostPlayed": 0.6914,
+    "logLoss": 1.5303,
+    "byMultiplier": [
+     {
+      "multiplier": 0.125,
+      "logLoss": 1.5336
+     },
+     {
+      "multiplier": 0.25,
+      "logLoss": 1.5298
+     },
+     {
+      "multiplier": 0.5,
+      "logLoss": 1.5287
+     },
+     {
+      "multiplier": 1,
+      "logLoss": 1.5303
+     },
+     {
+      "multiplier": 2,
+      "logLoss": 1.5342
+     },
+     {
+      "multiplier": 4,
+      "logLoss": 1.5395
+     },
+     {
+      "multiplier": 8,
+      "logLoss": 1.5449
+     },
+     {
+      "multiplier": 16,
+      "logLoss": 1.5492
+     },
+     {
+      "multiplier": 32,
+      "logLoss": 1.5522
+     },
+     {
+      "multiplier": 64,
+      "logLoss": 1.554
+     }
+    ],
+    "best": 0.5,
+    "bySameMultiplier": [
+     {
+      "multiplier": 0.25,
+      "logLoss": 1.5325
+     },
+     {
+      "multiplier": 0.5,
+      "logLoss": 1.5305
+     },
+     {
+      "multiplier": 1,
+      "logLoss": 1.5303
+     },
+     {
+      "multiplier": 2,
+      "logLoss": 1.533
+     },
+     {
+      "multiplier": 4,
+      "logLoss": 1.539
+     },
+     {
+      "multiplier": 8,
+      "logLoss": 1.5479
+     },
+     {
+      "multiplier": 16,
+      "logLoss": 1.5586
+     }
+    ],
+    "bestSame": 1
+   },
+   "chosenOnTheOthers": 2,
+   "logLossWithIt": 1.7063,
+   "sameChosenOnTheOthers": 1,
+   "logLossWithThatSame": 1.7104
+  },
+  {
+   "match": "FIDE World Championship 2024",
+   "month": "2024-11",
+   "players": [
+    "Gukesh",
+    "Ding"
+   ],
+   "decisions": 420,
+   "games": 14,
+   "known": 0.2048,
+   "repeated": 0.5581,
+   "leavesOwnGamesAtMove": 3.75,
+   "sameKnown": 0.0833,
+   "sameRepeated": 0.6286,
+   "inTheory": 0.4167,
+   "theoryMostPlayed": 0.6457,
+   "logLoss": 1.9013,
+   "byMultiplier": [
+    {
+     "multiplier": 0.125,
+     "logLoss": 1.9354
+    },
+    {
+     "multiplier": 0.25,
+     "logLoss": 1.9208
+    },
+    {
+     "multiplier": 0.5,
+     "logLoss": 1.9094
+    },
+    {
+     "multiplier": 1,
+     "logLoss": 1.9013
+    },
+    {
+     "multiplier": 2,
+     "logLoss": 1.8965
+    },
+    {
+     "multiplier": 4,
+     "logLoss": 1.8943
+    },
+    {
+     "multiplier": 8,
+     "logLoss": 1.894
+    },
+    {
+     "multiplier": 16,
+     "logLoss": 1.8948
+    },
+    {
+     "multiplier": 32,
+     "logLoss": 1.8962
+    },
+    {
+     "multiplier": 64,
+     "logLoss": 1.8974
+    }
+   ],
+   "best": 8,
+   "bySameMultiplier": [
+    {
+     "multiplier": 0.25,
+     "logLoss": 1.9011
+    },
+    {
+     "multiplier": 0.5,
+     "logLoss": 1.9002
+    },
+    {
+     "multiplier": 1,
+     "logLoss": 1.9013
+    },
+    {
+     "multiplier": 2,
+     "logLoss": 1.9058
+    },
+    {
+     "multiplier": 4,
+     "logLoss": 1.9142
+    },
+    {
+     "multiplier": 8,
+     "logLoss": 1.9265
+    },
+    {
+     "multiplier": 16,
+     "logLoss": 1.9419
+    }
+   ],
+   "bestSame": 0.5,
+   "control": {
+    "decisions": 1809,
+    "games": 120,
+    "known": 0.2747,
+    "repeated": 0.6922,
+    "leavesOwnGamesAtMove": 4.91,
+    "sameKnown": 0.0813,
+    "sameRepeated": 0.7007,
+    "inTheory": 0.4859,
+    "theoryMostPlayed": 0.7167,
+    "logLoss": 1.694,
+    "byMultiplier": [
+     {
+      "multiplier": 0.125,
+      "logLoss": 1.7115
+     },
+     {
+      "multiplier": 0.25,
+      "logLoss": 1.7016
+     },
+     {
+      "multiplier": 0.5,
+      "logLoss": 1.6958
+     },
+     {
+      "multiplier": 1,
+      "logLoss": 1.694
+     },
+     {
+      "multiplier": 2,
+      "logLoss": 1.6954
+     },
+     {
+      "multiplier": 4,
+      "logLoss": 1.6987
+     },
+     {
+      "multiplier": 8,
+      "logLoss": 1.7026
+     },
+     {
+      "multiplier": 16,
+      "logLoss": 1.7063
+     },
+     {
+      "multiplier": 32,
+      "logLoss": 1.7092
+     },
+     {
+      "multiplier": 64,
+      "logLoss": 1.7113
+     }
+    ],
+    "best": 1,
+    "bySameMultiplier": [
+     {
+      "multiplier": 0.25,
+      "logLoss": 1.6934
+     },
+     {
+      "multiplier": 0.5,
+      "logLoss": 1.6931
+     },
+     {
+      "multiplier": 1,
+      "logLoss": 1.694
+     },
+     {
+      "multiplier": 2,
+      "logLoss": 1.6969
+     },
+     {
+      "multiplier": 4,
+      "logLoss": 1.7024
+     },
+     {
+      "multiplier": 8,
+      "logLoss": 1.7108
+     },
+     {
+      "multiplier": 16,
+      "logLoss": 1.7219
+     }
+    ],
+    "bestSame": 0.5
+   },
+   "chosenOnTheOthers": 2,
+   "logLossWithIt": 1.8965,
+   "sameChosenOnTheOthers": 1,
+   "logLossWithThatSame": 1.9013
+  },
+  {
+   "match": "FIDE Women’s World Chess Championship 2025",
+   "month": "2025-04",
+   "players": [
+    "Ju",
+    "Tan"
+   ],
+   "decisions": 270,
+   "games": 9,
+   "known": 0.1704,
+   "repeated": 0.3913,
+   "leavesOwnGamesAtMove": 3.5,
+   "sameKnown": 0.1185,
+   "sameRepeated": 0.7813,
+   "inTheory": 0.4481,
+   "theoryMostPlayed": 0.6777,
+   "logLoss": 1.7337,
+   "byMultiplier": [
+    {
+     "multiplier": 0.125,
+     "logLoss": 1.7792
+    },
+    {
+     "multiplier": 0.25,
+     "logLoss": 1.7598
+    },
+    {
+     "multiplier": 0.5,
+     "logLoss": 1.7444
+    },
+    {
+     "multiplier": 1,
+     "logLoss": 1.7337
+    },
+    {
+     "multiplier": 2,
+     "logLoss": 1.728
+    },
+    {
+     "multiplier": 4,
+     "logLoss": 1.7266
+    },
+    {
+     "multiplier": 8,
+     "logLoss": 1.7284
+    },
+    {
+     "multiplier": 16,
+     "logLoss": 1.7315
+    },
+    {
+     "multiplier": 32,
+     "logLoss": 1.7346
+    },
+    {
+     "multiplier": 64,
+     "logLoss": 1.7371
+    }
+   ],
+   "best": 4,
+   "bySameMultiplier": [
+    {
+     "multiplier": 0.25,
+     "logLoss": 1.7446
+    },
+    {
+     "multiplier": 0.5,
+     "logLoss": 1.7387
+    },
+    {
+     "multiplier": 1,
+     "logLoss": 1.7337
+    },
+    {
+     "multiplier": 2,
+     "logLoss": 1.732
+    },
+    {
+     "multiplier": 4,
+     "logLoss": 1.7348
+    },
+    {
+     "multiplier": 8,
+     "logLoss": 1.7424
+    },
+    {
+     "multiplier": 16,
+     "logLoss": 1.7536
+    }
+   ],
+   "bestSame": 2,
+   "control": {
+    "decisions": 1095,
+    "games": 73,
+    "known": 0.2301,
+    "repeated": 0.627,
+    "leavesOwnGamesAtMove": 4.33,
+    "sameKnown": 0.0566,
+    "sameRepeated": 0.5484,
+    "inTheory": 0.4639,
+    "theoryMostPlayed": 0.6496,
+    "logLoss": 1.7781,
+    "byMultiplier": [
+     {
+      "multiplier": 0.125,
+      "logLoss": 1.8021
+     },
+     {
+      "multiplier": 0.25,
+      "logLoss": 1.7909
+     },
+     {
+      "multiplier": 0.5,
+      "logLoss": 1.7831
+     },
+     {
+      "multiplier": 1,
+      "logLoss": 1.7781
+     },
+     {
+      "multiplier": 2,
+      "logLoss": 1.7753
+     },
+     {
+      "multiplier": 4,
+      "logLoss": 1.7743
+     },
+     {
+      "multiplier": 8,
+      "logLoss": 1.7744
+     },
+     {
+      "multiplier": 16,
+      "logLoss": 1.7753
+     },
+     {
+      "multiplier": 32,
+      "logLoss": 1.7763
+     },
+     {
+      "multiplier": 64,
+      "logLoss": 1.7771
+     }
+    ],
+    "best": 4,
+    "bySameMultiplier": [
+     {
+      "multiplier": 0.25,
+      "logLoss": 1.7763
+     },
+     {
+      "multiplier": 0.5,
+      "logLoss": 1.7766
+     },
+     {
+      "multiplier": 1,
+      "logLoss": 1.7781
+     },
+     {
+      "multiplier": 2,
+      "logLoss": 1.7817
+     },
+     {
+      "multiplier": 4,
+      "logLoss": 1.7882
+     },
+     {
+      "multiplier": 8,
+      "logLoss": 1.7978
+     },
+     {
+      "multiplier": 16,
+      "logLoss": 1.8098
+     }
+    ],
+    "bestSame": 0.25
+   },
+   "chosenOnTheOthers": 2,
+   "logLossWithIt": 1.728,
+   "sameChosenOnTheOthers": 1,
+   "logLossWithThatSame": 1.7337
+  }
+ ],
+ "sameSideEveryTime": false,
+ "logLoss": {
+  "withTheTournamentsMultiplier": 1.747,
+  "withTheLeftOutChoices": 1.7485,
+  "withTheBestForAll": 1.747,
+  "bestForAllMinusTournaments": {
+   "value": 0,
+   "interval": [
+    0,
+    0
+   ]
+  }
+ },
+ "multiplier": 1,
+ "adopted": false,
+ "same": {
+  "bestInTitleMatches": 1,
+  "bestInOtherEvents": 0.5,
+  "leftOutChoices": [
+   1,
+   1,
+   1,
+   1,
+   1
+  ],
+  "sameSideOfThePagesWeightEveryTime": false,
+  "logLoss": {
+   "withThePagesWeight": 1.7492,
+   "withTheLeftOutChoices": 1.7492,
+   "withTheOtherEventsBest": 1.7513,
+   "pagesWeightMinusOtherEventsBest": {
+    "value": -0.0021,
+    "interval": [
+     -0.0048,
+     0.0002
+    ]
+   }
+  },
+  "multiplier": 1,
+  "adopted": false
+ }
+}

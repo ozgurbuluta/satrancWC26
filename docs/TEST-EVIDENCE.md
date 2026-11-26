@@ -27,12 +27,13 @@ finder, share links and the copy helper, the board's lifecycle, the
 viewer's own line, the engine following the board, keyboard shortcuts, the
 Turkish wording, time controls and move times, the workspace panels, the
 engine's lines and decimals, the move predictor (features, the blend of
-earlier moves with the base model worked out by hand, rounding, the shipped
-model's tables, counts and measurements) and its panel (the score it may
+earlier moves with the base model worked out by hand, the score of the
+match worked out by hand, rounding, the shipped model's tables, counts,
+measurements and the score weights from the knockout study) and its panel (the score it may
 use, every hidden and refused state), the wording of the page, the time
 control said in the viewer's language, and what the engine card says about
 the choice of move, who is winning, and the win chances counted from real
-games: 312 tests.
+games: 314 tests.
 Also in CI: the secret check over the whole history, the type check, and
 builds for `/` and `/satranc/`.
 
@@ -214,8 +215,9 @@ percent, which reads "<1 %" and never 0.
 The model file loads after the page as a part of its own (612 KB, 316 KB
 compressed, with the third version's theory table); the page's own script
 is unchanged in size. A unit test replays the two finished games of the
-match through the browser's own code and gets the numbers the training
-script measured, to within the three weeks between the two ageing dates.
+match through the browser's own code, with the score of the match passed
+as the page passes it, and gets the numbers the training script measured,
+to within the three weeks between the two ageing dates.
 
 Not covered: real Safari, a real phone, and the estimate against the
 production feed.

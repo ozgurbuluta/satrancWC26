@@ -3,12 +3,13 @@
  "sourcePage": "https://database.lichess.org/#broadcasts",
  "license": "CC-BY-SA-4.0",
  "licenseURL": "https://creativecommons.org/licenses/by-sa/4.0/",
- "about": "Games read for the third version of the move predictor, by archive: classical games between players rated 2600 or more (elite), the two players' faster games (faster), classical games of the FIDE World Cups (knockout) and of world championship matches (matches). The games are rebuilt by scripts/prepare-v3-games.py into .cache/predictor-v3/ and are not committed.",
+ "about": "Games read for the third version of the move predictor, by archive: classical games between players rated 2600 or more (elite), the two players' faster games (faster), classical games of the FIDE World Cups (knockout) and of world championship matches (matches), and every classical game of the players of those matches (champions). The games are rebuilt by scripts/prepare-v3-games.py into .cache/predictor-v3/ and are not committed.",
  "games": {
   "elite": 11110,
   "faster": 709,
   "knockout": 1821,
-  "matches": 60
+  "matches": 60,
+  "champions": 1371
  },
  "sources": [
   {
@@ -18,7 +19,8 @@
    "elite": 159,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 45
   },
   {
    "month": "2020-02",
@@ -27,7 +29,8 @@
    "elite": 79,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 9
   },
   {
    "month": "2020-03",
@@ -36,7 +39,8 @@
    "elite": 0,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 11
   },
   {
    "month": "2020-04",
@@ -45,7 +49,8 @@
    "elite": 0,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 0
   },
   {
    "month": "2020-05",
@@ -54,7 +59,8 @@
    "elite": 0,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 0
   },
   {
    "month": "2020-06",
@@ -63,7 +69,8 @@
    "elite": 0,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 0
   },
   {
    "month": "2020-07",
@@ -72,7 +79,8 @@
    "elite": 15,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 0
   },
   {
    "month": "2020-08",
@@ -81,7 +89,8 @@
    "elite": 0,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 0
   },
   {
    "month": "2020-09",
@@ -90,7 +99,8 @@
    "elite": 51,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 0
   },
   {
    "month": "2020-10",
@@ -99,7 +109,8 @@
    "elite": 30,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 10
   },
   {
    "month": "2020-11",
@@ -108,7 +119,8 @@
    "elite": 3,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 0
   },
   {
    "month": "2020-12",
@@ -117,7 +129,8 @@
    "elite": 67,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 25
   },
   {
    "month": "2021-01",
@@ -126,7 +139,8 @@
    "elite": 92,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 13
   },
   {
    "month": "2021-02",
@@ -135,7 +149,8 @@
    "elite": 22,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 0
   },
   {
    "month": "2021-03",
@@ -144,7 +159,8 @@
    "elite": 0,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 0
   },
   {
    "month": "2021-04",
@@ -153,7 +169,8 @@
    "elite": 12,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 2
   },
   {
    "month": "2021-05",
@@ -162,7 +179,8 @@
    "elite": 94,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 28
   },
   {
    "month": "2021-06",
@@ -171,7 +189,8 @@
    "elite": 93,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 0
   },
   {
    "month": "2021-07",
@@ -180,7 +199,8 @@
    "elite": 233,
    "faster": 0,
    "knockout": 583,
-   "matches": 0
+   "matches": 0,
+   "champions": 3
   },
   {
    "month": "2021-08",
@@ -189,7 +209,8 @@
    "elite": 136,
    "faster": 0,
    "knockout": 12,
-   "matches": 0
+   "matches": 0,
+   "champions": 21
   },
   {
    "month": "2021-09",
@@ -198,7 +219,8 @@
    "elite": 190,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 31
   },
   {
    "month": "2021-10",
@@ -207,7 +229,8 @@
    "elite": 493,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 11
   },
   {
    "month": "2021-11",
@@ -216,7 +239,8 @@
    "elite": 391,
    "faster": 0,
    "knockout": 0,
-   "matches": 4
+   "matches": 4,
+   "champions": 5
   },
   {
    "month": "2021-12",
@@ -225,7 +249,8 @@
    "elite": 48,
    "faster": 0,
    "knockout": 0,
-   "matches": 7
+   "matches": 7,
+   "champions": 7
   },
   {
    "month": "2022-01",
@@ -234,7 +259,8 @@
    "elite": 112,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 12
   },
   {
    "month": "2022-02",
@@ -243,7 +269,8 @@
    "elite": 55,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 2
   },
   {
    "month": "2022-03",
@@ -252,7 +279,8 @@
    "elite": 134,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 8
   },
   {
    "month": "2022-04",
@@ -261,7 +289,8 @@
    "elite": 102,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 23
   },
   {
    "month": "2022-05",
@@ -270,7 +299,8 @@
    "elite": 239,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 23
   },
   {
    "month": "2022-06",
@@ -279,7 +309,8 @@
    "elite": 157,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 9
   },
   {
    "month": "2022-07",
@@ -288,7 +319,8 @@
    "elite": 132,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 12
   },
   {
    "month": "2022-08",
@@ -297,7 +329,8 @@
    "elite": 224,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 20
   },
   {
    "month": "2022-09",
@@ -306,7 +339,8 @@
    "elite": 112,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 34
   },
   {
    "month": "2022-10",
@@ -315,7 +349,8 @@
    "elite": 168,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 17
   },
   {
    "month": "2022-11",
@@ -324,7 +359,8 @@
    "elite": 85,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 6
   },
   {
    "month": "2022-12",
@@ -333,7 +369,8 @@
    "elite": 38,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 6
   },
   {
    "month": "2023-01",
@@ -342,7 +379,8 @@
    "elite": 136,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 36
   },
   {
    "month": "2023-02",
@@ -351,7 +389,8 @@
    "elite": 97,
    "faster": 19,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 34
   },
   {
    "month": "2023-03",
@@ -360,7 +399,8 @@
    "elite": 76,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 2
   },
   {
    "month": "2023-04",
@@ -369,7 +409,8 @@
    "elite": 98,
    "faster": 9,
    "knockout": 0,
-   "matches": 14
+   "matches": 14,
+   "champions": 21
   },
   {
    "month": "2023-05",
@@ -378,7 +419,8 @@
    "elite": 112,
    "faster": 9,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 37
   },
   {
    "month": "2023-06",
@@ -387,7 +429,8 @@
    "elite": 132,
    "faster": 1,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 22
   },
   {
    "month": "2023-07",
@@ -396,7 +439,8 @@
    "elite": 30,
    "faster": 2,
    "knockout": 226,
-   "matches": 12
+   "matches": 12,
+   "champions": 12
   },
   {
    "month": "2023-08",
@@ -405,7 +449,8 @@
    "elite": 207,
    "faster": 4,
    "knockout": 381,
-   "matches": 0
+   "matches": 0,
+   "champions": 48
   },
   {
    "month": "2023-09",
@@ -414,7 +459,8 @@
    "elite": 135,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 2
   },
   {
    "month": "2023-10",
@@ -423,7 +469,8 @@
    "elite": 287,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 42
   },
   {
    "month": "2023-11",
@@ -432,7 +479,8 @@
    "elite": 332,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 18
   },
   {
    "month": "2023-12",
@@ -441,7 +489,8 @@
    "elite": 81,
    "faster": 60,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 16
   },
   {
    "month": "2024-01",
@@ -450,7 +499,8 @@
    "elite": 120,
    "faster": 5,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 46
   },
   {
    "month": "2024-02",
@@ -459,7 +509,8 @@
    "elite": 83,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 3
   },
   {
    "month": "2024-03",
@@ -468,7 +519,8 @@
    "elite": 106,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 24
   },
   {
    "month": "2024-04",
@@ -477,7 +529,8 @@
    "elite": 119,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 59
   },
   {
    "month": "2024-05",
@@ -486,7 +539,8 @@
    "elite": 115,
    "faster": 27,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 25
   },
   {
    "month": "2024-06",
@@ -495,7 +549,8 @@
    "elite": 233,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 31
   },
   {
    "month": "2024-07",
@@ -504,7 +559,8 @@
    "elite": 93,
    "faster": 39,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 15
   },
   {
    "month": "2024-08",
@@ -513,7 +569,8 @@
    "elite": 90,
    "faster": 20,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 2
   },
   {
    "month": "2024-09",
@@ -522,7 +579,8 @@
    "elite": 184,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 26
   },
   {
    "month": "2024-10",
@@ -531,7 +589,8 @@
    "elite": 217,
    "faster": 13,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 9
   },
   {
    "month": "2024-11",
@@ -540,7 +599,8 @@
    "elite": 159,
    "faster": 0,
    "knockout": 0,
-   "matches": 5
+   "matches": 5,
+   "champions": 15
   },
   {
    "month": "2024-12",
@@ -549,7 +609,8 @@
    "elite": 423,
    "faster": 26,
    "knockout": 0,
-   "matches": 9
+   "matches": 9,
+   "champions": 14
   },
   {
    "month": "2025-01",
@@ -558,7 +619,8 @@
    "elite": 120,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 13
   },
   {
    "month": "2025-02",
@@ -567,7 +629,8 @@
    "elite": 128,
    "faster": 12,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 13
   },
   {
    "month": "2025-03",
@@ -576,7 +639,8 @@
    "elite": 74,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 5
   },
   {
    "month": "2025-04",
@@ -585,7 +649,8 @@
    "elite": 44,
    "faster": 0,
    "knockout": 0,
-   "matches": 9
+   "matches": 9,
+   "champions": 9
   },
   {
    "month": "2025-05",
@@ -594,7 +659,8 @@
    "elite": 200,
    "faster": 17,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 43
   },
   {
    "month": "2025-06",
@@ -603,7 +669,8 @@
    "elite": 130,
    "faster": 34,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 36
   },
   {
    "month": "2025-07",
@@ -612,7 +679,8 @@
    "elite": 55,
    "faster": 47,
    "knockout": 214,
-   "matches": 0
+   "matches": 0,
+   "champions": 22
   },
   {
    "month": "2025-08",
@@ -621,7 +689,8 @@
    "elite": 474,
    "faster": 33,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 26
   },
   {
    "month": "2025-09",
@@ -630,7 +699,8 @@
    "elite": 440,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 35
   },
   {
    "month": "2025-10",
@@ -639,7 +709,8 @@
    "elite": 157,
    "faster": 18,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 18
   },
   {
    "month": "2025-11",
@@ -648,7 +719,8 @@
    "elite": 204,
    "faster": 10,
    "knockout": 405,
-   "matches": 0
+   "matches": 0,
+   "champions": 6
   },
   {
    "month": "2025-12",
@@ -657,7 +729,8 @@
    "elite": 86,
    "faster": 91,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 0
   },
   {
    "month": "2026-01",
@@ -666,7 +739,8 @@
    "elite": 132,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 22
   },
   {
    "month": "2026-02",
@@ -675,7 +749,8 @@
    "elite": 104,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 5
   },
   {
    "month": "2026-03",
@@ -684,7 +759,8 @@
    "elite": 347,
    "faster": 0,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 8
   },
   {
    "month": "2026-04",
@@ -693,7 +769,8 @@
    "elite": 103,
    "faster": 16,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 16
   },
   {
    "month": "2026-05",
@@ -702,7 +779,8 @@
    "elite": 120,
    "faster": 54,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 39
   },
   {
    "month": "2026-06",
@@ -711,7 +789,8 @@
    "elite": 201,
    "faster": 30,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 40
   },
   {
    "month": "2026-07",
@@ -720,7 +799,8 @@
    "elite": 66,
    "faster": 56,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 11
   },
   {
    "month": "2026-08",
@@ -729,7 +809,8 @@
    "elite": 185,
    "faster": 27,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 18
   },
   {
    "month": "2026-09",
@@ -738,7 +819,8 @@
    "elite": 151,
    "faster": 12,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 22
   },
   {
    "month": "2026-10",
@@ -747,7 +829,8 @@
    "elite": 158,
    "faster": 18,
    "knockout": 0,
-   "matches": 0
+   "matches": 0,
+   "champions": 12
   }
  ]
 }

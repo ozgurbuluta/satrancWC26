@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import matchPgn from '../data/predictor-v3/match-2026.pgn?raw';
+import situationStudy from '../data/predictor-v3/situation.json';
+import titleStudy from '../data/predictor-v3/title-matches.json';
 import shipped from '../src/data/predictor.json';
 import { parseGame, splitGames } from '../src/lib/pgn';
 import { legalSans } from '../src/lib/position';
@@ -16,6 +18,7 @@ const FLAT: PredictorModel = {
   priorColumns: { g: 'gukesh', s: 'sindarov' },
   priors: '',
   theory: '',
+  situation: MODEL.features.map(() => 0),
 };
 const GUKESH = '46616543';
 const SINDAROV = '14205483';
@@ -342,13 +345,18 @@ describe('earlier moves blended with the base model', () => {
     for (const m of stranger.moves) expect(m.p).toBeCloseTo(1 / 20, 12);
   });
 
-  it('applies the match rule to the base model, not to what was played', () => {
-    const model = withTable('e2e4g1', { kappa: 1 });
+  it('applies the score of the match to the base model, not to what was played', () => {
+    // a model whose only rule is that a player who must win likes knight moves less
+    const model: PredictorModel = { ...withTable('e2e4g1', { kappa: 1 }), situation: MODEL.features.map(name => (name === 'knight' ? -1 : 0)) };
     const calm = predict(model, { fen: START, moverId: GUKESH });
+    expect(calm.urgency).toBe(0);
+    expect(calm.moves.find(m => m.uci === 'e2e4')!.p).toBeCloseTo((1 + 1 / 20) / 2, 12);
     const behind = predict(model, { fen: START, moverId: GUKESH, match: { moverPoints: 0, opponentPoints: 3, gamesLeft: 3 } });
-    // no first move is a trade, so the rule changes nothing here
     expect(behind.urgency).toBe(1);
-    expect(behind.moves.map(m => m.p)).toEqual(calm.moves.map(m => m.p));
+    // sixteen pawn moves at weight 1 and four knight moves at e^-1 in the base; the one earlier game counts as before
+    const base = 1 / (16 + 4 * Math.exp(-1));
+    expect(behind.moves.find(m => m.uci === 'e2e4')!.p).toBeCloseTo((1 + base) / 2, 12);
+    expect(behind.moves.find(m => m.uci === 'g1f3')!.p).toBeCloseTo((Math.exp(-1) * base) / 2, 12);
   });
 });
 
@@ -372,19 +380,36 @@ describe('clock pressure and the match rule', () => {
     expect(matchUrgency({ moverPoints: 3, opponentPoints: 4, gamesLeft: 0 })).toBe(0);
   });
 
-  it('the match rule only shifts even trades, in the direction it says', () => {
-    // a queen trade is on offer
+  it('the score shifts a move by its features, with the sign of who needs what', () => {
+    // a queen trade is on offer; a model whose only rule is the old written one: a player who is behind trades less
     const fen = 'r2qk3/8/8/8/8/8/8/3QK3 w - - 0 30';
-    const trade = (match?: { moverPoints: number; opponentPoints: number; gamesLeft: number }) => predict(MODEL, { fen, moverId: GUKESH, match }).moves.find(m => m.uci === 'd1d8')!.p;
+    const written: PredictorModel = { ...MODEL, situation: MODEL.features.map(name => (name === 'trade' ? -0.35 : 0)) };
+    const trade = (match?: { moverPoints: number; opponentPoints: number; gamesLeft: number }) => predict(written, { fen, moverId: GUKESH, match }).moves.find(m => m.uci === 'd1d8')!.p;
     const neutral = trade();
     expect(trade({ moverPoints: 6, opponentPoints: 6, gamesLeft: 2 })).toBeCloseTo(neutral, 12);
     expect(trade({ moverPoints: 6, opponentPoints: 7, gamesLeft: 1 })).toBeLessThan(neutral); // behind: fewer trades
     expect(trade({ moverPoints: 7, opponentPoints: 6, gamesLeft: 1 })).toBeGreaterThan(neutral); // ahead: more
-    // early in the match the rule barely moves anything
+    // early in the match it barely moves anything
     expect(Math.abs(trade({ moverPoints: 0.5, opponentPoints: 1.5, gamesLeft: 12 }) - neutral)).toBeLessThan(0.02);
-    // and it never touches a position without a trade
-    const quiet = (match?: { moverPoints: number; opponentPoints: number; gamesLeft: number }) => predict(MODEL, { fen: START, moverId: GUKESH, match }).moves.map(m => m.p);
+    // and a position without a trade is left alone
+    const quiet = (match?: { moverPoints: number; opponentPoints: number; gamesLeft: number }) => predict(written, { fen: START, moverId: GUKESH, match }).moves.map(m => m.p);
     expect(quiet({ moverPoints: 0, opponentPoints: 7, gamesLeft: 1 })).toEqual(quiet());
+  });
+
+  it('with the shipped weights, the estimate is the board model plus urgency times the learned shift', () => {
+    const fen = 'r3k2r/pp1b1ppp/2n1pn2/q2p4/3P4/2PBPN2/PP3PPP/R1BQ1RK1 b kq - 2 40';
+    const cands = candidates({ fen });
+    const bare: PredictorModel = { ...MODEL, blend: { ...MODEL.blend, epsilon: 0 }, priors: '', theory: '' };
+    const calm = predict(bare, { fen, moverId: GUKESH });
+    for (const urgency of [1, -1, 0.25]) {
+      const match = urgency > 0 ? { moverPoints: 0, opponentPoints: urgency * 4, gamesLeft: 4 } : { moverPoints: 1, opponentPoints: 0, gamesLeft: 1 };
+      const got = predict(bare, { fen, moverId: GUKESH, match });
+      expect(got.urgency).toBeCloseTo(urgency, 12);
+      // by hand: each move's calm probability times e^(urgency × its shift), made to sum to one again
+      const shifted = cands.map(c => calm.moves.find(m => m.uci === c.uci)!.p * Math.exp(urgency * c.f.reduce((sum, x, k) => sum + x * MODEL.situation[k], 0)));
+      const total = shifted.reduce((sum, x) => sum + x, 0);
+      cands.forEach((c, i) => expect(got.moves.find(m => m.uci === c.uci)!.p).toBeCloseTo(shifted[i] / total, 10));
+    }
   });
 });
 
@@ -402,6 +427,25 @@ describe('the model that is shipped', () => {
     }
     expect(MODEL.temperature).toBeGreaterThan(0);
     expect(MODEL.players).toEqual({ [GUKESH]: 'gukesh', [SINDAROV]: 'sindarov' });
+  });
+
+  it('carries the score correction the knockout study learned, and nothing from the title-match study', () => {
+    // adopted by the rule set beforehand: lower log loss on the 2025 World Cups, interval below zero
+    expect(situationStudy.adopted).toBe(true);
+    expect(situationStudy.on2025.learned.difference.logLoss.interval[1]).toBeLessThan(0);
+    expect(situationStudy.features).toEqual([...FEATURES]);
+    expect(MODEL.situation).toEqual(situationStudy.weights);
+    expect(MODEL.situation).toHaveLength(FEATURE_COUNT);
+    expect(MODEL.situation[FEATURES.indexOf('repPlayer')]).toBe(0);
+    expect(MODEL.situation[FEATURES.indexOf('repAny')]).toBe(0);
+    // small: no feature moves a score by as much as a tenth
+    for (const w of MODEL.situation) expect(Math.abs(w)).toBeLessThan(0.1);
+    expect('stakesMax' in MODEL).toBe(false);
+    expect(report.situation).toMatchObject({ adopted: true, secondGames: 468, testDecisions: situationStudy.test.decisions });
+    // the title matches gave no reason to change a weight
+    expect(titleStudy.adopted).toBe(false);
+    expect(titleStudy.same.adopted).toBe(false);
+    expect(report.titleMatches).toMatchObject({ adopted: false, multiplier: 1, matches: 5, decisions: 1800 });
   });
 
   it('blends with settings that were chosen on the selection games', () => {
@@ -489,18 +533,24 @@ describe('the model that is shipped', () => {
     let loss = 0;
     let first = 0;
     let n = 0;
+    const points: Record<string, number> = {};
     games.forEach((game, index) => {
       const earlier = games.slice(0, index).map(g => ({ whiteId: g.white.fideId, blackId: g.black.fideId, moves: g.plies.map(p => p.uci) }));
       let fen = game.initialFen;
       game.plies.forEach((ply, i) => {
-        const mover = i % 2 === 0 ? game.white : game.black;
-        const estimate = predict(MODEL, { fen, moverId: mover.fideId, lastMove: game.plies[i - 1]?.uci, ownLastMove: game.plies[i - 2]?.uci, secondsLeft: game.plies[i - 2]?.clk, earlier });
+        const [mover, opponent] = i % 2 === 0 ? [game.white, game.black] : [game.black, game.white];
+        // the score before this game and the games still to play, as the page passes them
+        const match = { moverPoints: points[mover.fideId!] ?? 0, opponentPoints: points[opponent.fideId!] ?? 0, gamesLeft: 14 - index };
+        const estimate = predict(MODEL, { fen, moverId: mover.fideId, lastMove: game.plies[i - 1]?.uci, ownLastMove: game.plies[i - 2]?.uci, secondsLeft: game.plies[i - 2]?.clk, earlier, match });
         const played = estimate.moves.find(m => m.uci === ply.uci)!;
         loss -= Math.log(played.p);
         if (estimate.moves[0].uci === ply.uci) first++;
         n++;
         fen = ply.fen;
       });
+      const [white, black] = game.result === '1-0' ? [1, 0] : game.result === '0-1' ? [0, 1] : [0.5, 0.5];
+      points[game.white.fideId!] = (points[game.white.fideId!] ?? 0) + white;
+      points[game.black.fideId!] = (points[game.black.fideId!] ?? 0) + black;
     });
     expect(n).toBe(report.match.v3.n);
     // the page's tables are aged as of 1 November, the measurement's as of the match's first day: close, not identical

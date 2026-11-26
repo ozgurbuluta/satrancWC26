@@ -52,7 +52,7 @@ after the page.
 |---|---|---|---|---|---|
 | January to August 2026, third | 4,240 | 2.125 | 36.5 % | 61.2 % | 3.4 % |
 | January to August 2026, second | 4,240 | 2.205 | 34.7 % | 59.4 % | 2.9 % |
-| September 2026, third | 963 | 2.299 | 33.8 % | 59.0 % | 6.5 % |
+| September 2026, third | 963 | 2.299 | 33.7 % | 59.0 % | 6.5 % |
 | September 2026, second | 963 | 2.376 | 31.6 % | 56.8 % | 6.2 % |
 | The match so far (2 games), third | 116 | 2.038 | 31.0 % | 60.3 % | |
 | The match so far, second | 116 | 2.290 | 22.4 % | 56.0 % | |
@@ -76,9 +76,43 @@ games (worth 0.0007 of log loss, for ten thousand more positions), and
 other players' moves in the two players' own games (theory says the same
 from more games).
 
-Not done yet, and in the plan: the score learned from World Cup two-game
-matches instead of the written rule below, and whether a title match
-changes how much a player repeats his own openings.
+### The score of the match, and the title match itself
+
+Özgür asked what a world championship does to the players' choices: the
+stakes, the preparation, the wish to surprise, the score. Two studies were
+made of what the archives can say about that. Numbers and tables are in
+the [report](PREDICTOR-V3-REPORT.md).
+
+**The score, learned.** In a FIDE World Cup the second game of a two-game
+match is played by one who must win and one for whom a draw is enough: 468
+such games in 2021, 2023 and 2025. A correction to the board model's
+weights was fitted on the first two and measured on 2025. It lowers log
+loss by 0.0007 (0.0002 to 0.0012), which met the rule set beforehand, so it
+replaces the written rule of the first two versions (0.35 off an even
+trade), which did nothing that can be measured. The effect is very small: a
+player who must win takes a little less and goes back with a piece a
+little less. At its strongest a capture becomes about 4 % less likely. On
+the page it is scaled by urgency (see below), and with the score level it
+does nothing.
+
+**The title match.** Five title matches since 2021 (60 games), beside the
+same players' other events of the year before each:
+
+- In a title match a player is in a position he has had before a little
+  less often (20 % of his first fifteen moves against 23 %), repeats his
+  most played move there a little less often (67 % against 69 %), and leaves
+  his own earlier games a little sooner (move 3.9 against 4.3). In three of
+  the five matches he repeats himself less than in his tournaments, in two
+  more. The weight that predicts best is the same in both. Nothing was
+  changed for it.
+- What does differ is inside the match: a player is back in a position of
+  an earlier game of the same match twice as often as within a tournament
+  (15 % against 8 %), and then repeats his move 81 % of the time against
+  70 %. The weight the page gives those games (2) turned out to be the one
+  the title matches ask for, so that stays too.
+
+What none of this can see is what a camp has prepared and not yet played.
+A new line is new to the tables as well.
 
 ## Second version: the model of the board and the player's own games
 
@@ -151,22 +185,24 @@ selection rule picked them, but they make no difference that can be
 measured: without them the log loss on the selection games is 2.2450
 against 2.2449.
 
-## The match situation is a rule, not something learned
+## The score of the match
 
-The earlier games are tournaments, not matches, so the data cannot teach
-what a player does when behind or ahead in a match. Rather than leave the
-match out, or pretend, it enters through one rule that is written down:
+The earlier games of the two are tournaments, not matches, so they cannot
+teach what a player does when behind or ahead in a match. The first two
+versions had a written rule instead. The third has a correction learned
+from other players' knockout matches (above):
 
 - urgency = (opponent's points − mover's points) / games left, counting the
   game in progress, between −1 and 1;
-- a move that is an even trade of pieces has `0.35 × urgency` taken from its
-  score in the base model.
+- each feature of a move has a small weight, and `urgency × (weights ·
+  features)` is added to the move's score in the base model. The weights
+  are in `data/predictor-v3/situation.json` and in the model file.
 
-So a player who is behind is taken to avoid even trades a little, and one
-who is ahead to welcome them a little. The number 0.35 was chosen, not
-fitted, and nothing here measures whether the rule is right. Early in a
-14-game match the urgency is close to zero and the rule changes almost
-nothing. The panel says that this is a rule and how strongly it applies.
+In the knockout games the urgency is 1 for the player who must win the last
+game and −1 for the other. That a fourteen-game match scales between those
+by points behind per game left is an assumption, not something measured.
+Early in the match the urgency is close to zero and the correction changes
+almost nothing.
 
 The score used is the score before the open game, from earlier games only.
 The open game's own result and anything played later never reach it, also
@@ -283,8 +319,9 @@ model. It lowered the selection log loss by 0.0003 against a threshold of
   the report shows bin by bin where they are and are not.
 - No look-ahead beyond one exchange: it does not see tactics two moves deep,
   which is where strong players differ most from this model.
-- Nothing before 2023, and tournaments only: nothing here teaches match
-  strategy, and the match-score rule is not measured.
+- The two players' own games are from 2023 on, and tournaments only. What
+  the score does to a move comes from other players' two-game knockout
+  matches, and it is small.
 - The tables stop at the end of October 2026. The match's own games do not
   update them.
 - The benchmark on which the two versions are compared has been looked at
@@ -301,15 +338,20 @@ selection has to be in place. Then:
 ```sh
 python3 scripts/prepare-v3-games.py
 node scripts/train-predictor.mjs --v3
+node scripts/train-predictor.mjs --v3-situation
+node scripts/train-predictor.mjs --v3-title
 node scripts/train-predictor.mjs --v3 --final
 ```
 
 The first reads the archives once (cached, about 770 MB) for the elite,
-knockout and title-match games. The second makes the third version's
-choices on the 2025 games and writes `data/predictor-v3/selection.json`. The
-third repeats that, stops unless it comes out identical, measures, and
-writes `src/data/predictor.json` and `docs/PREDICTOR-V3-REPORT.md`. About
-two minutes each.
+knockout and title-match games and the games of the title matches' players.
+The second makes the third version's choices on the 2025 games and writes
+`data/predictor-v3/selection.json`. The third and fourth are the two
+studies: they write `data/predictor-v3/situation.json` and
+`data/predictor-v3/title-matches.json`. The last repeats the selection,
+stops unless it comes out identical, measures, and writes
+`src/data/predictor.json` and `docs/PREDICTOR-V3-REPORT.md`. About two
+minutes each.
 
 For the second version alone (these write the second version's model file
 over the third's; run the two `--v3` commands again afterwards):
@@ -340,6 +382,7 @@ calibration step that was tried on the selection games and not adopted.
 
 ## In the browser
 
-`src/data/predictor.json` (weights and tables, about 303 KiB, 13,750 positions) is loaded
-with the Tahmin tab, not with the page. An estimate takes a few
-milliseconds and needs no network. Nothing about the viewer is used or sent.
+`src/data/predictor.json` (weights and the two tables, about 590 KB) is
+loaded after the page, with the card under the board. An estimate takes a
+few milliseconds and needs no network. Nothing about the viewer is used or
+sent.

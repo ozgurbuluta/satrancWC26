@@ -128,6 +128,39 @@ and before the third version was scored on anything else:
 3. **Other players' moves in the two players' own games are dropped**
    (`w` = 0). Theory says the same from more games; the cost is 0.0003.
 
+## Phases 2 and 3: where they differ from the plan above
+
+Written when the two studies were run, after phase 1 had been measured.
+
+Phase 2 (`scripts/predictor-v3-situation.mjs`):
+
+- "Lowers log loss on the 2025 games" was read as: lower than no correction
+  at all, with the interval of that difference below zero, and lower than
+  the written rule as well.
+- Level second games (the first was drawn) carry no correction and are not
+  in the fit.
+
+Phase 3 (`scripts/predictor-v3-title.mjs`):
+
+- "The same players' tournament games of the same years" became: their
+  other classical events that began in the twelve months before each match.
+- "Agrees on its direction" was read against those events: a multiplier is
+  adopted only if every left-out choice is on the same side of what the
+  same players' tournaments ask for. Measured against the page's own κ the
+  left-out choices do all point one way, but the tournaments point the same
+  way, so it is no habit of title matches.
+- The archives before 2023 carry no FIDE IDs. There the seven players'
+  games are taken by name, with a rating of 2400 or more on the game.
+- The plan counted five title matches. There is a sixth, the women's match
+  of January 2020, in the first month of the archives. Nothing precedes it,
+  so it is not measured; its games count as earlier games of its players.
+- One test is not in the plan: the weight of the same event's earlier
+  games (`same`), looked at because the first run showed that players come
+  back to positions of the same match more than of the same tournament.
+  The question put to it: is another weight better in title matches than
+  the one on the page? It is changed only if every left-out choice is on
+  the same side of the page's weight.
+
 ## Limits known in advance
 
 - Still no engine, no paid service, no viewer data.

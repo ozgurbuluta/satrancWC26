@@ -23,13 +23,15 @@
 // the board model where nothing else is known, theory where strong players
 // have been, the player's own habits where the player has.
 //
-// The match situation (score and games left) is not something these games
-// can teach: they are tournaments, not matches. It enters through one rule
-// that is written down here, never as something the model learned.
+// The match situation (score and games left) is not something the two
+// players' own games can teach: they are tournaments, not matches. It enters
+// through a small correction to the board model's scores, learned from other
+// players' two-game knockout matches (scripts/predictor-v3-situation.mjs)
+// and scaled by how many points the mover is behind for each game left.
 import { Chess } from 'chessops/chess';
 import { makeFen } from 'chessops/fen';
 import { parseUci } from 'chessops/util';
-import { candidates, FEATURES, positionKey, type Candidate } from './features';
+import { candidates, positionKey, type Candidate } from './features';
 
 export interface PredictorModel {
   version: number;
@@ -76,8 +78,11 @@ export interface PredictorModel {
   priors: string;
   /** What players rated 2600 or more played, the same way: "key=move12.5,move3;…", a count right after each move. */
   theory: string;
-  /** The match-situation rule: the most it can add to or take from a move's score. */
-  stakesMax: number;
+  /**
+   * What the score of the match does to a move's score, a weight for each feature: added in full for a player
+   * who must win the last game, taken off in full for one a draw is enough for, scaled by the urgency in between.
+   */
+  situation: number[];
   /** Seconds on the clock below which pressure starts to count. */
   clockFullSeconds: number;
 }
@@ -126,13 +131,11 @@ export interface Prediction {
   other: number;
   /** Clock pressure used, 0 (none) to 1. */
   pressure: number;
-  /** The match rule's strength used, between -1 (mover leads, last game) and 1 (mover trails, last game). 0: no effect. */
+  /** How much the score presses on the mover, between -1 (leads, last game) and 1 (trails, last game). 0: no effect. */
   urgency: number;
   /** The player has been in this exact position before in the data. */
   seenBefore: boolean;
 }
-
-const TRADE = FEATURES.indexOf('trade');
 
 /** 0 while there is plenty of time, rising to 1 as the clock runs out. */
 export const clockPressure = (secondsLeft: number | undefined, fullSeconds: number): number =>
@@ -240,10 +243,12 @@ export const predict = (model: PredictorModel, input: PredictInput): Prediction 
   const pressure = clockPressure(input.secondsLeft, model.clockFullSeconds);
   const urgency = matchUrgency(input.match);
   if (cands.length === 0) return { supported: !!playerKey, moves: [], other: 0, pressure, urgency, seenBefore: false };
-  const scores = fittedScores(model, cands, playerKey, pressure).map(
-    // The match rule: a player who is behind is taken to avoid even trades a little, one who is ahead to welcome them.
-    (s, i) => s / model.temperature - urgency * model.stakesMax * cands[i].f[TRADE],
-  );
+  const scores = fittedScores(model, cands, playerKey, pressure).map((s, i) => {
+    // The score of the match: what a player who must win does differently from one a draw is enough for.
+    let shift = 0;
+    if (urgency !== 0) for (let k = 0; k < model.situation.length; k++) shift += model.situation[k] * cands[i].f[k];
+    return s / model.temperature + urgency * shift;
+  });
   let p = softmax(scores);
   let seenBefore = false;
   if (playerKey && Object.values(model.priorColumns).includes(playerKey)) {

@@ -2,7 +2,7 @@
 
 Written by `scripts/train-predictor.mjs --v3 --final`. Do not edit by hand; run the script.
 
-The plan was written down before any fitting: [PREDICTOR-V3-PROTOCOL.md](PREDICTOR-V3-PROTOCOL.md). The second version's report is [PREDICTOR-REPORT.md](PREDICTOR-REPORT.md). This is phase 1 of the plan: theory, the same tournament's earlier games, and the two players' faster games. The board model's weights are the second version's, untouched.
+The plan was written down before any fitting: [PREDICTOR-V3-PROTOCOL.md](PREDICTOR-V3-PROTOCOL.md). The second version's report is [PREDICTOR-REPORT.md](PREDICTOR-REPORT.md). Phase 1 of the plan is theory, the same tournament's earlier games, and the two players' faster games; the board model's weights are the second version's, untouched. Phases 2 and 3, the score of the match and the title match itself, are further down.
 
 Source of every game: the Lichess broadcast database, CC BY-SA 4.0.
 
@@ -145,6 +145,55 @@ The 963 decisions every version has been measured on. Not a blind measurement.
 | Gukesh | 58 | 2.013 | 2.252 | -0.240 |
 | Sindarov | 58 | 2.064 | 2.328 | -0.264 |
 
+## The score, learned from knockout matches
+
+In a FIDE World Cup the second classical game of a two-game match is played by one who must win, having lost the first, and one for whom a draw is enough. The World Cups of 2021, 2023 and 2025, open and women, have 468 such second games. A correction to the board model's weights was fitted for that situation: added for the player who must win, taken off for the other. Entering with opposite signs for the two sides of the same game, it cannot pick up what merely distinguishes those players from the two finalists.
+
+Fitted on 2021 and 2023 (30670 decisions; penalty 0.1, chosen there by leaving one event out at a time), measured on 2025 (13514 decisions, 148 games):
+
+| On the World Cups of 2025 | Log loss | Against no correction |
+|---|---|---|
+| No correction | 2.4048 | |
+| The written rule of the first two versions (0.35 off an even trade) | 2.4055 | +0.0007 (-0.0004 to +0.0019) |
+| Learned | 2.4041 | -0.0007 (-0.0012 to -0.0002) |
+
+Learned against the written rule: -0.0014 (-0.0024 to -0.0004). The rule set beforehand was that the learned correction replaces the written one only if it lowers log loss on the 2025 games with the interval below zero. **It does, and it replaces the written rule.** The written rule did nothing that can be measured.
+
+The effect is real and very small. Its largest weights, for the player who must win: capture -0.041, samePiece -0.029, undo -0.028, threat -0.023, rook +0.022, leftHanging -0.019. So he takes a little less, and moves a piece again or straight back a little less; the player a draw is enough for does the opposite. At its strongest, in a last game that must be won, a capture becomes about 4 % less likely than the board alone would have it. The first choice is the same move as before in almost every position (first choice right 29.2 % against 29.2 %).
+
+On the page it is scaled by urgency: the points the mover is behind, for each game still to be played. That a fourteen-game match scales like that is an assumption; nothing here measures it. With the score level it does nothing, and a point behind with twelve games to go it is a twelfth of the above. In the match so far the score has been level before every game, so it has done nothing yet.
+
+## Does a title match change the opening?
+
+Of the title matches in the archives, 5 have earlier games of their players: 60 games, 1800 decisions in the first fifteen moves. Beside them, the same players' other classical events of the twelve months before each match: 314 games, 4757 decisions. One more, the Women's World Chess Championship 2020, is in the first month of the archives and has nothing before it. The estimate is the third version's, from what could be known at the time, with the shared board model (the two finalists' own corrections are theirs alone).
+
+| In the first fifteen moves | Title matches | Other events |
+|---|---|---|
+| The player has had the position before, in an earlier event | 20.3 % | 22.9 % |
+| and then plays the move he played there most | 67.1 % | 69.3 % |
+| His game leaves his own earlier games at move | 3.9 | 4.3 |
+| He has had the position in an earlier game of the same event | 14.9 % | 7.9 % |
+| and then plays a move he played there | 81.0 % | 70.1 % |
+| Theory has the position | 45.3 % | 47.8 % |
+| and he plays its most played move | 70.1 % | 70.6 % |
+| Log loss of the estimate | 1.749 | 1.696 |
+
+Match by match, with the players' other events of the year before in brackets:
+
+| Match | Decisions | Had the position before | Then repeats his most played move | Best weight of the base, as a multiple | Chosen without this match |
+|---|---|---|---|---|---|
+| Nepomniachtchi and Carlsen, 2021-11 | 330 (684) | 26.1 % (14.9 %) | 82.6 % (73.5 %) | 1 (8) | 4 |
+| Nepomniachtchi and Ding, 2023-04 | 420 (675) | 20.5 % (18.8 %) | 79.1 % (73.2 %) | 2 (2) | 2 |
+| Lei and Ju, 2023-07 | 360 (494) | 16.9 % (22.5 %) | 65.6 % (76.6 %) | 4 (0.5) | 2 |
+| Gukesh and Ding, 2024-11 | 420 (1809) | 20.5 % (27.5 %) | 55.8 % (69.2 %) | 8 (1) | 2 |
+| Ju and Tan, 2025-04 | 270 (1095) | 17.0 % (23.0 %) | 39.1 % (62.7 %) | 4 (4) | 2 |
+
+**The weight of the base against the player's own games.** If a title match made players leave their own lines, the base would deserve more weight in a match than in a tournament. Over all title matches the best multiple is 2; over the same players' other events it is 2. Leaving each match out in turn gives 4, 2, 2, 2, 2. The rule set beforehand asked for every one of those to be on the same side of what the tournaments ask for. **They are not, so nothing is changed.** In 3 of the 5 matches the players repeated themselves less than in their tournaments of the year before, in 2 more; 5 matches cannot tell a habit of title matches from the habits of 7 players.
+
+**The match's own earlier games.** Not in the plan; looked at because the table shows it. In a title match a player is back in a position of an earlier game of the same match about twice as often as he meets one again within a tournament, and he then repeats his move more often. The weight of those games on the page (2, chosen on the two finalists' tournaments) is only ever used for the match, so the question put to it was direct: is another weight better in title matches? Over all of them the best multiple of it is 1, and leaving each match out in turn gives 1, 1, 1, 1, 1. In the same players' other events the best is 0.5: log loss in title matches 1.7492 with the page's weight, 1.7513 with that (-0.0021, -0.0048 to +0.0002). **The weight on the page is the one title matches ask for; nothing is changed.**
+
+What this cannot see is what a player has prepared and not yet shown. A new line is new to the tables as well, and the estimate for it comes from theory and the board.
+
 ## What can be said
 
 The rule was written down beforehand: the third version replaces the second if its log loss is lower on January to August 2026 with the interval of the difference below zero, and its calibration error is not higher.
@@ -158,5 +207,7 @@ The rule was written down beforehand: the third version replaces the second if i
 
 - Theory is what was played by players rated 2600 or more in broadcast games since 2020, cut to positions that occurred at least 2 times in the first 12 moves. A rare line, or a new one, is not in it.
 - The match's own games are read on the page as they are played. In the measurements that part was chosen on earlier rounds of tournaments, where the opponent changes every round; in a match he does not.
-- Nothing here knows the two camps' preparation, and nothing here measures the match-score rule. Those are phases 2 and 3 of the plan.
+- Nothing here knows the two camps' preparation.
+- The score correction comes from two-game knockout matches of other players. That it carries over to a fourteen-game title match, scaled by urgency, is an assumption.
+- The title-match study has 5 matches and 7 players, none of them Sindarov.
 - The shipped tables count every game up to the end of October 2026, aged as of 2026-11-01.
