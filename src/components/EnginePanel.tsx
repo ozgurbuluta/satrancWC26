@@ -149,6 +149,13 @@ export function EngineCard({ game, fen, shown, evaluation, inLine }: EngineProps
             {evaluation.source === 'cloud' ? t.cloud : t.local}, {t.depth} {evaluation.depth}
           </span>
         )}
+        {/* how many lines: in the head, so that the card spends no row of its own on it */}
+        <label className="engine-lines" title={t.engineLines}>
+          <span className="visually-hidden">{t.engineLines}</span>
+          <select value={lines} onChange={e => setSetting('engineLines', Number(e.target.value))}>
+            {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
         <button
           type="button"
           role="switch"
@@ -162,13 +169,6 @@ export function EngineCard({ game, fen, shown, evaluation, inLine }: EngineProps
         </button>
       </div>
 
-      <label className="engine-lines">
-        <span>{t.engineLines}</span>
-        <select value={lines} onChange={e => setSetting('engineLines', Number(e.target.value))}>
-          {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
-        </select>
-      </label>
-
       {!engineOn ? (
         <p className="muted">{t.engineOff}</p>
       ) : !evaluation ? (
@@ -178,8 +178,10 @@ export function EngineCard({ game, fen, shown, evaluation, inLine }: EngineProps
           {evaluation.pvs.slice(0, lines).map((pv, i) => {
             const moves = pvToSan(fen, pv.moves, 9);
             const first = moves[0];
+            // the whole line as text: beside the board's column a line is one row, cut where the room ends
+            const whole = moves.map(m => `${m.label ? `${m.label} ` : ''}${localizeSan(m.san, notation)}`).join(' ');
             return (
-              <li key={i}>
+              <li key={i} title={whole}>
                 <span className={`pv-eval ${(pv.mate ?? pv.cp ?? 0) < 0 ? 'neg' : 'pos'}`}>{formatEval(pv)}</span>
                 <span className="pv-moves">
                   {first && (

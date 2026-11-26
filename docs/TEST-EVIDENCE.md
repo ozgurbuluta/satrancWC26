@@ -38,7 +38,7 @@ falls back to), the moves as a table, the button that turns the board in
 its two places, the top bar's mark and title and what is on its right, and
 the settings tab as one block for each setting, and the page asking for the
 keyboard back from a frame on a press, the video's automatic height, and the
-height set by hand being remembered: 332 tests.
+height set by hand being remembered: 333 tests.
 Also in CI: the secret check over the whole history, the type check, and
 builds for `/` and `/satranc/`.
 
@@ -191,7 +191,7 @@ and for tapping moves on the board.
 ## The model estimate (issues 4 and 13)
 
 Run on 26 November 2026 in headless Chromium against the preview build, in
-`tests/e2e/board.cjs` (141 of 141 checks), against a simulated match in
+`tests/e2e/board.cjs` (147 of 147 checks), against a simulated match in
 which Sindarov is to play move 6 of a Ruy Lopez.
 
 | Model estimate, under the board | Result |
@@ -273,7 +273,7 @@ stretched flex item, which is the part that differs between browsers.
 
 | The video and the panel under it (1600 × 930, right side 640 px wide) | Result |
 |---|---|
-| By default | the video is 271 px high instead of the 360 its width allows, still 16:9 and in the middle of the column; the list of moves gets 206 px, with the engine's lines whole above it and the newest move in view. Before, in the same window, the moves had about two rows |
+| By default (three engine lines) | the video is 323 px high instead of the 360 its width allows, still 16:9 and in the middle of the column; the list of moves gets 223 px, with the engine's lines whole above it and the newest move in view. Before, in the same window, the moves had about two rows |
 | While the engine thinks | the video keeps its height. A first attempt let the video give way to whatever the engine card needed at the moment: it changed size as the lines changed, and a click on it could miss. The height is now worked out from the column and the settings only |
 | The bar under the video, dragged up 100 px | the video 100 px lower, the moves 100 px taller |
 | Dragged all the way up | the video stops at 120 px; the engine's lines are still whole |
@@ -281,6 +281,8 @@ stretched flex item, which is the part that differs between browsers.
 | After a reload, and under another tab | the chosen height is kept |
 | A double click on the bar | back to automatic |
 | A column with room for both (1728 × 1000) | the video at its full size, as before |
+| Five engine lines in Özgür's window (1803 × 919), right side 320, 432 and 631 px wide | each line is one row of 39 px with the whole line as its tooltip, the engine card 251 px; the video 180, 234 and 234 px high; the list of moves 278, 224 and 224 px. With lines of two rows, as on the live site that day, the card alone took about 440 px and the moves had no row or two |
+| The number of lines | chosen in the card's head beside the switch; it has no row of its own |
 | Phone | no bar |
 
 Looked at by eye in screenshots at 1024, 1280, 1440, 1600 and 1728 px and
