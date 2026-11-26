@@ -331,15 +331,14 @@ body.dragging .divider::after {
 
 /* ---------- board ---------- */
 
+/* A plain block: the board takes the column's width and is always square, in every browser. */
 .board-row {
-  display: flex;
-  gap: 8px;
-  align-items: stretch;
+  display: block;
 }
 
 .board-wrap {
-  flex: 1;
-  aspect-ratio: 1;
+  width: 100%;
+  aspect-ratio: 1 / 1;
   min-width: 0;
   border-radius: 4px;
   overflow: hidden;
@@ -799,25 +798,6 @@ cg-board square.check {
   color: var(--text);
 }
 
-.paste {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 6px;
-}
-
-.paste input {
-  min-width: 0;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 9px 10px;
-  font-size: 14px;
-}
-
-.paste input[aria-invalid='true'] {
-  border-color: var(--danger);
-}
-
 .btn {
   padding: 0 16px;
   border-radius: 8px;
@@ -849,20 +829,6 @@ cg-board square.check {
   height: 100%;
   border: 0;
   display: block;
-}
-
-.player-empty {
-  height: 100%;
-  display: grid;
-  place-items: center;
-  color: var(--muted);
-  padding: 16px;
-  text-align: center;
-}
-
-.paste .hint {
-  grid-column: 1 / -1;
-  margin: 0;
 }
 
 a.icon-btn {
@@ -1143,6 +1109,33 @@ button.move:hover {
 .move.active {
   background: var(--accent);
   color: var(--on-accent);
+}
+
+/* Under the engine the moves are a table: the number, White's move, Black's move. */
+.move-list {
+  display: grid;
+  grid-template-columns: 2.8em minmax(0, 1fr) minmax(0, 1fr);
+  align-content: start;
+  gap: 1px 4px;
+  line-height: 1.45;
+}
+
+.move-list .mv {
+  display: contents;
+}
+
+.move-list .move-num {
+  align-self: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.move-list .move {
+  text-align: left;
+  padding: 4px 8px;
+}
+
+.move-list p {
+  grid-column: 1 / -1;
 }
 
 /* ---------- match ---------- */
@@ -1499,25 +1492,11 @@ button.move:hover {
   font-size: 15px;
 }
 
-.tag.experimental {
-  margin: 0;
-  background: var(--amber-bg);
-  color: var(--amber-text);
-}
-
 .model-for {
   margin-left: auto;
   font-size: 13px;
   font-weight: 400;
   color: var(--muted);
-}
-
-.model-held {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  margin: 0;
 }
 
 .model-moves {
@@ -2578,9 +2557,35 @@ cg-board square.selected {
   max-width: 34ch;
 }
 
-.predict .setting {
-  align-items: flex-start;
-  flex-wrap: nowrap;
+.predict-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding-top: 8px;
+}
+
+.predict-head .eyebrow {
+  margin: 0;
+}
+
+.predict-help {
+  margin: 8px 0 0;
+}
+
+/* Beside the board the card gives the padding. */
+.predict-card .predict {
+  padding: 0;
+}
+
+.predict-card .predict-head {
+  padding-top: 0;
+}
+
+.predict-card .predict > section:last-child,
+.predict-card .predict > p:last-child {
+  margin-bottom: 0;
 }
 
 .guess-card {
@@ -2884,14 +2889,83 @@ body {
   border-bottom: 1px solid var(--line);
 }
 
+/* The title in a serif of its own, the place in small spaced capitals under it. */
 .brand h1 {
-  font-size: 15px;
-  letter-spacing: 0.01em;
+  font-family: 'Fraunces Variable', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+}
+
+.brand p {
+  margin-top: 1px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .logo {
-  border-radius: 8px;
-  box-shadow: 0 0 0 1px var(--line-strong);
+  width: 36px;
+  height: 36px;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.brand h1 span {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* Where the bar is too short for the title on one line, it takes two and the place steps aside. */
+@media (max-width: 1500px) {
+  .brand {
+    flex-shrink: 0;
+  }
+
+  .brand h1 {
+    font-size: 16px;
+    line-height: 1.12;
+    white-space: normal;
+    overflow: visible;
+  }
+
+  .brand h1 span {
+    display: block;
+  }
+
+  .brand p {
+    display: none;
+  }
+}
+
+/* Just above phone width the bar has room for the mark only. */
+@media (max-width: 1020px) {
+  .brand > div {
+    display: none;
+  }
+}
+
+/* The tightest bar that still shows a square for every game. */
+@media (max-width: 1360px) {
+  .top,
+  .match-strip {
+    gap: 10px;
+  }
+
+  .brand h1 {
+    font-size: 15px;
+  }
+}
+
+.logo-tile {
+  fill: var(--player-a);
+}
+
+.logo-piece {
+  fill: var(--bg);
 }
 
 .brand {
@@ -3045,12 +3119,20 @@ body {
 /* ---------- columns ---------- */
 
 .layout {
-  grid-template-columns: minmax(0, 1fr) 12px var(--side-w, clamp(340px, 31vw, 500px));
+  /* The right side can be made wider by dragging, but only until the board is this narrow. */
+  --board-min: 480px;
+  --left-w: 0px;
+  grid-template-columns:
+    minmax(0, 1fr) 12px
+    min(var(--side-w, clamp(340px, 31vw, 500px)), calc(100% - var(--left-w) - 12px - var(--board-min)));
   padding: 16px 18px 0;
 }
 
 .layout.three {
-  grid-template-columns: clamp(250px, 21vw, 320px) minmax(0, 1fr) 12px var(--side-w, clamp(340px, 30vw, 480px));
+  --left-w: clamp(250px, 21vw, 320px);
+  grid-template-columns:
+    var(--left-w) minmax(0, 1fr) 12px
+    min(var(--side-w, clamp(340px, 30vw, 480px)), calc(100% - var(--left-w) - 12px - var(--board-min)));
   column-gap: 0;
 }
 
@@ -3312,6 +3394,45 @@ body {
   align-items: center;
   gap: 8px 12px;
   min-height: 36px;
+}
+
+/* Nothing to offer under the board (the two buttons are beside it): no empty row. */
+.board-actions:empty {
+  display: none;
+}
+
+/* Turning the board and sharing, in the free room to the right of the board. It is laid over that room and takes no width. */
+.board-tools {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.board-tools .tool-btn,
+.board-tools .share-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+}
+
+.board-tools .tool-btn:hover,
+.board-tools .share-btn:hover {
+  background: var(--panel-3);
 }
 
 .board-actions .share-btn,
@@ -3966,11 +4087,6 @@ body {
 
   .stream-top {
     order: 3;
-    padding: 0 8px;
-  }
-
-  .paste {
-    order: 4;
     padding: 0 8px;
   }
 

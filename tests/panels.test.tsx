@@ -27,6 +27,7 @@ afterEach(async () => {
   await act(() => root.unmount());
   host.remove();
   if (width) Object.defineProperty(HTMLElement.prototype, 'clientWidth', width);
+  vi.unstubAllGlobals();
   vi.useRealTimers();
 });
 
@@ -294,5 +295,116 @@ describe('engine line preference', () => {
     expect(JSON.parse(localStorage.getItem('wcc26:settings')!).engineLines).toBe(5);
     await act(() => { select.value = '1'; select.dispatchEvent(new Event('change', { bubbles: true })); });
     expect(host.querySelectorAll('.pv-list li')).toHaveLength(1);
+  });
+});
+
+describe('the broadcast panel', () => {
+  const mountStream = async () => {
+    const mod = await boot();
+    const { StreamPanel } = await import('../src/components/StreamPanel');
+    await act(() => root.render(<StreamPanel />));
+    return mod;
+  };
+  const options = () => [...host.querySelectorAll('.stream-pick option')].map(o => o.textContent);
+
+  it('offers the listed channels only: no link of the viewer’s own, no button to another tab', async () => {
+    await mountStream();
+    expect(options()).toEqual(['Chess.com Türkçe', 'Chess.com (EN)', 'FIDE (EN)']);
+    expect(text()).not.toContain('Kendi bağlantım');
+    expect(text()).not.toContain('SatranChess');
+    expect(host.querySelector('.stream-top a')).toBeNull();
+    expect(host.querySelector('input')).toBeNull();
+    // one control beside the dropdown: hiding the video
+    expect([...host.querySelectorAll('.stream-top button')].map(b => b.textContent)).toEqual(['Yayını gizle']);
+  });
+
+  it('falls back to the first channel for a choice that is no longer offered', async () => {
+    for (const gone of ['yt-satranchess', 'custom']) {
+      localStorage.setItem('wcc26:settings', JSON.stringify({ streamId: gone, customStream: 'https://youtu.be/dQw4w9WgXcQ' }));
+      const mod = await mountStream();
+      expect(host.querySelector<HTMLSelectElement>('.stream-pick select')!.value).toBe('yt-chesscomtr');
+      expect(host.querySelector('iframe')!.getAttribute('src')).toContain('youtube');
+      expect(host.querySelector('iframe')!.getAttribute('src')).not.toContain('dQw4w9WgXcQ');
+      // choosing another one is remembered as before
+      const select = host.querySelector<HTMLSelectElement>('.stream-pick select')!;
+      await act(async () => {
+        select.value = 'yt-fide';
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      expect(mod.useStore.getState().settings.streamId).toBe('yt-fide');
+      await act(() => root.render(<></>));
+      localStorage.clear();
+    }
+  });
+});
+
+describe('the moves under the engine', () => {
+  it('are a table: a number, White’s move, Black’s move', async () => {
+    // jsdom lays nothing out and has no observer for it; the list only uses one to keep the current move in sight
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+    const mod = await boot();
+    const { MovesPanel } = await import('../src/components/AnalysisPanel');
+    const Host = () => {
+      const g = mod.useStore(mod.selectGameData);
+      const shown = mod.useStore(mod.selectShownPly);
+      return g ? <MovesPanel game={g} shown={shown} /> : null;
+    };
+    await act(() => root.render(<Host />));
+    await act(async () => push(R1, game({ round: 1, id: 'g1', sans: ITALIAN.slice(0, 5) })));
+    // every cell of the grid in order: a number before each of White's moves, none before Black's
+    const cells = [...host.querySelectorAll('.move-list .mv')].flatMap(mv => [...mv.children].map(c => (c.className.includes('move-num') ? `#${c.textContent}` : c.textContent)));
+    expect(cells).toEqual(['#1.', 'e4', 'e5', '#2.', 'Af3', 'Ac6', '#3.', 'Fc4']);
+    expect(host.querySelector('.move.active')!.textContent).toBe('Fc4');
+    // a move is still a button that takes the board there
+    await act(async () => host.querySelectorAll<HTMLButtonElement>('.move-list .move')[1].click());
+    expect(mod.useStore.getState().viewPly).toBe(2);
+  });
+});
+
+describe('turning the board', () => {
+  it('is one button that can sit in the strip or beside the board', async () => {
+    const mod = await boot();
+    const { FlipButton, MoveStrip } = await import('../src/components/MoveStrip');
+    const Host = ({ flip }: { flip: boolean }) => {
+      const g = mod.useStore(mod.selectGameData);
+      const shown = mod.useStore(mod.selectShownPly);
+      return g ? (
+        <>
+          <div className="rail">{!flip && <FlipButton className="tool-btn" />}</div>
+          <MoveStrip game={g} shown={shown} line={null} ownMoves={[]} backLabel="Canlı konuma dön" atNewest flip={flip} />
+        </>
+      ) : null;
+    };
+    await act(() => root.render(<Host flip />));
+    await act(async () => push(R1, game({ round: 1, id: 'g1', sans: ITALIAN })));
+    const flips = () => [...host.querySelectorAll<HTMLButtonElement>('button[aria-keyshortcuts="F"]')];
+    expect(flips()).toHaveLength(1);
+    expect(flips()[0].closest('.move-strip')).not.toBeNull();
+    expect(flips()[0].getAttribute('aria-label')).toBe('Tahtayı çevir');
+    await act(async () => flips()[0].click());
+    expect(mod.useStore.getState().flipped).toBe(true);
+
+    // beside the board: the strip gives it up, and it is the same button
+    await act(() => root.render(<Host flip={false} />));
+    expect(flips()).toHaveLength(1);
+    expect(flips()[0].closest('.move-strip')).toBeNull();
+    expect(flips()[0].closest('.rail')).not.toBeNull();
+    await act(async () => flips()[0].click());
+    expect(mod.useStore.getState().flipped).toBe(false);
+  });
+});
+
+describe('the top bar', () => {
+  it('has a mark of its own and the title in two halves that each stay whole', async () => {
+    await boot();
+    const { Header } = await import('../src/components/Header');
+    await act(() => root.render(<Header />));
+    const brand = host.querySelector('.brand')!;
+    expect(brand.querySelector('svg.logo path')).not.toBeNull();
+    expect(brand.querySelector('svg.logo')!.getAttribute('aria-hidden')).toBe('true');
+    expect([...brand.querySelectorAll('h1 span')].map(s => s.textContent)).toEqual(['Dünya Satranç', 'Şampiyonası 2026']);
+    // read as one title, with the space between the halves
+    expect(brand.querySelector('h1')!.textContent).toBe('Dünya Satranç Şampiyonası 2026');
+    expect(brand.querySelector('p')!.textContent).toBe('Cenevre');
   });
 });

@@ -2,8 +2,12 @@
 
 The site's own estimate of the next move of Gukesh or Sindarov: three legal
 moves with a share each, and the rest as "other", on the main page under
-the board. It is experimental, and labelled so. The page itself carries no
-explanation of it any more: what it is, how it was measured and where it
+the board. It is experimental. Until 26 November 2026 the page said so in a
+"Deneysel" label beside the title; Özgür had the label taken off, and since
+then the estimate is also shown at once in guess mode instead of waiting
+for the viewer's guess. Nothing that is claimed about it changed with
+that: its probabilities are not claimed to be calibrated. The page itself
+carries no explanation of it any more: what it is, how it was measured and where it
 falls short is on this page and in the report.
 
 This is its third version: the second version's model of the board, with

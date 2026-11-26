@@ -223,8 +223,8 @@ const pgn = (round, id, sans, result, opts = {}) => {
     check('the return control says "Canlı konuma dön"', (await page.locator('.move-strip .go-live').innerText()).trim() === 'Canlı konuma dön');
 
     // the engine follows the position on the board: Black to move at move 6
-    await page.waitForFunction(() => /^6…/.test(document.querySelector('.left-col .pv-first')?.textContent ?? ''), null, { timeout: 60000 }).catch(() => {});
-    const firstPv = await page.locator('.left-col .pv-first').first().innerText().catch(() => '');
+    await page.waitForFunction(() => /^6…/.test(document.querySelector('.side-col .pv-first')?.textContent ?? ''), null, { timeout: 60000 }).catch(() => {});
+    const firstPv = await page.locator('.side-col .pv-first').first().innerText().catch(() => '');
     check('the engine lines are for the position on the board (Black to play move 6)', /^6…/.test(firstPv), firstPv);
     check('the evaluation above the board has a score', /[+−]?\d/.test(await page.locator('.eval-strip').getAttribute('aria-label')), await page.locator('.eval-strip').getAttribute('aria-label'));
 
@@ -277,18 +277,38 @@ const pgn = (round, id, sans, result, opts = {}) => {
     await ctx.close();
   }
 
-  // ---- 3. prediction stays in its tab
+  // ---- 3. guessing has its own card beside the board; the engine and the moves are the first tab
   {
     const { ctx, page, errors } = await open();
-    await page.locator('.tabs button', { hasText: 'Tahmin' }).click();
+    await page.waitForSelector('.left-col .predict');
     await page.waitForSelector('.model-estimate');
+    const tabNames = (await page.locator('.tabs button').allInnerTexts()).map(t => t.trim());
+    check('the tabs start with Stockfish, open by default, and guessing is not one of them', tabNames.join(',') === 'Stockfish,Benzer,Grafik,Maç,Ayarlar' && (await page.locator('.tabs button.active').innerText()).trim() === 'Stockfish', tabNames.join(','));
+    const firstTab = await page.evaluate(() => {
+      const body = document.querySelector('.side-col .tab-body');
+      const engine = body.querySelector('.engine-card');
+      const list = body.querySelector('.move-list');
+      // two moves to a row: White's and Black's side by side
+      const rows = new Set([...list.querySelectorAll('.move')].map(c => Math.round(c.getBoundingClientRect().top)));
+      return {
+        engineFirst: !!engine && !!list && engine.getBoundingClientRect().bottom <= list.getBoundingClientRect().top + 1,
+        display: getComputedStyle(list).display,
+        columns: getComputedStyle(list).gridTemplateColumns.split(' ').length,
+        moves: list.querySelectorAll('.move').length,
+        rows: rows.size,
+        winChanceInTab: !!body.querySelector('.win-chance'),
+      };
+    });
+    check('the first tab is the engine with the moves under it, as a table of number, White and Black', firstTab.engineFirst && firstTab.display === 'grid' && firstTab.columns === 3 && firstTab.moves === 10 && firstTab.rows === 5 && !firstTab.winChanceInTab, JSON.stringify(firstTab));
+    const leftCards = await page.evaluate(() => [...document.querySelectorAll('.left-col > *')].map(el => (el.classList.contains('win-chance') ? 'win' : el.classList.contains('predict-card') ? 'guess' : el.classList.contains('time-panel') || el.querySelector('.time-panel, .time-chart') ? 'time' : el.className)));
+    check('beside the board: win chance, guessing where the engine was, then time per move', leftCards.join(',') === 'win,guess,time' && (await page.locator('.left-col .engine-card').count()) === 0, leftCards.join(','));
 
     // the site's own estimate, on the main page under the board, whatever tab is open
     const estimate = page.locator('.model-estimate');
     const numbers = async () => (await estimate.locator('.model-moves .num').allInnerTexts()).map(t => (t.trim().startsWith('<') ? 0 : Number(t.replace(/\D/g, ''))));
     const first = await numbers();
     check('the model estimate shows three moves and "other", adding up to 100', first.length === 4 && first.reduce((a, b) => a + b, 0) === 100 && /Diğer hamleler/.test(await estimate.innerText()), first.join(' + '));
-    check('it is labelled experimental and says whose move it is about', /Deneysel/i.test(await estimate.innerText()) && /Sindarov için, 6\. hamle/.test(await estimate.innerText()), (await estimate.innerText()).replace(/\s+/g, ' ').slice(0, 90));
+    check('it carries no "Deneysel" label and says whose move it is about', !/Deneysel/i.test(await estimate.innerText()) && (await estimate.locator('.tag').count()) === 0 && /Sindarov için, 6\. hamle/.test(await estimate.innerText()), (await estimate.innerText()).replace(/\s+/g, ' ').slice(0, 90));
     const shownMoves = (await estimate.locator('.model-moves strong').allInnerTexts()).map(t => t.trim());
     const legal = (await page.evaluate(() => [...document.querySelectorAll('.strip-track .move')].length)) > 0;
     check('its three moves are different from each other', legal && new Set(shownMoves).size === 3, shownMoves.join(', '));
@@ -300,13 +320,14 @@ const pgn = (round, id, sans, result, opts = {}) => {
     });
     check('it is in the board column, below the board, in the flow of the page', place.inBoardColumn && !place.inTabs && place.below && place.position === 'static', JSON.stringify(place));
     check('its moves are text, not controls', (await estimate.locator('.model-moves button, .model-moves a').count()) === 0);
-    check('it is a title, a label and a list: no explanation block and no link', (await estimate.locator('details, a, summary').count()) === 0 && !/Nasıl hesaplanıyor|Ölçüm/.test(await estimate.innerText()));
-    check('the Tahmin tab no longer carries the estimate or the note under the masters’ moves', (await page.locator('.predict .model-estimate').count()) === 0 && !/gerçek sıklıktır/.test(await page.locator('.predict').innerText()));
+    check('it is a title and a list: no explanation block and no link', (await estimate.locator('details, a, summary').count()) === 0 && !/Nasıl hesaplanıyor|Ölçüm/.test(await estimate.innerText()));
+    check('the guess panel carries neither the estimate nor the note under the masters’ moves', (await page.locator('.predict .model-estimate').count()) === 0 && !/gerçek sıklıktır/.test(await page.locator('.predict').innerText()));
 
     await page.locator('.predict .seg button', { hasText: 'Açık' }).click();
     await page.waitForTimeout(300);
-    check('guess mode asks in its tab', /Sence ne oynayacak/.test(await page.locator('.guess-card').innerText()));
-    check('in guess mode the estimate waits, with a button to show it', (await estimate.locator('.model-moves li').count()) === 0 && (await estimate.locator('button', { hasText: 'Tahmin etmeden göster' }).count()) === 1);
+    check('guess mode asks in its own card', /Sence ne oynayacak/.test(await page.locator('.left-col .guess-card').innerText()));
+    const inGuessMode = await numbers();
+    check('in guess mode the estimate is shown at once: nothing to wait for and no button', inGuessMode.length === 4 && inGuessMode.reduce((a, b) => a + b, 0) === 100 && (await estimate.locator('button').count()) === 0 && !/sen tahminini yaptıktan sonra/.test(await estimate.innerText()), inGuessMode.join(' + '));
     // the model's card is under the board now; apart from it, the board column says nothing about guessing
     const boardColumnText = await page.evaluate(() => {
       const column = document.querySelector('.board-col').cloneNode(true);
@@ -314,24 +335,24 @@ const pgn = (round, id, sans, result, opts = {}) => {
       return column.textContent;
     });
     check('nothing asks for a guess on the board column', (await page.locator('.board-col .banner.guess').count()) === 0 && !/Tahmin|Sence ne oynayacak/.test(boardColumnText) && (await page.locator('.board-col .model-estimate input, .board-col .model-estimate select').count()) === 0);
-    await page.waitForFunction(() => document.querySelectorAll('.left-col .pv-list li').length > 0, null, { timeout: 60000 }).catch(() => {});
-    check('the engine beside the board is not hidden by guess mode', (await page.locator('.left-col .pv-list li').count()) > 0);
+    await page.waitForFunction(() => document.querySelectorAll('.side-col .pv-list li').length > 0, null, { timeout: 60000 }).catch(() => {});
+    check('the engine in the first tab is not hidden by guess mode', (await page.locator('.side-col .pv-list li').count()) > 0);
 
     // a move on the board is analysis, never a guess
     await drag(page, 'd2', 'd3');
     check('a move on the board starts a line and makes no guess', /6\. ?d3/.test(await ownLine(page)) && !/Tahminin:/.test(await page.locator('.predict').innerText()));
-    check('the tab says its guess is about the game, not the board', /oyundaki en son konum/.test(await page.locator('.guess-card').innerText()));
+    check('the card says its guess is about the game, not the board', /oyundaki en son konum/.test(await page.locator('.guess-card').innerText()));
 
-    // choosing in the tab moves nothing on the board
+    // choosing in the card moves nothing on the board
     const before = await ownLine(page);
     await page.locator('.move-chooser .chip', { hasText: /^Ke1$/ }).click();
     await page.waitForTimeout(300);
     check('a move picked from the list becomes the guess', /Tahminin:\s*6\. ?Ke1/.test(await page.locator('.guess-card').innerText().then(t => t.replace(/\s+/g, ' '))), await page.locator('.guess-card').innerText());
     check('and the board keeps the viewer’s own line', (await ownLine(page)) === before && /pawn/.test((await pieceAt(page, 'd3')) || '') && /rook/.test((await pieceAt(page, 'f1')) || ''));
     const afterGuess = await numbers();
-    check('once guessed, the estimate is shown again, still about the game and not the board', afterGuess.length === 4 && afterGuess.reduce((a, b) => a + b, 0) === 100 && /Sindarov için, 6\. hamle/.test(await estimate.innerText()), afterGuess.join(' + '));
+    check('after a guess the estimate is as it was, still about the game and not the board', afterGuess.length === 4 && afterGuess.reduce((a, b) => a + b, 0) === 100 && /Sindarov için, 6\. hamle/.test(await estimate.innerText()), afterGuess.join(' + '));
 
-    // typing in the tab's field does not drive the board
+    // typing in the card's field does not drive the board
     await page.locator('.guess-card .link', { hasText: 'Değiştir' }).click();
     const field = page.locator('.move-input input');
     await field.fill('c3');
@@ -342,7 +363,7 @@ const pgn = (round, id, sans, result, opts = {}) => {
     await field.press('Enter');
     await page.waitForTimeout(300);
     check('a typed move becomes the guess', /Tahminin:\s*6\. ?c3/.test(await page.locator('.guess-card').innerText().then(t => t.replace(/\s+/g, ' '))));
-    check('no page errors in the prediction tab', errors.length === 0, errors.join(' | '));
+    check('no page errors while guessing', errors.length === 0, errors.join(' | '));
     await page.screenshot({ path: out + '/board-predict.png' });
     await ctx.close();
   }
@@ -424,13 +445,12 @@ const pgn = (round, id, sans, result, opts = {}) => {
 
     const select = page.locator('.stream-pick select');
     const options = await select.locator('option').allInnerTexts();
-    check('the broadcast is chosen from a labelled dropdown', options.length === 5 && options[0] === 'Chess.com Türkçe' && options[4] === 'Kendi bağlantım' && /Yayın/.test(await page.locator('.stream-pick').textContent()), options.join(', '));
+    check('the broadcast is chosen from a labelled dropdown of the listed channels', options.join(', ') === 'Chess.com Türkçe, Chess.com (EN), FIDE (EN)' && /Yayın/.test(await page.locator('.stream-pick').textContent()), options.join(', '));
     const srcBefore = await page.locator('.player iframe').getAttribute('src');
     await select.selectOption('yt-fide');
     await page.waitForTimeout(400);
     check('choosing another channel changes the video', (await page.locator('.player iframe').getAttribute('src')) !== srcBefore && (await select.inputValue()) === 'yt-fide');
-    await select.selectOption('custom');
-    check('"Kendi bağlantım" opens the field for a link and keeps the video until one is given', (await page.locator('.paste input').count()) === 1 && /youtube/.test(await page.locator('.player iframe').getAttribute('src')));
+    check('there is no link of the viewer’s own and no button to another tab', (await page.locator('.stream input, .stream-top a').count()) === 0 && !/Kendi bağlantım|SatranChess/.test(await page.locator('.stream').innerText()) && (await page.locator('.stream-top button').count()) === 1);
     check('the dropdown can be driven from the keyboard', await (async () => {
       await select.selectOption('yt-chesscomtr');
       await select.focus();
@@ -447,6 +467,96 @@ const pgn = (round, id, sans, result, opts = {}) => {
     await ctx.close();
   }
 
+  // ---- 6b. the right side can be made wider, and the board is never cramped by it
+  {
+    const { ctx, page, errors } = await open({ viewport: { width: 1600, height: 820 } });
+    const box = async selector => page.locator(selector).first().boundingBox();
+    const boardBefore = await box('.board-wrap');
+    const sideBefore = await box('.side-col');
+
+    // a short, wide window leaves room beside the board: turning the board and sharing sit there
+    const rail = await box('.board-tools');
+    const divider = await box('.divider');
+    check('with free room beside the board, turning it and sharing are in a small rail there', !!rail && rail.x >= boardBefore.x + boardBefore.width && rail.x + rail.width <= divider.x && (await page.locator('.board-tools button').count()) === 2, rail ? `${Math.round(rail.x)}..${Math.round(rail.x + rail.width)} between ${Math.round(boardBefore.x + boardBefore.width)} and ${Math.round(divider.x)}` : 'no rail');
+    check('and neither is under the board any more', (await page.locator('.move-strip > .nav-btn').count()) === 0 && (await page.locator('.board-actions .share-btn').count()) === 0);
+    check('the rail takes nothing from the board', Math.round(boardBefore.width) === 546 && Math.abs(boardBefore.width - boardBefore.height) < 1, `${Math.round(boardBefore.width)}x${Math.round(boardBefore.height)}`);
+    const orientationBefore = await page.locator('.board-col .cg-wrap').evaluate(el => (el.classList.contains('orientation-black') ? 'black' : 'white'));
+    await page.locator('.board-tools button[aria-keyshortcuts="F"]').click();
+    await page.waitForTimeout(300);
+    const orientationAfter = await page.locator('.board-col .cg-wrap').evaluate(el => (el.classList.contains('orientation-black') ? 'black' : 'white'));
+    check('the rail’s first button turns the board', orientationBefore !== orientationAfter, `${orientationBefore} -> ${orientationAfter}`);
+    await page.locator('.board-tools button[aria-keyshortcuts="F"]').click();
+    await page.locator('.board-tools .share-btn').click();
+    await page.waitForSelector('.share-slot .share-panel');
+    const panel = await box('.share-slot .share-panel');
+    const boardNow = await box('.board-wrap');
+    check('sharing from the rail shows the link under the board, inside the column', !!panel && panel.y >= boardNow.y + boardNow.height && panel.x >= boardNow.x - 1 && panel.x + panel.width <= boardNow.x + boardNow.width + 1, panel ? `${Math.round(panel.width)} wide` : 'no panel');
+    await page.keyboard.press('Escape');
+
+    // drag the divider as far left as it goes
+    await page.mouse.move(divider.x + 6, divider.y + 200);
+    await page.mouse.down();
+    await page.mouse.move(divider.x - 300, divider.y + 200, { steps: 6 });
+    await page.mouse.move(30, divider.y + 200, { steps: 10 });
+    await page.mouse.up();
+    await page.waitForTimeout(400);
+    const boardAfter = await box('.board-wrap');
+    const sideAfter = await box('.side-col');
+    const squares = await page.locator('.board-col cg-board').boundingBox();
+    check('dragging the divider makes the right side wider', sideAfter.width > sideBefore.width + 100, `${Math.round(sideBefore.width)} -> ${Math.round(sideAfter.width)}`);
+    check('but stops while the board is still 480 wide, and the board stays square', Math.round(boardAfter.width) === 480 && Math.abs(boardAfter.width - boardAfter.height) < 1 && Math.abs(squares.width - squares.height) < 1, `${Math.round(boardAfter.width)}x${Math.round(boardAfter.height)}, squares ${Math.round(squares.width)}x${Math.round(squares.height)}`);
+    check('nothing overflows the window', (await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)) <= 0);
+    check('with no room left beside the board the two buttons are back under it', (await page.locator('.board-tools').count()) === 0 && (await page.locator('.move-strip > .nav-btn').count()) === 1 && (await page.locator('.board-actions .share-btn').count()) === 1);
+
+    // a width saved on a larger window cannot cramp the board either
+    await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('wcc26:settings') || '{}');
+      localStorage.setItem('wcc26:settings', JSON.stringify({ ...saved, sideWidth: 1400 }));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('button.move');
+    await page.waitForTimeout(800);
+    const reloaded = await box('.board-wrap');
+    check('a far too wide saved width is held to the same limit after a reload', Math.round(reloaded.width) === 480 && Math.abs(reloaded.width - reloaded.height) < 1 && (await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)) <= 0, `${Math.round(reloaded.width)}x${Math.round(reloaded.height)}`);
+    await page.screenshot({ path: out + '/board-wide-side.png' });
+    check('no page errors while resizing', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+
+  // ---- 6c. the top bar's mark and title
+  {
+    const { ctx, page, errors } = await open({ viewport: { width: 1728, height: 1000 } });
+    await page.evaluate(() => document.fonts.ready);
+    const brand = await page.evaluate(() => {
+      const h1 = document.querySelector('.brand h1');
+      const place = document.querySelector('.brand p');
+      return {
+        mark: !!document.querySelector('.brand svg.logo path'),
+        family: getComputedStyle(h1).fontFamily,
+        loaded: document.fonts.check('600 18px "Fraunces Variable"'),
+        // the font comes from this site, not from anyone else's server
+        sources: [...document.fonts].filter(f => /Fraunces/.test(f.family) && f.status === 'loaded').length,
+        oneLine: h1.getBoundingClientRect().height < 30,
+        title: h1.textContent,
+        place: place ? getComputedStyle(place).textTransform + ':' + place.textContent : '',
+      };
+    });
+    const fontRequests = (await page.evaluate(() => performance.getEntriesByType('resource').map(r => r.name).filter(n => /\.woff2?($|\?)/.test(n)))).map(u => new URL(u).origin);
+    check('the title is set in the site’s own serif, loaded from the site itself', brand.mark && /Fraunces Variable/.test(brand.family) && brand.loaded && brand.sources >= 1 && fontRequests.length >= 1 && fontRequests.every(o => o === new URL(APP).origin), JSON.stringify({ ...brand, fontRequests }));
+    check('on a wide bar it is one line with the place under it', brand.oneLine && brand.title === 'Dünya Satranç Şampiyonası 2026' && brand.place === 'uppercase:Cenevre', `${brand.title} / ${brand.place}`);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.waitForTimeout(300);
+    const narrow = await page.evaluate(() => {
+      const h1 = document.querySelector('.brand h1');
+      const tops = new Set([...h1.querySelectorAll('span')].map(sp => Math.round(sp.getBoundingClientRect().top)));
+      const top = document.querySelector('.top');
+      return { lines: tops.size, halves: [...h1.querySelectorAll('span')].map(sp => sp.textContent), barOverflow: top.scrollWidth - top.clientWidth, brandRight: Math.round(document.querySelector('.brand').getBoundingClientRect().right), stripLeft: Math.round(document.querySelector('.match-strip').getBoundingClientRect().left) };
+    });
+    check('on a shorter bar it takes exactly two lines and runs into nothing', narrow.lines === 2 && narrow.halves.join('|') === 'Dünya Satranç|Şampiyonası 2026' && narrow.barOverflow <= 0 && narrow.brandRight <= narrow.stripLeft, JSON.stringify(narrow));
+    check('no page errors in the top bar', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+
   // ---- 7. a phone
   {
     const { ctx, page, errors } = await open({ device: 'iPhone 14' });
@@ -457,6 +567,9 @@ const pgn = (round, id, sans, result, opts = {}) => {
     const sizes = await page.evaluate(() => [...document.querySelectorAll('.move-strip button, .board-actions button, .games-btn, .viewnav button')].filter(b => b.offsetParent).map(b => Math.round(b.getBoundingClientRect().height)));
     check('controls are at least 40px tall', Math.min(...sizes) >= 40, sizes.join(','));
     check('the engine and the time per move are in the tabs', (await page.locator('.left-col').count()) === 0 && (await page.locator('.tab-body .engine-card').count()) === 1);
+    const phoneTabs = (await page.locator('.tabs button').allInnerTexts()).map(t => t.trim());
+    check('on a phone guessing is a tab, after Stockfish', phoneTabs.join(',') === 'Stockfish,Tahmin,Benzer,Grafik,Maç,Ayarlar', phoneTabs.join(','));
+    check('and the two board buttons stay under the board', (await page.locator('.board-tools').count()) === 0 && (await page.locator('.move-strip > .nav-btn').count()) === 1);
 
     // a swipe that starts on a piece scrolls the page and plays nothing
     const client = await ctx.newCDPSession(page);

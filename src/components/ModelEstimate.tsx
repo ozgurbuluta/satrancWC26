@@ -4,7 +4,7 @@ import { useT } from '../hooks';
 import { localizeSan, shortName } from '../lib/format';
 import type { GameData } from '../lib/pgn';
 import { predict, shares, type PredictorModel } from '../lib/predictor/model';
-import { clocksAt, referencesHeld, selectRoundNo, selectStakes, useStore } from '../store';
+import { clocksAt, selectRoundNo, selectStakes, useStore } from '../store';
 
 const MODEL = model as unknown as PredictorModel;
 /** A share as the list prints it. A legal move with a share is never printed as 0. */
@@ -18,9 +18,10 @@ interface Props {
 
 /**
  * The site's own estimate of the next move, under the board: three legal
- * moves with a share each, and the rest as "other". It is an experimental
- * model fitted on the two players' earlier games, and labelled as one; what
- * it is and how it was measured is in docs/PREDICTOR.md.
+ * moves with a share each, and the rest as "other". It is a model fitted on
+ * the two players' earlier games; what it is and how it was measured is in
+ * docs/PREDICTOR.md. It is shown at once, whether or not the viewer is
+ * guessing moves.
  *
  * It only ever uses what the viewer has been shown: the visible position,
  * the visible clock, and the match score before this game. It is about the
@@ -34,8 +35,6 @@ export function ModelEstimate({ game, fen }: Props) {
   const notation = useStore(s => s.settings.notation);
   const revealed = useStore(s => s.revealed);
   const resultVisible = useStore(s => s.resultVisible);
-  const held = useStore(referencesHeld);
-  const peekEngine = useStore(s => s.peekEngine);
 
   const whiteToMove = fen.split(' ')[1] !== 'b';
   const mover = whiteToMove ? game.white : game.black;
@@ -86,38 +85,29 @@ export function ModelEstimate({ game, fen }: Props) {
   return (
     <section className="card model-estimate" aria-labelledby="model-title">
       <h3 id="model-title">
-        {t.modelTitle} <span className="tag experimental">{t.experimental}</span>
-        {!held && <span className="model-for">{t.modelFor.replace('{player}', shortName(mover)).replace('{move}', moveNo)}</span>}
+        {t.modelTitle}
+        <span className="model-for">{t.modelFor.replace('{player}', shortName(mover)).replace('{move}', moveNo)}</span>
       </h3>
-      {held ? (
-        <p className="model-held">
-          <span className="muted">{t.modelHeld}</span>
-          <button type="button" className="btn ghost" onClick={peekEngine}>
-            {t.modelReveal}
-          </button>
-        </p>
-      ) : (
-        <ol className="model-moves">
-          {shown.top.map(m => (
-            <li key={m.uci}>
-              <strong>{localizeSan(m.san, notation)}</strong>
-              <span className="model-bar" aria-hidden="true">
-                <i style={{ width: `${Math.max(2, m.percent)}%` }} />
-              </span>
-              <span className="num">{share(m.percent, m.belowOne)}</span>
-            </li>
-          ))}
-          {(shown.other > 0 || shown.otherBelowOne) && (
-            <li className="other">
-              <span>{t.modelOther}</span>
-              <span className="model-bar" aria-hidden="true">
-                <i style={{ width: `${Math.max(2, shown.other)}%` }} />
-              </span>
-              <span className="num">{share(shown.other, shown.otherBelowOne)}</span>
-            </li>
-          )}
-        </ol>
-      )}
+      <ol className="model-moves">
+        {shown.top.map(m => (
+          <li key={m.uci}>
+            <strong>{localizeSan(m.san, notation)}</strong>
+            <span className="model-bar" aria-hidden="true">
+              <i style={{ width: `${Math.max(2, m.percent)}%` }} />
+            </span>
+            <span className="num">{share(m.percent, m.belowOne)}</span>
+          </li>
+        ))}
+        {(shown.other > 0 || shown.otherBelowOne) && (
+          <li className="other">
+            <span>{t.modelOther}</span>
+            <span className="model-bar" aria-hidden="true">
+              <i style={{ width: `${Math.max(2, shown.other)}%` }} />
+            </span>
+            <span className="num">{share(shown.other, shown.otherBelowOne)}</span>
+          </li>
+        )}
+      </ol>
     </section>
   );
 }

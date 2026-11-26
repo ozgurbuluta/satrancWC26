@@ -47,10 +47,15 @@ export interface StreamPreset {
 }
 
 /**
- * Checked on 24 Nov 2026. Chess.com Türkçe streams on YouTube, Twitch and Kick,
- * but YouTube is its main home (largest audience by far, the match stream is
- * scheduled there, and the embed needs no per-domain setup), so only YouTube is
- * listed. Twitch and Kick links can still be pasted.
+ * Checked on 26 Nov 2026, during game 3. Chess.com Türkçe streams on YouTube,
+ * Twitch and Kick; YouTube is its main home (largest audience by far, the
+ * match stream is scheduled there, and the embed needs no per-domain setup),
+ * so only YouTube is listed.
+ *
+ * It is the only Turkish channel here. SatranChess was removed at Özgür's
+ * request. A look at the live-stream feeds of some 150 Turkish chess channels
+ * and at what was live on YouTube during the game found no other Turkish
+ * channel streaming the match, so none was added.
  */
 export const STREAM_PRESETS: StreamPreset[] = [
   {
@@ -60,14 +65,6 @@ export const STREAM_PRESETS: StreamPreset[] = [
     channelId: 'UCTQbZcv-4ImPg9rC9jIjzpQ',
     url: 'https://www.youtube.com/@chesscomturkce/live',
     videos: { 1: 'Q102LHSWMOg' },
-  },
-  {
-    id: 'yt-satranchess',
-    label: 'SatranChess',
-    lang: 'tr',
-    channelId: 'UCwsdTtR9Lwl1TpoY2vPgjNw',
-    url: 'https://www.youtube.com/@SatranChess/live',
-    videos: { 1: '3R1Hin3lQgI' },
   },
   {
     id: 'yt-chesscom',

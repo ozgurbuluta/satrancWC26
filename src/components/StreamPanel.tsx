@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { IS_MATCH, STREAM_PRESETS } from '../config';
 import { useT } from '../hooks';
-import { track, trackOutbound } from '../lib/analytics';
-import { parseStreamLink, youtubeChannel, youtubeVideo, type Embed } from '../lib/streamLinks';
+import { youtubeChannel, youtubeVideo, type Embed } from '../lib/streamLinks';
 import { pickVideo } from '../lib/streams';
 import { selectRoundNo, useStore } from '../store';
 import { CatchUpBar } from './CatchUpBar';
@@ -11,43 +10,27 @@ import { CatchUpBar } from './CatchUpBar';
 export function StreamPanel({ live = true }: { live?: boolean }) {
   const t = useT();
   const streamId = useStore(s => s.settings.streamId);
-  const customStream = useStore(s => s.settings.customStream);
   const hidden = useStore(s => s.settings.streamHidden);
   const paused = useStore(s => s.paused);
   const roundNo = useStore(selectRoundNo);
   const round = useStore(s => s.rounds.find(r => r.id === s.roundId));
   const feeds = useStore(s => s.streamFeeds);
   const setSetting = useStore(s => s.setSetting);
-  const [draft, setDraft] = useState(customStream);
-  const [bad, setBad] = useState(false);
-  const [showPaste, setShowPaste] = useState(streamId === 'custom');
   const uncovered = useStore(s => s.streamUncovered);
   const setUncovered = useStore(s => s.setStreamUncovered);
 
-  const preset = STREAM_PRESETS.find(x => x.id === streamId);
-  const embed = useMemo<Embed | undefined>(() => {
-    if (streamId === 'custom') return parseStreamLink(customStream);
-    const p = preset ?? STREAM_PRESETS[0];
+  // A channel that is no longer listed (or a link of the viewer's own from an earlier version) falls back to the first one.
+  const preset = STREAM_PRESETS.find(x => x.id === streamId) ?? STREAM_PRESETS[0];
+  const embed = useMemo<Embed>(() => {
+    const p = preset;
     // The exact video for this game when it is known or can be found, else whatever the channel is streaming live.
     const video = IS_MATCH ? (p.videos?.[roundNo] ?? pickVideo(feeds[p.channelId], roundNo, round, p.exclude)) : undefined;
     return video
       ? { src: youtubeVideo(video), url: `https://www.youtube.com/watch?v=${video}` }
       : { src: youtubeChannel(p.channelId), url: p.url };
-  }, [streamId, customStream, preset, roundNo, round, feeds]);
-
-  const submit = () => {
-    const parsed = parseStreamLink(draft);
-    setBad(!parsed);
-    if (!parsed) return;
-    setSetting('customStream', draft.trim());
-    setSetting('streamId', 'custom');
-    track('stream_link_paste', { platform: /twitch/.test(parsed.src) ? 'twitch' : /kick/.test(parsed.src) ? 'kick' : 'youtube' });
-    setShowPaste(false);
-  };
+  }, [preset, roundNo, round, feeds]);
 
   const covered = paused && !uncovered;
-  // What the dropdown shows: the chosen channel, or "own link" while one is in use or being entered.
-  const chosen = showPaste || streamId === 'custom' ? 'custom' : (preset?.id ?? STREAM_PRESETS[0].id);
 
   return (
     <section className={`stream ${hidden ? 'is-hidden' : ''}`}>
@@ -55,16 +38,9 @@ export function StreamPanel({ live = true }: { live?: boolean }) {
         <label className="stream-pick">
           <span className="eyebrow">{t.stream}</span>
           <select
-            value={chosen}
+            value={preset.id}
             onChange={e => {
-              const id = e.target.value;
-              if (id === 'custom') {
-                // the field for the link opens; the stream changes once a link is accepted
-                setShowPaste(true);
-                return;
-              }
-              setShowPaste(false);
-              setSetting('streamId', id);
+              setSetting('streamId', e.target.value);
               if (hidden) setSetting('streamHidden', false);
             }}
           >
@@ -73,58 +49,12 @@ export function StreamPanel({ live = true }: { live?: boolean }) {
                 {p.label}
               </option>
             ))}
-            <option value="custom">{t.customStreamOption}</option>
           </select>
         </label>
-        {embed && !hidden && (
-          <a
-            className="icon-btn"
-            href={embed.url}
-            target="_blank"
-            rel="noreferrer"
-            title={t.openInTab}
-            aria-label={t.openInTab}
-            onClick={() => trackOutbound(embed.url)}
-          >
-            ↗
-          </a>
-        )}
         <button className="icon-btn" onClick={() => setSetting('streamHidden', !hidden)}>
           {hidden ? t.showStream : t.hideStream}
         </button>
       </div>
-
-      {showPaste && (
-        <div className="paste" role="group" aria-label={t.pasteLink}>
-          <input
-            value={draft}
-            onChange={e => {
-              setDraft(e.target.value);
-              setBad(false);
-            }}
-            onKeyDown={e => {
-              if (e.key === 'Enter') submit();
-            }}
-            placeholder={t.pasteLink}
-            aria-label={t.pasteLink}
-            inputMode="url"
-            autoCapitalize="off"
-            autoCorrect="off"
-            spellCheck={false}
-            aria-invalid={bad}
-          />
-          <button type="button" className="btn" onClick={submit}>
-            {t.open}
-          </button>
-          {bad ? (
-            <p className="error" role="alert">
-              {t.badLink}
-            </p>
-          ) : (
-            <p className="muted small hint">{t.streamHint}</p>
-          )}
-        </div>
-      )}
 
       {!hidden && (
         <div className={`player ${covered ? 'covered' : ''}`}>
@@ -138,7 +68,7 @@ export function StreamPanel({ live = true }: { live?: boolean }) {
                 </button>
               </p>
             </div>
-          ) : embed ? (
+          ) : (
             <iframe
               key={embed.src}
               src={embed.src}
@@ -147,8 +77,6 @@ export function StreamPanel({ live = true }: { live?: boolean }) {
               allowFullScreen
               referrerPolicy="strict-origin-when-cross-origin"
             />
-          ) : (
-            <div className="player-empty">{t.badLink}</div>
           )}
         </div>
       )}

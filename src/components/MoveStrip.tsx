@@ -16,6 +16,21 @@ interface Props {
   backLabel: string;
   /** The board is on the newest position of the game and shows no line. */
   atNewest: boolean;
+  /** Whether the strip carries the button that turns the board. Not when that button sits beside the board. */
+  flip?: boolean;
+}
+
+/** Turns the board. It lives in the strip under the board, or in the small rail beside it. */
+export function FlipButton({ className = 'nav-btn' }: { className?: string }) {
+  const t = useT();
+  const toggleFlip = useStore(s => s.toggleFlip);
+  return (
+    <button type="button" className={className} onClick={toggleFlip} aria-label={t.flip} title={`${t.flip} (F)`} aria-keyshortcuts="F">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+        <path d="M7 4v14m0 0-3-3m3 3 3-3M17 20V6m0 0-3 3m3-3 3 3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
+  );
 }
 
 /**
@@ -24,7 +39,7 @@ interface Props {
  * while the viewer plays moves of their own, that line of theirs, so nothing
  * on the page shifts when a line is started.
  */
-export function MoveStrip({ game, shown, line, ownMoves, backLabel, atNewest }: Props) {
+export function MoveStrip({ game, shown, line, ownMoves, backLabel, atNewest, flip = true }: Props) {
   const t = useT();
   const notation = useStore(s => s.settings.notation);
   const revealed = useStore(s => s.revealed);
@@ -34,7 +49,6 @@ export function MoveStrip({ game, shown, line, ownMoves, backLabel, atNewest }: 
   const lang = useStore(s => s.settings.lang);
   const step = useStore(s => s.step);
   const setViewPly = useStore(s => s.setViewPly);
-  const toggleFlip = useStore(s => s.toggleFlip);
   const analysisGoto = useStore(s => s.analysisGoto);
   const track = useRef<HTMLDivElement>(null);
   const active = useRef<HTMLButtonElement>(null);
@@ -66,11 +80,7 @@ export function MoveStrip({ game, shown, line, ownMoves, backLabel, atNewest }: 
 
   return (
     <div className="move-strip">
-      <button type="button" className="nav-btn" onClick={toggleFlip} aria-label={t.flip} title={`${t.flip} (F)`} aria-keyshortcuts="F">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
-          <path d="M7 4v14m0 0-3-3m3 3 3-3M17 20V6m0 0-3 3m3-3 3 3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
+      {flip && <FlipButton />}
       <div className="move-strip-moves">
         <button type="button" className="nav-btn" onClick={() => setViewPly(0)} disabled={noBack} aria-label={t.first} title={`${t.first} (Home)`} aria-keyshortcuts="Home">
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">

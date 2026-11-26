@@ -102,7 +102,7 @@ describe('the estimate under the board', () => {
     expect(rows()[3].textContent).toContain('Diğer hamleler');
     expect(percents().reduce((a, b) => a + b, 0)).toBe(100);
     expect(percents()[3]).toBeGreaterThan(0);
-    expect(text()).toContain('Deneysel');
+    expect(text()).not.toContain('Deneysel');
     expect(text()).toMatch(/Sindarov için, 3\. hamle/);
   });
 
@@ -127,21 +127,18 @@ describe('the estimate under the board', () => {
     expect(percents().reduce((a, b) => a + b, 0)).toBe(100);
   });
 
-  it('is held back in guess mode until the viewer has guessed or asks to see it', async () => {
+  it('is shown at once in guess mode too: it never waits for the viewer to guess', async () => {
     const mod = await mount(game({ round: 1, id: 'g1', sans: ITALIAN.slice(0, 4) }));
     await act(async () => mod.useStore.getState().setSetting('guessMode', true));
-    expect(rows()).toHaveLength(0);
-    expect(text()).toContain('sen tahminini yaptıktan sonra görünür');
-    const reveal = [...host.querySelectorAll('button')].find(b => b.textContent === 'Tahmin etmeden göster')!;
-    await act(async () => reveal.click());
     expect(rows()).toHaveLength(4);
-    // a new move: held again, and this time a guess opens it
+    expect(text()).not.toContain('sen tahminini yaptıktan sonra görünür');
+    expect(host.querySelectorAll('.model-estimate button')).toHaveLength(0);
+    // a new move: the estimate for it is there straight away, before any guess
     await act(async () => push(R1, game({ round: 1, id: 'g1', sans: ITALIAN.slice(0, 5) })));
-    expect(rows()).toHaveLength(0);
-    await act(async () => mod.useStore.getState().makeGuess({ uci: 'f8c5' }));
     expect(rows()).toHaveLength(4);
-    // looking never made a guess of its own, and the model's moves are not buttons
-    expect(host.querySelectorAll('.model-moves button')).toHaveLength(0);
+    expect(text()).toMatch(/Gukesh için, 3… hamle/);
+    // and showing it made no guess for the viewer
+    expect(mod.useStore.getState().guess).toBeNull();
   });
 
   it('shows nothing at all once the game is over', async () => {
@@ -194,11 +191,12 @@ describe('the estimate under the board', () => {
     expect(after).toBeGreaterThanOrEqual(10);
   });
 
-  it('is a title, a label and a list, with no explanation under it', async () => {
+  it('is a title and a list, with no label and no explanation', async () => {
     await mount(game({ round: 1, id: 'g1', sans: ITALIAN.slice(0, 4) }));
     const card = host.querySelector('.model-estimate')!;
     expect(card.querySelector('h3')!.textContent).toContain('Model tahmini');
-    expect(card.querySelector('.tag.experimental')!.textContent).toBe('Deneysel');
+    expect(card.querySelector('.tag')).toBeNull();
+    expect(card.textContent).not.toContain('Deneysel');
     expect(card.querySelector('details')).toBeNull();
     expect(card.querySelector('a')).toBeNull();
     expect(card.querySelector('p')).toBeNull();

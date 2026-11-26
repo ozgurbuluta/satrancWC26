@@ -201,7 +201,7 @@ The rule was written down beforehand: the third version replaces the second if i
 - Log loss: 2.125 against 2.205, difference -0.080 (-0.104 to -0.058).
 - Calibration error: 3.4 % against 2.9 %.
 
-**The conditions are not both met.** The gain is in the first 12 moves, where theory speaks; after that the two versions are the same model. The probabilities are not claimed to be calibrated, and the label stays "Deneysel".
+**The conditions are not both met.** The gain is in the first 12 moves, where theory speaks; after that the two versions are the same model. The probabilities are not claimed to be calibrated. The plan kept the "Deneysel" label on the page; it was taken off on 26 November 2026 at Özgür's request, which changes nothing that was measured here.
 
 ## Limits
 

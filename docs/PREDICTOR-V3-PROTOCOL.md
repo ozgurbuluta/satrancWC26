@@ -161,6 +161,14 @@ Phase 3 (`scripts/predictor-v3-title.mjs`):
   the one on the page? It is changed only if every left-out choice is on
   the same side of the page's weight.
 
+## Later: the label on the page
+
+The plan says the label stays "Deneysel". On 26 November 2026, after the
+third version went on the page, Özgür had the label taken off the card.
+The sentence above stands as what was planned. What is claimed did not
+change: the probabilities are not claimed to be calibrated, and the report
+says where they are off.
+
 ## Limits known in advance
 
 - Still no engine, no paid service, no viewer data.
