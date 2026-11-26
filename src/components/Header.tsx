@@ -12,7 +12,6 @@ export function Header({ squares = false }: { squares?: boolean }) {
   const roundId = useStore(s => s.roundId);
   const revealed = useStore(s => s.revealed);
   const resultVisible = useStore(s => s.resultVisible);
-  const feed = useStore(s => s.feed);
   const paused = useStore(s => s.paused);
   const view = useStore(s => s.view);
   const setView = useStore(s => s.setView);
@@ -77,11 +76,6 @@ export function Header({ squares = false }: { squares?: boolean }) {
 
       <div className="top-right">
         {status}
-        <span
-          className={`feed-dot ${feed}`}
-          title={feed === 'live' ? t.feedLive : feed === 'polling' ? t.feedPolling : t.feedConnecting}
-          aria-label={feed === 'live' ? t.feedLive : feed === 'polling' ? t.feedPolling : t.feedConnecting}
-        />
         <button className="lang" onClick={() => setSetting('lang', lang === 'tr' ? 'en' : 'tr')} aria-label={t.language}>
           {lang === 'tr' ? 'EN' : 'TR'}
         </button>

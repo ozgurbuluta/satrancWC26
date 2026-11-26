@@ -4,26 +4,57 @@ import { track } from '../lib/analytics';
 import { findNovelty, getMasterPgn, getMasters, totalGames, type ExplorerData, type ExplorerGame } from '../lib/explorer';
 import { localizeSan } from '../lib/format';
 import { parseGame, type GameData, type Ply } from '../lib/pgn';
-import { selectRoundNo, useStore } from '../store';
+import { useStore } from '../store';
 
 const samePosition = (a: string, b: string) => a.split(' ').slice(0, 3).join(' ') === b.split(' ').slice(0, 3).join(' ');
 const resultText = (w: ExplorerGame['winner']) => (w === 'white' ? '1–0' : w === 'black' ? '0–1' : '½–½');
 const nf = (n: number, lang: string) => new Intl.NumberFormat(lang === 'tr' ? 'tr-TR' : 'en-GB').format(n);
 
-function ResultBar({ d }: { d: { white: number; draws: number; black: number } }) {
+/**
+ * How the games ended: White won, drawn, Black won. With `legend` the three
+ * shares are written out above the bar, each with its name, so none of them
+ * depends on its part of the bar being wide enough. The small bars of the
+ * table carry the numbers inside; the stylesheet hides one only where its
+ * part of the bar is too narrow for it, whichever colour it is.
+ */
+function ResultBar({ d, legend = false }: { d: { white: number; draws: number; black: number }; legend?: boolean }) {
+  const t = useT();
   const total = totalGames(d) || 1;
-  const p = (n: number) => `${Math.round((n / total) * 100)}%`;
-  return (
+  const pct = (n: number) => Math.round((n / total) * 100);
+  const p = (n: number) => `${pct(n)}%`;
+  const inside = (n: number) => (!legend && n > 0 ? <span className={p(n).length < 3 ? 'short' : undefined}>{p(n)}</span> : null);
+  const bar = (
     <div className="resbar" role="img" aria-label={`1–0 ${p(d.white)}, ½–½ ${p(d.draws)}, 0–1 ${p(d.black)}`}>
       <i className="w" style={{ flexGrow: d.white || 0.001 }}>
-        {d.white / total > 0.14 ? p(d.white) : ''}
+        {inside(d.white)}
       </i>
       <i className="d" style={{ flexGrow: d.draws || 0.001 }}>
-        {d.draws / total > 0.14 ? p(d.draws) : ''}
+        {inside(d.draws)}
       </i>
       <i className="b" style={{ flexGrow: d.black || 0.001 }}>
-        {d.black / total > 0.14 ? p(d.black) : ''}
+        {inside(d.black)}
       </i>
+    </div>
+  );
+  if (!legend) return bar;
+  return (
+    <div className="res-shares">
+      {/* the bar already says this to a screen reader */}
+      <div className="res-legend" aria-hidden="true">
+        <span>
+          <i className="sw w" />
+          {t.white} <b>{p(d.white)}</b>
+        </span>
+        <span>
+          <i className="sw d" />
+          {t.draw} <b>{p(d.draws)}</b>
+        </span>
+        <span>
+          <i className="sw b" />
+          {t.black} <b>{p(d.black)}</b>
+        </span>
+      </div>
+      {bar}
     </div>
   );
 }
@@ -120,8 +151,6 @@ export function SimilarPanel({ game, fen, shown }: Props) {
   const lang = useStore(s => s.settings.lang);
   const notation = useStore(s => s.settings.notation);
   const revealed = useStore(s => s.revealed);
-  const matchGames = useStore(s => s.matchGames);
-  const roundNo = useStore(selectRoundNo);
   const setViewPly = useStore(s => s.setViewPly);
   const paused = useStore(s => s.paused);
   const [data, setData] = useState<{ fen: string; d?: ExplorerData; error?: boolean }>({ fen });
@@ -171,19 +200,6 @@ export function SimilarPanel({ game, fen, shown }: Props) {
   const noveltyPly = novelty?.ply ?? null;
   const noveltyMove = noveltyPly ? game.plies[noveltyPly - 1] : undefined;
 
-  // Earlier games of this match that started the same way.
-  const shared = useMemo(() => {
-    const mine = game.plies.slice(0, revealed).map(p => p.uci);
-    return matchGames
-      .filter(mg => mg.roundNo < roundNo && mg.moves.length > 0)
-      .map(mg => {
-        let n = 0;
-        while (n < mine.length && n < mg.moves.length && mine[n] === mg.moves[n]) n++;
-        return { roundNo: mg.roundNo, plies: n, opening: mg.opening };
-      })
-      .filter(x => x.plies >= 2);
-  }, [game, revealed, matchGames, roundNo]);
-
   return (
     <div className="similar">
       {game.opening && !paused && (
@@ -192,30 +208,25 @@ export function SimilarPanel({ game, fen, shown }: Props) {
         </p>
       )}
 
-      {novelty && novelty.key === noveltyKey && revealed > 0 && (
-        <div className={`novelty ${noveltyPly ? 'has' : ''}`}>
-          {noveltyPly && noveltyMove ? (
-            <>
-              <span className="tag">{t.novelty}</span>
-              <button className="link" onClick={() => setViewPly(noveltyPly)}>
-                {Math.ceil(noveltyPly / 2)}
-                {noveltyPly % 2 === 1 ? '.' : '…'} {localizeSan(noveltyMove.san, notation)}
-              </button>
-              <span>
-                {' '}
-                {t.noveltyText}
-                {before && totalGames(before) > 0 && <span className="muted"> {t.noveltyBefore.replace('{n}', nf(totalGames(before), lang))}</span>}
-              </span>
-            </>
-          ) : (
-            <span>{t.inBook}</span>
-          )}
+      {/* Only once the game has left what masters played: while every move is a known one there is nothing to say. */}
+      {novelty && novelty.key === noveltyKey && revealed > 0 && noveltyPly && noveltyMove && (
+        <div className="novelty has">
+          <span className="tag">{t.novelty}</span>
+          <button className="link" onClick={() => setViewPly(noveltyPly)}>
+            {Math.ceil(noveltyPly / 2)}
+            {noveltyPly % 2 === 1 ? '.' : '…'} {localizeSan(noveltyMove.san, notation)}
+          </button>
+          <span>
+            {' '}
+            {t.noveltyText}
+            {before && totalGames(before) > 0 && <span className="muted"> {t.noveltyBefore.replace('{n}', nf(totalGames(before), lang))}</span>}
+          </span>
         </div>
       )}
 
       <section>
         <h3>{total > 0 ? t.mastersCount.replace('{n}', nf(total, lang)) : d ? t.mastersNone : data.error ? t.explorerError : t.loading}</h3>
-        {d && total > 0 && <ResultBar d={d} />}
+        {d && total > 0 && <ResultBar d={d} legend />}
       </section>
 
       {d && d.moves.length > 0 && (
@@ -267,22 +278,6 @@ export function SimilarPanel({ game, fen, shown }: Props) {
           </ul>
         </section>
       )}
-
-      <section>
-        <h3>{t.matchCompare}</h3>
-        {shared.length === 0 ? (
-          <p className="muted small">{t.noEarlier}</p>
-        ) : (
-          <ul className="shared">
-            {shared.map(x => (
-              <li key={x.roundNo}>
-                {t.sameUntil.replace('{g}', String(x.roundNo)).replace('{n}', String(Math.ceil(x.plies / 2)))}
-                {x.opening && <span className="muted"> · {x.opening}</span>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
 
       <p className="muted small">{t.mastersSource}</p>
     </div>

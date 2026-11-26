@@ -33,6 +33,19 @@ describe('Turkish wording', () => {
     expect(all).not.toContain(' · ');
   });
 
+  it('no longer says what was taken off the page on 26 November', () => {
+    const all = Object.values(STRINGS.tr).join(' | ');
+    expect(all).not.toContain('Buraya kadarki bütün hamleler');
+    expect(all).not.toContain('Bu maçta');
+    expect(all).not.toContain('hamleye kadar aynı');
+    expect(all).not.toContain('Beyazın kazanma şansı, hamle hamle');
+    expect(all).not.toContain('Canlı bağlantı');
+    for (const gone of ['inBook', 'matchCompare', 'sameUntil', 'noEarlier', 'evalChartSub', 'feedLive', 'feedPolling', 'feedConnecting']) {
+      expect(gone in STRINGS.tr, gone).toBe(false);
+      expect(gone in STRINGS.en, gone).toBe(false);
+    }
+  });
+
   it('says what a new move is without repeating the move', () => {
     expect(STRINGS.tr.novelty).toBe('Yeni hamle');
     expect(STRINGS.tr.noveltyText).toBe('usta oyunlarında daha önce oynanmamış.');

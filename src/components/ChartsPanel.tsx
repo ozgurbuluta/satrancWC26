@@ -94,7 +94,7 @@ function EvalChart({ game, shown, revealed, judged }: ChartProps & { judged: (Pl
           width={width}
           height={H}
           role="img"
-          aria-label={t.evalChartSub}
+          aria-label={t.evalChart}
           onPointerMove={onMove}
           onPointerLeave={() => setHover(null)}
           onClick={() => {
@@ -192,7 +192,6 @@ export function ChartsPanel({ game, shown, withTime }: { game: GameData; shown: 
           {t.evalChart}
           {scored < revealed + 1 && <span className="muted small"> · {t.calculating.replace('{a}', String(scored)).replace('{b}', String(revealed + 1))}</span>}
         </h3>
-        <p className="muted small sub">{t.evalChartSub}</p>
         <EvalChart game={game} shown={shown} revealed={revealed} judged={judged} />
       </section>
 

@@ -35,7 +35,8 @@ control said in the viewer's language, and what the engine card says about
 the choice of move, who is winning, the win chances counted from real
 games, the list of broadcasts (and what a choice that is no longer offered
 falls back to), the moves as a table, the button that turns the board in
-its two places, and the top bar's mark and title: 319 tests.
+its two places, the top bar's mark and title and what is on its right, and
+the settings tab as one block for each setting: 322 tests.
 Also in CI: the secret check over the whole history, the type check, and
 builds for `/` and `/satranc/`.
 
@@ -188,7 +189,7 @@ and for tapping moves on the board.
 ## The model estimate (issues 4 and 13)
 
 Run on 26 November 2026 in headless Chromium against the preview build, in
-`tests/e2e/board.cjs` (113 of 113 checks), against a simulated match in
+`tests/e2e/board.cjs` (120 of 120 checks), against a simulated match in
 which Sindarov is to play move 6 of a Ruy Lopez.
 
 | Model estimate, under the board | Result |
@@ -249,6 +250,15 @@ stretched flex item, which is the part that differs between browsers.
 | 1728 px | one line, the place under it in capitals |
 | 1280 px | exactly two lines ("Dünya Satranç" / "Şampiyonası 2026"), running into nothing |
 | Phone | guessing is a tab after Stockfish; the two board buttons stay under the board |
+
+| Tabs and top bar, second round of 26 November | Result |
+|---|---|
+| Top bar, right side | the status and the language; no connection dot |
+| Benzer, how the games in the position ended | written out above the bar for all three results: "Beyaz 26% Berabere 60% Siyah 13%" for 14, 32 and 7 of 53 games (the masters database answered by the test) |
+| Benzer, the small bars of the moves | a share is shown wherever its part of the bar is wide enough, Black's included (20 % shown in 43 px, 9 % in 19 px), and never cut off. Looked at separately on a 390 px phone: a 9 % share in 16 px is left out rather than clipped |
+| Benzer, removed | no "Bu maçta" block, and no line while every move is a known one |
+| Grafik | the chart's title with no line under it |
+| Ayarlar | one block for each setting with its note inside; a rule above every block but the first, none under any, so none between a row and its note; the same padding in every block |
 
 Looked at by eye in screenshots at 1024, 1280, 1440, 1600 and 1728 px and
 on a 390 px phone. Not covered: real Safari (the board's shape there rests

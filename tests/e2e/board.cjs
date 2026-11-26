@@ -73,6 +73,30 @@ const pgn = (round, id, sans, result, opts = {}) => {
       if (u.pathname.startsWith('/api/broadcast/-/-/')) return json({ round: {}, games: [] });
       return route.fulfill({ status: 404, headers: cors, body: '{}' });
     });
+    // The masters database answered here, where a check needs known numbers: 53 games, 14 won by White, 32 drawn, 7 by Black.
+    if (opts.masters) {
+      await ctx.route('https://explorer.lichess.ovh/**', route => {
+        const cors = { 'access-control-allow-origin': '*' };
+        if (!new URL(route.request().url()).pathname.startsWith('/masters')) return route.fulfill({ status: 404, headers: cors, body: '{}' });
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          headers: cors,
+          body: JSON.stringify({
+            white: 14,
+            draws: 32,
+            black: 7,
+            moves: [
+              { uci: 'f1e1', san: 'Re1', white: 9, draws: 22, black: 3, averageRating: 2650 },
+              { uci: 'd2d3', san: 'd3', white: 4, draws: 8, black: 3, averageRating: 2640 },
+              { uci: 'a4c6', san: 'Bxc6', white: 1, draws: 2, black: 1, averageRating: 2600 },
+            ],
+            topGames: [],
+            opening: { eco: 'C84', name: 'Ruy Lopez: Closed' },
+          }),
+        });
+      });
+    }
     await page.goto(APP + (opts.path ?? '/'), { waitUntil: 'domcontentloaded' });
     await page.waitForSelector(opts.wait ?? '.board-col cg-board piece', { timeout: 25000 });
     await page.waitForTimeout(1500);
@@ -554,6 +578,57 @@ const pgn = (round, id, sans, result, opts = {}) => {
     });
     check('on a shorter bar it takes exactly two lines and runs into nothing', narrow.lines === 2 && narrow.halves.join('|') === 'Dünya Satranç|Şampiyonası 2026' && narrow.barOverflow <= 0 && narrow.brandRight <= narrow.stripLeft, JSON.stringify(narrow));
     check('no page errors in the top bar', errors.length === 0, errors.join(' | '));
+    await ctx.close();
+  }
+
+  // ---- 6d. the tabs and the top bar after the clean-up of 26 November
+  {
+    const { ctx, page, errors } = await open({ masters: true });
+    const topRight = (await page.locator('.top-right').innerText()).replace(/\s+/g, ' ').trim();
+    check('the top bar has no connection dot: the status and the language', (await page.locator('.feed-dot').count()) === 0 && topRight === 'CANLI EN', topRight);
+
+    await page.locator('.tabs button', { hasText: 'Benzer' }).click();
+    await page.waitForSelector('.similar .res-legend');
+    await page.waitForSelector('.similar .next-moves .resbar');
+    const legend = (await page.locator('.similar .res-legend').innerText()).replace(/\s+/g, ' ').trim();
+    check('how the games in the position ended is written out for all three results, Black’s included', legend === 'Beyaz 26% Berabere 60% Siyah 13%', legend);
+    const similar = await page.locator('.similar').innerText();
+    check('the tab has no "Bu maçta" block and no line saying every move is a known one', !/Bu maçta|hamleye kadar aynı|Buraya kadarki/.test(similar) && (await page.locator('.similar .novelty').count()) === 0);
+    const bars = await page.evaluate(() =>
+      [...document.querySelectorAll('.similar .next-moves .resbar')].map(bar =>
+        [...bar.querySelectorAll('i')].map(part => {
+          const label = part.querySelector('span');
+          const shown = !!label && getComputedStyle(label).display !== 'none';
+          return { width: Math.round(part.getBoundingClientRect().width), text: label ? label.textContent : '', shown, fits: !shown || label.scrollWidth <= part.clientWidth };
+        }),
+      ),
+    );
+    const parts = bars.flat();
+    check('in the small bars a share is shown wherever its part is wide enough, Black’s too, and never cut off', bars.length === 3 && parts.every(x => x.fits) && parts.every(x => x.shown === (x.width > 27 || (x.text.length < 3 && x.width >= 19))) && bars[1][2].shown && bars[1][2].text === '20%', JSON.stringify(bars.map(b => b.map(x => `${x.width}:${x.text}${x.shown ? '' : ' hidden'}`))));
+
+    await page.locator('.tabs button', { hasText: 'Grafik' }).click();
+    await page.waitForSelector('.charts');
+    await page.waitForTimeout(300);
+    check('the evaluation chart has its title and no line under it', !/hamle hamle/.test(await page.locator('.charts').innerText()) && (await page.locator('.charts h3').first().innerText()).startsWith('Değerlendirme grafiği') && (await page.locator('.charts section').first().locator('p.sub').count()) === 0);
+
+    await page.locator('.tabs button', { hasText: 'Ayarlar' }).click();
+    await page.waitForSelector('.settings .setting');
+    const settings = await page.evaluate(() => {
+      const blocks = [...document.querySelectorAll('.settings > .setting')];
+      const notes = [...document.querySelectorAll('.settings p:not(.notice)')];
+      return {
+        blocks: blocks.length,
+        rules: blocks.map(b => parseFloat(getComputedStyle(b).borderTopWidth)).join(','),
+        bottomRules: blocks.filter(b => parseFloat(getComputedStyle(b).borderBottomWidth) > 0).length,
+        notes: notes.length,
+        notesInside: notes.every(n => n.parentElement.classList.contains('setting')),
+        // a note starts under its own row, with nothing drawn between the two
+        noteGaps: notes.map(n => Math.round(n.getBoundingClientRect().top - n.parentElement.querySelector('.setting-row').getBoundingClientRect().bottom)).join(','),
+        padding: [...new Set(blocks.map(b => getComputedStyle(b).paddingTop + '/' + getComputedStyle(b).paddingBottom))].join(' '),
+      };
+    });
+    check('each setting is one block with its note inside it, and the rule is between settings, never between a row and its note', settings.blocks >= 7 && settings.notes >= 2 && settings.notesInside && settings.bottomRules === 0 && settings.rules === ['0', ...Array(settings.blocks - 1).fill('1')].join(',') && settings.noteGaps.split(',').every(g => Number(g) >= 0 && Number(g) <= 10) && settings.padding === '12px/12px', JSON.stringify(settings));
+    check('no page errors in these tabs', errors.length === 0, errors.join(' | '));
     await ctx.close();
   }
 
