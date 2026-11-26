@@ -782,6 +782,38 @@ const pgn = (round, id, sans, result, opts = {}) => {
     check('where the column has room for both, the video keeps its full size', roomy.video[0] === roomy.side && roomy.video[1] === Math.round((roomy.side * 9) / 16) && roomy.list >= 140, JSON.stringify(roomy));
     await ctx.close();
   }
+  for (const side of [320, 432, 631]) {
+    // Özgür's window with five engine lines, at the three widths he had the right side
+    const { ctx, page } = await open({ viewport: { width: 1803, height: 919 }, blankVideo: true });
+    await page.evaluate(w => localStorage.setItem('wcc26:settings', JSON.stringify({ ...JSON.parse(localStorage.getItem('wcc26:settings') || '{}'), sideWidth: w, engineLines: 5 })), side);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('button.move');
+    await page.waitForFunction(() => document.querySelectorAll('.side-col .pv-list li').length === 5, null, { timeout: 60000 });
+    await page.waitForTimeout(600);
+    const five = await page.evaluate(() => {
+      const box = sel => document.querySelector(sel).getBoundingClientRect();
+      const engine = box('.side-col .engine-card');
+      const list = box('.side-col .move-list');
+      const rows = [...document.querySelectorAll('.side-col .pv-list li')];
+      const lastRow = [...document.querySelectorAll('.side-col .move-list .move')].at(-1).getBoundingClientRect();
+      const pick = document.querySelector('.side-col .engine-head .engine-lines select');
+      return {
+        side: Math.round(box('.side-col').width),
+        video: Math.round(box('.player').height),
+        engine: Math.round(engine.height),
+        list: Math.round(list.height),
+        rowHeights: rows.map(li => Math.round(li.getBoundingClientRect().height)),
+        rowsWhole: rows.every(li => li.getBoundingClientRect().bottom <= engine.bottom + 1) && engine.bottom <= list.top + 1,
+        wholeLineOnHover: rows.every(li => li.title.replace(/\d+[.…] /g, '').split(' ').length === li.querySelectorAll('.pv-rest > span').length + 1 && li.title.startsWith('6. ')),
+        pickInHead: !!pick && pick.value === '5' && !!pick.closest('label').textContent.trim(),
+        lastMoveInView: lastRow.bottom <= list.bottom + 1 && list.bottom <= innerHeight,
+        overflowX: document.documentElement.scrollWidth - innerWidth,
+      };
+    });
+    check(`five engine lines beside the board at ${side} px still leave the moves four rows or more`, five.side === side && five.list >= 140 && five.rowsWhole && five.lastMoveInView && five.video >= 120 && five.overflowX <= 0, JSON.stringify(five));
+    check(`each of the five is one row, with the whole line as its tooltip, and their number is chosen in the card’s head (${side} px)`, five.rowHeights.every(h => h <= 44) && five.wholeLineOnHover && five.pickInHead, JSON.stringify(five));
+    await ctx.close();
+  }
 
   // ---- 7. a phone
   {

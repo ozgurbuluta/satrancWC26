@@ -11,11 +11,24 @@ describe('the video\u2019s height when nobody has set it', () => {
   });
 
   it('is lower where the moves would otherwise get less than four rows', () => {
-    // the right side dragged to 640 px in a 846 px column: 360 would leave the moves two rows
+    // the right side dragged to 640 px in a 846 px column: 360 would leave the moves too little
     const h = automaticVideoHeight({ width: 640, height: 846 }, three);
     expect(h).toBeLessThan(360);
-    // what is left for the panel holds the engine card (92 + 3 x 45 + 40), the opening (36) and four rows (140)
-    expect(846 - (40 + 48 + 44) - h).toBe(92 + 135 + 40 + 36 + 140);
+    // what is left for the panel holds the engine card (58 + 3 x 39 + 40), the opening (36) and four rows (140)
+    expect(846 - (40 + 48 + 44) - h).toBe(58 + 117 + 40 + 36 + 140);
+  });
+
+  it('with five lines, as in Özgür\u2019s window, still leaves the moves their four rows', () => {
+    // 1803 x 919: the column is 835 px high; the right side at its narrowest, at its default and dragged wide
+    const five = { engine: true, lines: 5, winChance: false };
+    const card = 58 + 5 * 39 + 40;
+    for (const width of [320, 432, 631]) {
+      const h = automaticVideoHeight({ width, height: 835 }, five);
+      expect(h).toBeGreaterThanOrEqual(Math.min(200, Math.round((width * 9) / 16)));
+      expect(835 - (40 + 48 + 44) - h - card - 36).toBeGreaterThanOrEqual(140);
+    }
+    // at the narrowest the video is not touched at all: its 180 px leave more than enough
+    expect(automaticVideoHeight({ width: 320, height: 835 }, five)).toBe(180);
   });
 
   it('never goes below 200 px, or below what the width allows when that is less', () => {
@@ -29,8 +42,8 @@ describe('the video\u2019s height when nobody has set it', () => {
     expect(automaticVideoHeight(column, { ...three, lines: 1 })).toBeGreaterThan(base);
     expect(automaticVideoHeight(column, { ...three, lines: 5 })).toBeLessThan(base);
     expect(automaticVideoHeight(column, { ...three, winChance: true })).toBeLessThan(base);
-    // a line takes two rows in a narrow column, so the same three lines ask for more there
-    expect(automaticVideoHeight({ width: 590, height: 846 }, three)).toBeLessThan(automaticVideoHeight({ width: 600, height: 846 }, three));
+    // with the engine switched off its card is a line of text
+    expect(automaticVideoHeight(column, { ...three, engine: false })).toBeGreaterThan(base);
   });
 
   it('depends on nothing but the column and the settings, and is a whole number', () => {
