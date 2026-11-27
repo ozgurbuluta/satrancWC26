@@ -13,3 +13,6 @@ public/engine
 # Reproducible source archive downloads
 .cache/
 __pycache__/
+
+# Screenshots the browser suites write next to where they are run
+/*.png
