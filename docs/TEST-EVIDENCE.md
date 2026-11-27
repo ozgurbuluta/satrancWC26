@@ -36,9 +36,11 @@ the choice of move, who is winning, the win chances counted from real
 games, the list of broadcasts (and what a choice that is no longer offered
 falls back to), the moves as a table, the button that turns the board in
 its two places, the top bar's mark and title and what is on its right, and
-the settings tab as one block for each setting, and the page asking for the
-keyboard back from a frame on a press, the video's automatic height, and the
-height set by hand being remembered: 333 tests.
+the settings tab as one block for each setting, the page asking for the
+keyboard back from a frame on a press, the video's automatic height, the
+height set by hand being remembered, and the match as a scoreboard (a row
+for each player, a tile for each game, nothing said of a result the viewer
+has not reached): 350 tests.
 Also in CI: the secret check over the whole history, the type check, and
 builds for `/` and `/satranc/`.
 
@@ -161,7 +163,13 @@ board's own DOM and not only about the final position.
 
 | Top bar, game list, broadcast | Result |
 |---|---|
-| Game squares | 14, each named ("1. oyun: Sindarov – Gukesh, ½–½"); played, live and coming told apart; the open one marked |
+| The scoreboard | inside the 60 px bar: a row for each player, the name on the left and the total on the right in the title's serif, read as "Gukesh 1½, Sindarov ½" before the list of games |
+| Game tiles | 14, each named ("1. oyun: Sindarov – Gukesh, ½–½"); played, live and coming told apart; the open one marked |
+| A played game | a tile of two halves, each in its player's row, in the colour of the pieces that player had: ½ and ½ for a draw, 1 and 0 for a win |
+| The game in progress | the pieces each has, no points, a red light |
+| A game to come | one tall tile with its number; the second half of the match starts after a wider gap |
+| At 1280 px | all fourteen tiles, clear of the title and of the view switch |
+| Phone | the two rows of names and totals, no tiles |
 | A square, and a row of the full list | opens its game |
 | The full list | a dialog that takes the focus; Escape closes it and returns the focus |
 | Broadcast | a labelled dropdown of the three listed channels; choosing changes the video; works from the keyboard; no link of the viewer's own and no button to another tab (both removed on 26 November 2026) |
@@ -191,7 +199,7 @@ and for tapping moves on the board.
 ## The model estimate (issues 4 and 13)
 
 Run on 26 November 2026 in headless Chromium against the preview build, in
-`tests/e2e/board.cjs` (147 of 147 checks), against a simulated match in
+`tests/e2e/board.cjs` (156 of 156 checks), against a simulated match in
 which Sindarov is to play move 6 of a Ruy Lopez.
 
 | Model estimate, under the board | Result |
