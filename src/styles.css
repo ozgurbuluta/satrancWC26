@@ -78,8 +78,14 @@ body.dragging {
   user-select: none;
 }
 
-body.dragging iframe {
+body.dragging iframe,
+body.dragging-row iframe {
   pointer-events: none;
+}
+
+body.dragging-row {
+  cursor: row-resize;
+  user-select: none;
 }
 
 button,
@@ -813,6 +819,11 @@ cg-board square.check {
   overflow: hidden;
 }
 
+.player-frame {
+  width: 100%;
+  height: 100%;
+}
+
 .player iframe {
   width: 100%;
   height: 100%;
@@ -1486,6 +1497,11 @@ button.move:hover {
   font-size: 13px;
   font-weight: 400;
   color: var(--muted);
+}
+
+.model-wait {
+  margin: 0;
+  font-size: 13.5px;
 }
 
 .model-moves {
@@ -3317,6 +3333,111 @@ body {
   gap: 12px;
 }
 
+/*
+ * The video and the panel under it share the column's height.
+ *
+ * By itself the video is as tall as its width allows. Where that would leave
+ * the first tab too little room for the engine's lines and a few rows of
+ * moves, the video is given a lower height (worked out in App.tsx from the
+ * size of the column and the number of engine lines, so it does not change
+ * while the engine is thinking). The bar between the two sets it by hand.
+ */
+@media (min-width: 901px) {
+  .side-col {
+    container-type: inline-size;
+  }
+
+  /* The dropdown row and the video take part in the column directly. */
+  .stream {
+    display: contents;
+  }
+
+  .stream-top {
+    flex: none;
+  }
+
+  .player:not(.covered) {
+    flex: none;
+    /* never taller than 16:9 of the column's width */
+    height: min(var(--video-h, 56.25cqw), 56.25cqw);
+    display: flex;
+    justify-content: center;
+    background: none;
+    overflow: visible;
+  }
+
+  /* Always 16:9: where the box is lower than its width allows, the video is narrower and sits in the middle. */
+  .player:not(.covered) .player-frame {
+    flex: none;
+    width: auto;
+    height: 100%;
+    max-width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: #000;
+  }
+
+  .player.covered {
+    flex: none;
+  }
+
+  .hsplit {
+    flex: none;
+    height: 14px;
+    margin: -9px 0;
+    display: grid;
+    place-items: center;
+    cursor: row-resize;
+    touch-action: none;
+  }
+
+  .hsplit::after {
+    content: '';
+    width: 44px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line-strong);
+    transition: background 0.15s, width 0.15s;
+  }
+
+  .hsplit:hover::after,
+  body.dragging-row .hsplit::after {
+    width: 72px;
+    background: var(--accent);
+  }
+
+  /* The moves take what the video and the engine's lines leave, and never less than two rows. */
+  .side-col .move-list {
+    min-height: 64px;
+  }
+
+  /*
+   * Beside the board the engine's card is kept low, so that five lines still leave room for the moves: a line is
+   * one row, cut with an ellipsis where the column ends (the whole line is its tooltip).
+   */
+  .side-col .engine-card {
+    padding: 12px 16px 10px;
+  }
+
+  .side-col .engine-card .pv-list {
+    margin-top: 8px;
+  }
+
+  .side-col .engine-card .pv-list li {
+    padding: 6px 0;
+  }
+
+  .side-col .engine-card .pv-moves {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+  }
+}
+
 /* ---------- board column ---------- */
 
 .player-bar,
@@ -3767,29 +3888,33 @@ body {
   flex: none;
 }
 
-.engine-card .engine-head .switch {
-  margin-left: auto;
+/* Read by a screen reader, not shown. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
+/* The number of lines, in the card's head beside the switch. */
 .engine-lines {
+  flex: none;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 10px;
-  color: var(--muted);
-  font-size: 13px;
 }
 
 .engine-lines select {
-  min-width: 60px;
-  min-height: 40px;
-  padding: 6px 10px;
+  min-width: 52px;
+  min-height: 32px;
+  padding: 2px 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
   color: var(--text);
   font: inherit;
+  font-size: 13px;
 }
 
 .switch {
@@ -4281,6 +4406,10 @@ body {
 
   .move-list {
     max-height: 40dvh;
+  }
+
+  .engine-lines select {
+    min-height: 40px;
   }
 
   .player-bar {

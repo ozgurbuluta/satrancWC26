@@ -172,6 +172,15 @@ export const runV3 = async ctx => {
     };
   };
 
+  // ---------- the fourth version's study: the engine's opinion of each move, on top of the third version as it was chosen
+  if (process.argv.includes('--v4-engine')) {
+    const { runEngine } = await import('./predictor-v4-engine.mjs');
+    const chosen = JSON.parse(readFileSync(SELECTION_V3, 'utf8')).chosen;
+    const sets = Object.fromEntries(['selection', 'holdout', 'benchmark'].map(name => [name, ownOf(name).map(r => prepare(r))]));
+    await runEngine({ sets, model: v3(chosen), measure, round, log });
+    return;
+  }
+
   // ---------- every choice, on the selection games
   const selRows = ownOf('selection').map(r => prepare(r));
   const start = { temperature: v2.temperature, kappa: v2.kappa, others: v2.others, halfLife: v2.halfLife, epsilon: v2.epsilon, nu: null, theoryHalfLife: null, same: 0, faster: 0, minTheory: 1 };

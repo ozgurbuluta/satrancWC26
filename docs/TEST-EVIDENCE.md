@@ -37,9 +37,10 @@ games, the list of broadcasts (and what a choice that is no longer offered
 falls back to), the moves as a table, the button that turns the board in
 its two places, the top bar's mark and title and what is on its right, and
 the settings tab as one block for each setting, the page asking for the
-keyboard back from a frame on a press, and the match as a scoreboard (a row
+keyboard back from a frame on a press, the video's automatic height, the
+height set by hand being remembered, and the match as a scoreboard (a row
 for each player, a tile for each game, nothing said of a result the viewer
-has not reached): 331 tests.
+has not reached): 350 tests.
 Also in CI: the secret check over the whole history, the type check, and
 builds for `/` and `/satranc/`.
 
@@ -198,7 +199,7 @@ and for tapping moves on the board.
 ## The model estimate (issues 4 and 13)
 
 Run on 26 November 2026 in headless Chromium against the preview build, in
-`tests/e2e/board.cjs` (136 of 136 checks), against a simulated match in
+`tests/e2e/board.cjs` (156 of 156 checks), against a simulated match in
 which Sindarov is to play move 6 of a Ruy Lopez.
 
 | Model estimate, under the board | Result |
@@ -278,6 +279,20 @@ stretched flex item, which is the part that differs between browsers.
 | A control that has the keyboard (the broadcast dropdown) | keeps it: the page takes the keyboard back from a frame and from nothing else |
 | Inside the sandboxed frame of `/satranc/`, with the real video (`embed.cjs`, both desktop modes) | focus in the video, arrows held by it; after a click on the board the focus is on the page and the arrow moves the board again |
 
+| The video and the panel under it (1600 × 930, right side 640 px wide) | Result |
+|---|---|
+| By default (three engine lines) | the video is 323 px high instead of the 360 its width allows, still 16:9 and in the middle of the column; the list of moves gets 223 px, with the engine's lines whole above it and the newest move in view. Before, in the same window, the moves had about two rows |
+| While the engine thinks | the video keeps its height. A first attempt let the video give way to whatever the engine card needed at the moment: it changed size as the lines changed, and a click on it could miss. The height is now worked out from the column and the settings only |
+| The bar under the video, dragged up 100 px | the video 100 px lower, the moves 100 px taller |
+| Dragged all the way up | the video stops at 120 px; the engine's lines are still whole |
+| Dragged all the way down | the video stops at the 360 px its width allows; the moves keep a strip |
+| After a reload, and under another tab | the chosen height is kept |
+| A double click on the bar | back to automatic |
+| A column with room for both (1728 × 1000) | the video at its full size, as before |
+| Five engine lines in Özgür's window (1803 × 919), right side 320, 432 and 631 px wide | each line is one row of 39 px with the whole line as its tooltip, the engine card 251 px; the video 180, 234 and 234 px high; the list of moves 278, 224 and 224 px. With lines of two rows, as on the live site that day, the card alone took about 440 px and the moves had no row or two |
+| The number of lines | chosen in the card's head beside the switch; it has no row of its own |
+| Phone | no bar |
+
 Looked at by eye in screenshots at 1024, 1280, 1440, 1600 and 1728 px and
 on a 390 px phone. Not covered: real Safari (the board's shape there rests
 on the stylesheet change above, not on a test), and a real phone.
@@ -291,6 +306,42 @@ to within the three weeks between the two ageing dates.
 
 Not covered: real Safari, a real phone, and the estimate against the
 production feed.
+
+## The estimate with the engine's lines (fourth version)
+
+Run on 26 November 2026. What was measured about the estimate itself (the
+games of 2026) is in [PREDICTOR-V3-REPORT.md](PREDICTOR-V3-REPORT.md); this
+is about the page.
+
+`npm test` on this branch: 338 tests. New among them: the engine-aware
+step worked out by hand (what a listed move gives up, what an unlisted one
+pays, the exponent on the model's own estimate, castling in the engine's
+spelling, a line counted once and at most five), the shipped weights equal
+to the fitted ones, and the card with and without the engine.
+
+| The card under the board | Result |
+|---|---|
+| Engine on, no answer yet | "Hesaplanıyor…" and no rows; after four seconds without an answer, the model's own estimate |
+| Engine on, three lines for the position | the engine's two best lead; a move the engine does not list keeps under a third of what it had |
+| A listed move that drops a piece's worth | 0 %, while the two sound moves hold over 85 % |
+| Lines for another position | not used: the card is still waiting |
+| Engine switched off | the model's own estimate at once |
+
+In headless Chromium against the preview build (`tests/e2e/board.cjs`, 131
+of 131 on this branch), with the page's own Stockfish running:
+
+| | Result |
+|---|---|
+| Engine on | the estimate's three moves were Ke1, d3, Ac3, the same three as the engine's lines on the Stockfish card |
+| Engine switched off | 65 + 27 + 5 + 3, the model's own estimate, every time |
+| Phone | the card under the board, rows adding up to 100 |
+
+`share.cjs` 61 of 61 and `puzzles.cjs` 33 of 33 on the same build. The
+part of the page that carries the model is 616 KB (318 KB compressed), 4 KB
+more than before.
+
+Not covered: the card against the live feed with the cloud database's
+lines, real Safari, a real phone.
 
 ## Share links
 

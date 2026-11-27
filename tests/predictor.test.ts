@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import matchPgn from '../data/predictor-v3/match-2026.pgn?raw';
 import situationStudy from '../data/predictor-v3/situation.json';
+import engineStudy from '../data/predictor-v4/engine.json';
 import titleStudy from '../data/predictor-v3/title-matches.json';
 import shipped from '../src/data/predictor.json';
 import { parseGame, splitGames } from '../src/lib/pgn';
 import { legalSans } from '../src/lib/position';
 import { candidates, FEATURES, FEATURE_COUNT, positionKey } from '../src/lib/predictor/features';
-import { clockPressure, earlierMoves, matchUrgency, positionsOf, predict, shares, tableKey, theoryMoves, type PredictorModel } from '../src/lib/predictor/model';
+import { clockPressure, earlierMoves, matchUrgency, positionsOf, predict, shares, tableKey, theoryMoves, withEngine, type Prediction, type PredictorModel } from '../src/lib/predictor/model';
 
 const MODEL = shipped as unknown as PredictorModel;
 /** A model with no weights and no tables: every legal move equally likely. */
@@ -413,6 +414,87 @@ describe('clock pressure and the match rule', () => {
   });
 });
 
+describe('the engine\u2019s opinion of the moves', () => {
+  /** Four legal moves with shares 40, 30, 20 and 10 %, as an estimate without the engine. */
+  const four = (): Prediction => ({
+    supported: true,
+    moves: [
+      { uci: 'a2a3', san: 'a3', p: 0.4 },
+      { uci: 'b2b3', san: 'b3', p: 0.3 },
+      { uci: 'c2c3', san: 'c3', p: 0.2 },
+      { uci: 'd2d3', san: 'd3', p: 0.1 },
+    ],
+    other: 0.1,
+    pressure: 0,
+    urgency: 0,
+    seenBefore: false,
+  });
+  const weighted = (engine: PredictorModel['engine']): PredictorModel => ({ ...FLAT, engine });
+  const share = (p: Prediction, uci: string) => p.moves.find(m => m.uci === uci)!.p;
+
+  it('takes from a move what it gives up against the first line, and more from a move that is not listed', () => {
+    const model = weighted({ '2': { alpha: 1, beta: 10, gamma: 2 } });
+    // the engine's lines: b3 first, c3 second and worth 0.2 less on the scale from -1 to 1, which is 0.1 of the result
+    const got = withEngine(model, four(), [
+      { uci: 'b2b3', chances: 0.2 },
+      { uci: 'c2c3', chances: 0 },
+    ]);
+    // by hand: a3 and d3 are not listed, so they take the last line's loss (0.1 x 10 = 1) and the 2 on top
+    const weights = { a2a3: 0.4 * Math.exp(-3), b2b3: 0.3, c2c3: 0.2 * Math.exp(-1), d2d3: 0.1 * Math.exp(-3) };
+    const total = Object.values(weights).reduce((a, b) => a + b, 0);
+    for (const [uci, w] of Object.entries(weights)) expect(share(got, uci)).toBeCloseTo(w / total, 12);
+    expect(got.moves.map(m => m.uci)).toEqual(['b2b3', 'c2c3', 'a2a3', 'd2d3']);
+    expect(got.moves.reduce((sum, m) => sum + m.p, 0)).toBeCloseTo(1, 12);
+    expect(got.engineLines).toBe(2);
+    // "other" is what the first three leave, as before
+    expect(got.other).toBeCloseTo(share(got, 'd2d3'), 12);
+  });
+
+  it('keeps less of the estimate without the engine when the exponent is below one', () => {
+    const model = weighted({ '1': { alpha: 0.5, beta: 0, gamma: 0 } });
+    const got = withEngine(model, four(), [{ uci: 'a2a3', chances: 0 }]);
+    const roots = [0.4, 0.3, 0.2, 0.1].map(Math.sqrt);
+    const total = roots.reduce((a, b) => a + b, 0);
+    expect(got.moves.map(m => m.p)).toEqual(roots.map(r => expect.closeTo(r / total, 12)));
+  });
+
+  it('leaves the estimate as it is without lines, and without weights for their number', () => {
+    const p = four();
+    expect(withEngine(weighted({ '3': { alpha: 1, beta: 10, gamma: 2 } }), p, [])).toBe(p);
+    expect(withEngine(weighted({ '3': { alpha: 1, beta: 10, gamma: 2 } }), p, [{ uci: 'a2a3', chances: 0 }])).toBe(p);
+    expect(withEngine(weighted(undefined), p, [{ uci: 'a2a3', chances: 0 }])).toBe(p);
+    // a line whose move is not legal here is no line
+    expect(withEngine(weighted({ '1': { alpha: 1, beta: 10, gamma: 2 } }), p, [{ uci: 'h7h8q', chances: 1 }])).toBe(p);
+  });
+
+  it('counts a line once, at most five of them, and never rewards a later line for being better than the first', () => {
+    const model = weighted({ '2': { alpha: 1, beta: 10, gamma: 0 }, '4': { alpha: 1, beta: 0, gamma: 1 } });
+    // the second line is the better one (the engine can report that for a moment): it gives up nothing, not less than nothing
+    const got = withEngine(model, four(), [
+      { uci: 'a2a3', chances: 0 },
+      { uci: 'b2b3', chances: 0.5 },
+      { uci: 'a2a3', chances: -1 },
+    ]);
+    expect(got.engineLines).toBe(2);
+    expect(share(got, 'b2b3') / share(got, 'a2a3')).toBeCloseTo(0.3 / 0.4, 12);
+    // six lines for four legal moves: four are counted
+    const all = withEngine(model, four(), ['a2a3', 'b2b3', 'c2c3', 'd2d3', 'a2a3', 'b2b3'].map(uci => ({ uci, chances: 0 })));
+    expect(all.engineLines).toBe(4);
+    expect(all.moves.map(m => m.p)).toEqual([0.4, 0.3, 0.2, 0.1].map(x => expect.closeTo(x, 12)));
+  });
+
+  it('knows castling in the engine\u2019s spelling', () => {
+    // after 1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5: White may castle; the list of moves has it as e1h1, the engine says e1g1
+    const base = predict(FLAT, { fen: ITALIAN });
+    expect(base.moves.some(m => m.uci === 'e1h1')).toBe(true);
+    const model = weighted({ '1': { alpha: 1, beta: 0, gamma: 3 } });
+    const got = withEngine(model, base, [{ uci: 'e1g1', chances: 0.1 }]);
+    expect(got.engineLines).toBe(1);
+    expect(got.moves[0].uci).toBe('e1h1');
+    expect(got.moves[0].p).toBeCloseTo(1 / (1 + (base.moves.length - 1) * Math.exp(-3)), 12);
+  });
+});
+
 describe('the model that is shipped', () => {
   const report = (shipped as unknown as { report: Record<string, any> }).report;
 
@@ -446,6 +528,48 @@ describe('the model that is shipped', () => {
     expect(titleStudy.adopted).toBe(false);
     expect(titleStudy.same.adopted).toBe(false);
     expect(report.titleMatches).toMatchObject({ adopted: false, multiplier: 1, matches: 5, decisions: 1800 });
+  });
+
+  it('carries the weights the engine study fitted, for one to five lines, and what was measured with them', () => {
+    expect(engineStudy.adopted).toBe(true);
+    expect(Object.keys(MODEL.engine!)).toEqual(['1', '2', '3', '4', '5']);
+    for (const [count, w] of Object.entries(MODEL.engine!)) {
+      const fitted = (engineStudy.fitted as Record<string, { alpha: number; beta: number; gamma: number }>)[count];
+      expect(w).toEqual({ alpha: fitted.alpha, beta: fitted.beta, gamma: fitted.gamma });
+      // some of the model's own estimate is always kept, and a move the engine does not list always pays for it
+      expect(w.alpha).toBeGreaterThan(0);
+      expect(w.gamma).toBeGreaterThan(0);
+    }
+    // one line says nothing about how much a move gives up; with more, giving up costs
+    expect(MODEL.engine!['1'].beta).toBe(0);
+    expect(MODEL.engine!['3'].beta).toBeGreaterThan(0);
+    // measured on the games of 2026, which the fit did not use: better by the rule written for the third version
+    const h = report.engine.holdout;
+    expect(report.engine).toMatchObject({ adopted: true, name: 'Stockfish 16', depth: 14 });
+    expect(h.decisions).toBe(4240);
+    expect(h.withThreeLines.difference.logLoss.interval[1]).toBeLessThan(0);
+    expect(h.withThreeLines.ece).toBeLessThanOrEqual(h.v3.ece);
+    expect(h.withThreeLines.top1).toBeGreaterThan(h.v3.top1 + 0.15);
+    expect(h.v3.logLoss).toBe(report.holdout.v3.logLoss);
+  });
+
+  it('with those weights, a move the engine thinks loses is not among the first three', () => {
+    // the model's own estimate here gives 3. Bc4 and 3. Bb5 most of it
+    const fen = 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3';
+    const own = predict(MODEL, { fen, moverId: SINDAROV });
+    const favourite = own.moves[0];
+    expect(favourite.p).toBeGreaterThan(0.2);
+    // an engine that calls that very move a blunder and lists three quiet moves as fine
+    const others = own.moves.filter(m => m.uci !== favourite.uci).slice(3, 5);
+    const informed = withEngine(MODEL, own, [
+      { uci: others[0].uci, chances: 0.1 },
+      { uci: others[1].uci, chances: 0.08 },
+      { uci: favourite.uci, chances: -0.55 },
+    ]);
+    expect(informed.engineLines).toBe(3);
+    expect(informed.moves.slice(0, 2).map(m => m.uci).sort()).toEqual(others.map(m => m.uci).sort());
+    expect(informed.moves.find(m => m.uci === favourite.uci)!.p).toBeLessThan(0.001);
+    expect(informed.moves.reduce((sum, m) => sum + m.p, 0)).toBeCloseTo(1, 10);
   });
 
   it('blends with settings that were chosen on the selection games', () => {

@@ -16,6 +16,7 @@ import { TimePanel } from './components/TimePanel';
 import { GAME_SQUARES, useEval, useIsMobile, useKeyboardBackFromFrames, useMedia, useNow, useT, WIDE_LAYOUT } from './hooks';
 import { setContext, track, trackOutbound } from './lib/analytics';
 import { displayName, firstMoveSquares, materialFromFen, pvToSan, shortName } from './lib/format';
+import { automaticVideoHeight } from './lib/layout';
 import { seedGameScores } from './lib/quality';
 import { shortcutFor } from './lib/shortcuts';
 import { unlockAudio } from './lib/sound';
@@ -36,6 +37,8 @@ const TABS_BESIDE: Tab[] = ['analysis', 'similar', 'charts', 'match', 'settings'
 const TABS_ALONE: Tab[] = ['analysis', 'predict', 'similar', 'charts', 'match', 'settings'];
 /** Free width, in pixels, that the rail of board buttons needs to the right of the board. */
 const BOARD_RAIL_ROOM = 64;
+/** Dragging the bar under the video: the least the video, the list of moves and any other tab may be left with, in pixels. */
+const VIDEO_SPLIT = { video: 120, moves: 64, panel: 140 };
 
 export default function App() {
   const t = useT();
@@ -75,6 +78,9 @@ export default function App() {
   const [shareSlot, setShareSlot] = useState<HTMLDivElement | null>(null);
   // Turning the board and sharing sit in a small rail beside the board when there is free room there.
   const [toolsBeside, setToolsBeside] = useState(false);
+  // The video's height while the bar under it is being dragged; it is saved when the drag ends.
+  const [videoDrag, setVideoDrag] = useState<number | null>(null);
+  const [videoAuto, setVideoAuto] = useState(0);
   const [tab, setTabState] = useState<Tab>('analysis');
   const setTab = (id: Tab) => {
     setTabState(id);
@@ -99,13 +105,16 @@ export default function App() {
       const col = layout.querySelector<HTMLElement>('.board-col');
       const divider = layout.querySelector<HTMLElement>('.divider');
       setToolsBeside(!!col && !!divider && divider.getBoundingClientRect().left - col.getBoundingClientRect().right >= BOARD_RAIL_ROOM);
+      const side = layout.querySelector<HTMLElement>('.side-col');
+      // without the left column the first tab carries the win chance as well
+      setVideoAuto(side && side.clientWidth > 0 ? automaticVideoHeight({ width: side.clientWidth, height: side.clientHeight }, { engine: settings.engine, lines: settings.engineLines, winChance: !wide }) : 0);
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(layout);
     for (const el of layout.children) ro.observe(el);
     return () => ro.disconnect();
-  }, [view, isMobile, wide, !!game]);
+  }, [view, isMobile, wide, !!game, settings.engine, settings.engineLines]);
 
   useEffect(() => {
     document.documentElement.lang = settings.lang;
@@ -224,6 +233,38 @@ export default function App() {
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
   };
+
+  // The bar between the video and the tabs: drag it to give the video or the panel under it more of the column.
+  const startVideoDrag = (e: React.PointerEvent) => {
+    const side = (e.currentTarget as HTMLElement).closest<HTMLElement>('.side-col');
+    const player = side?.querySelector<HTMLElement>('.player');
+    if (!side || !player) return;
+    e.preventDefault();
+    const startY = e.clientY;
+    const startHeight = player.getBoundingClientRect().height;
+    // never taller than its width allows, and never so tall that the moves (or another tab) are squeezed out
+    const natural = (side.clientWidth * 9) / 16;
+    const list = side.querySelector<HTMLElement>('.move-list');
+    const body = side.querySelector<HTMLElement>('.tab-body');
+    const spare = list ? list.clientHeight - VIDEO_SPLIT.moves : body ? body.clientHeight - VIDEO_SPLIT.panel : 0;
+    const most = Math.min(natural, startHeight + Math.max(0, spare));
+    const least = Math.min(VIDEO_SPLIT.video, natural);
+    const heightAt = (clientY: number) => Math.round(Math.max(least, Math.min(startHeight + (clientY - startY), most)));
+    const move = (ev: PointerEvent) => setVideoDrag(heightAt(ev.clientY));
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      document.body.classList.remove('dragging-row');
+      setSetting('videoHeight', heightAt(ev.clientY));
+      setVideoDrag(null);
+    };
+    document.body.classList.add('dragging-row');
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  // by hand, or else the automatic height
+  const videoHeight = isMobile ? 0 : (videoDrag ?? (settings.videoHeight || videoAuto));
+  const videoCovered = paused && !streamUncovered;
 
   const orientation = flipped ? 'black' : 'white';
   const inLine = !!line && !preview;
@@ -387,7 +428,7 @@ export default function App() {
           {/* The site's own estimate of the next move of the game, whatever the board is showing. */}
           {!preview && guessFen && (
             <Suspense fallback={null}>
-              <ModelEstimate game={game} fen={guessFen} />
+              <ModelEstimate game={game} fen={guessFen} evaluation={evaluation} />
             </Suspense>
           )}
         </>
@@ -422,8 +463,20 @@ export default function App() {
   );
 
   const sideColumn = (
-    <section className="side-col">
+    <section className="side-col" style={videoHeight ? ({ '--video-h': `${videoHeight}px` } as React.CSSProperties) : undefined}>
       <StreamPanel live={view === 'live'} />
+      {!isMobile && !settings.streamHidden && !videoCovered && (
+        <div
+          className="hsplit"
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label={t.resizeVideo}
+          title={t.resizeVideoTitle}
+          onPointerDown={startVideoDrag}
+          // back to automatic: as large as its width allows, less when the moves need the room
+          onDoubleClick={() => setSetting('videoHeight', 0)}
+        />
+      )}
       {view === 'puzzles' ? (
         <div className="tab-body">
           <Suspense fallback={<p className="muted pad">{t.loading}</p>}>

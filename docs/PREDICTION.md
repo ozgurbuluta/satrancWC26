@@ -16,10 +16,11 @@ and is not affiliated with FIDE, with Vidit Gujrathi or with Lichess.
 ## What this site does
 
 The site has a model of its own for the next move of the two players, now
-in its third version. It is described in
+in its fourth version. It is described in
 [PREDICTOR.md](PREDICTOR.md), with everything that was measured in
-[PREDICTOR-REPORT.md](PREDICTOR-REPORT.md). It is not Kibitz, uses no engine
-and no third-party weights, and its accuracy is modest and stated.
+[PREDICTOR-V3-REPORT.md](PREDICTOR-V3-REPORT.md). It is not Kibitz and uses
+no third-party weights. Since the fourth version it takes the engine's
+lines for the position into account; its accuracy is stated.
 
 The site keeps four things apart. The first three are in the guess panel,
 which is a card beside the board on wide screens and the Tahmin tab
@@ -41,9 +42,11 @@ elsewhere:
    accuracy and its limits are in [PREDICTOR.md](PREDICTOR.md).
 
 The second and third are not probabilities of the player's next move. Only
-the fourth is an estimate of that, and it is never
-built from the other two: an engine score is not renamed a probability, and
-neither is a count from the masters database.
+the fourth is an estimate of that. It is not the other two renamed: a count
+from the masters database is not called a probability, and neither is an
+engine score. Since 26 November 2026 the engine's lines do go into the
+estimate, through weights fitted on how often these two players played a
+move the engine ranked first, second, lower, or not at all.
 
 ## Fairness and spoilers
 

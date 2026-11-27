@@ -2,11 +2,13 @@
 // Called by scripts/predictor-v3.mjs after the selection stage has been
 // repeated and found identical to data/predictor-v3/selection.json. Nothing
 // here chooses anything.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
 const MATCH = 'data/predictor-v3/match-2026.pgn';
 const SITUATION = 'data/predictor-v3/situation.json';
 const TITLE = 'data/predictor-v3/title-matches.json';
+/** The fourth version's study: what the engine's opinion of a move does to the estimate. */
+const ENGINE = 'data/predictor-v4/engine.json';
 /** The match is played over this many classical games. */
 const MATCH_GAMES = 14;
 /** The match began on this day; everything in the corpora is over by then. */
@@ -22,6 +24,8 @@ export const writeV3 = async ctx => {
   const title = JSON.parse(readFileSync(TITLE, 'utf8'));
   if (JSON.stringify(situation.features) !== JSON.stringify([...FEATURES])) throw new Error(`${SITUATION} was made with other features: run --v3-situation again`);
   if (situation.temperature !== chosen.temperature || title.settings.temperature !== chosen.temperature) throw new Error('the studies were made with another selection: run --v3-situation and --v3-title again');
+  // the fourth version's study, when it has been made: the engine's lines on top of this estimate
+  const engine = existsSync(ENGINE) ? JSON.parse(readFileSync(ENGINE, 'utf8')) : undefined;
   // the learned correction where the rule adopted it; otherwise the written rule, in the same form
   const shift = situation.adopted ? situation.weights : FEATURES.map(name => (name === 'trade' ? -STAKES_MAX : 0));
 
@@ -126,7 +130,7 @@ export const writeV3 = async ctx => {
   const theta = v2.theta;
   const weights = offset => theta.slice(offset, offset + K);
   const out = {
-    version: 4,
+    version: engine?.adopted ? 5 : 4,
     features: [...FEATURES],
     weights: { shared: weights(0), players: { gukesh: weights(K), sindarov: weights(2 * K) }, clock: weights(3 * K) },
     temperature: chosen.temperature,
@@ -141,6 +145,8 @@ export const writeV3 = async ctx => {
     // what the score of the match adds to a move's score for a player who must win the last game, a weight for each feature
     situation: shift,
     clockFullSeconds: CLOCK_FULL_SECONDS,
+    // what the engine's opinion of a move does to the estimate, for each number of engine lines at hand (the fourth version)
+    ...(engine?.adopted ? { engine: Object.fromEntries(Object.entries(engine.fitted).map(([lines, w]) => [lines, { alpha: w.alpha, beta: w.beta, gamma: w.gamma }])) } : {}),
     report: {
       protocol: v3Selection.protocol,
       source: 'Lichess official broadcasts, January 2020 to October 2026',
@@ -154,6 +160,19 @@ export const writeV3 = async ctx => {
       situation: { adopted: situation.adopted, secondGames: Object.values(situation.events).reduce((sum, e) => sum + e.firstDecisive, 0), fitDecisions: situation.fit.decisions, testDecisions: situation.test.decisions, logLoss: { none: situation.on2025.withoutCorrection.logLoss, written: situation.on2025.writtenRule.logLoss, learned: situation.on2025.learned.logLoss }, difference: situation.on2025.learned.difference.logLoss },
       titleMatches: { adopted: title.adopted, multiplier: title.multiplier, matches: title.perMatch.length, decisions: title.titleMatches.decisions, known: title.titleMatches.known, repeated: title.titleMatches.repeated, otherEvents: { decisions: title.otherEvents.decisions, known: title.otherEvents.known, repeated: title.otherEvents.repeated } },
       adopted,
+      ...(engine
+        ? {
+            engine: {
+              adopted: engine.adopted,
+              name: engine.engine.name,
+              depth: engine.engine.depth,
+              positions: engine.engine.positions,
+              holdout: { decisions: engine.results.holdout.decisions, v3: engine.results.holdout.v3, withThreeLines: engine.results.holdout.byLines[3], withOneLine: engine.results.holdout.byLines[1], withFiveLines: engine.results.holdout.byLines[5] },
+              benchmark: { decisions: engine.results.benchmark.decisions, v3: engine.results.benchmark.v3, withThreeLines: engine.results.benchmark.byLines[3] },
+              played: engine.played.byEngineRank,
+            },
+          }
+        : {}),
     },
   };
   const artifact = JSON.stringify(out) + '\n';
@@ -309,7 +328,53 @@ ${title.perMatch.map(m => `| ${m.players.join(' and ')}, ${m.month} | ${m.decisi
 
 What this cannot see is what a player has prepared and not yet shown. A new line is new to the tables as well, and the estimate for it comes from theory and the board.
 
-## What can be said
+${
+  engine
+    ? `## The engine's opinion of a move (fourth version)
+
+Asked for by Özgür after the third version went on the page: it gave a share to moves that lose on the spot, because it knows what was played before and what a move looks like, and nothing of how good a move is. Players of this strength rarely play such a move. The plan of the third version said "no engine"; this section changes that, and says so.
+
+What is added is what the page already has when it shows the estimate: the engine's best lines for the position. For every legal move,
+
+\`score(m) = α · log p3(m) − β · loss(m) − γ · [m is not among the engine's lines]\`
+
+and the scores become shares that add up to one. p3 is the third version's estimate. loss(m) is the part of the expected result the move gives up against the engine's first line (0 to 1, on the page's win-chance curve). A move the engine does not list is at least as bad as its last line, so it takes that line's loss, and γ on top. α, β and γ were fitted by maximum likelihood on the selection games (2025), once for each number of lines the page may have (1 to 5).
+
+The engine for the fit: ${engine.engine.name}, every position searched to depth ${engine.engine.depth} with ${engine.engine.lines} lines, ${engine.engine.positions} positions. Its answers are kept in \`${engine.engine.kept}\`, so the fit can be repeated without the engine.
+
+| Lines | α | β | γ | Selection log loss |
+|---|---|---|---|---|
+${Object.entries(engine.fitted).map(([n, w]) => `| ${n} | ${w.alpha} | ${w.beta} | ${w.gamma} | ${w.selectionLoss.toFixed(4)} |`).join('\n')}
+
+Third version on the same selection games: ${engine.results.selection.v3.logLoss.toFixed(4)}.
+
+Measured on the games of 2026, which the fit did not use:
+
+| | Decisions | Log loss | First choice right | In the first three | Calibration error |
+|---|---|---|---|---|---|
+${['holdout', 'benchmark'].map(name => { const r = engine.results[name]; const label = name === 'holdout' ? 'January to August 2026' : 'September 2026'; return [`| ${label}, third version | ${r.decisions} | ${f3(r.v3.logLoss)} | ${pct(r.v3.top1)} | ${pct(r.v3.top3)} | ${pct(r.v3.ece)} |`, ...[1, 3, 5].map(n => `| ${label}, with ${n} engine line${n > 1 ? 's' : ''} | ${r.decisions} | ${f3(r.byLines[n].logLoss)} | ${pct(r.byLines[n].top1)} | ${pct(r.byLines[n].top3)} | ${pct(r.byLines[n].ece)} |`)].join('\n'); }).join('\n')}
+
+With three lines on January to August 2026: log loss ${signed(engine.results.holdout.byLines[3].difference.logLoss.value, 3)} (${engine.results.holdout.byLines[3].difference.logLoss.interval.map(x => signed(x, 3)).join(' to ')}), first choice right ${signed(100 * engine.results.holdout.byLines[3].difference.top1.value, 1)} points (${engine.results.holdout.byLines[3].difference.top1.interval.map(x => signed(100 * x, 1)).join(' to ')}).
+
+What the two did with the engine's opinion, in the ${engine.played.decisions} decisions of 2026: the move played was the engine's first ${pct(engine.played.byEngineRank.first / engine.played.decisions)} of the time, among its first three ${pct((engine.played.byEngineRank.first + engine.played.byEngineRank.second + engine.played.byEngineRank.third) / engine.played.decisions)}, and not among its five ${pct(engine.played.byEngineRank.notAmongFive / engine.played.decisions)}.
+
+Every move among the engine's five lines, by how much of the expected result it gives up, how often it was played, and what each version said of it on average (three lines at hand):
+
+| Gives up | Moves offered | Played | Third version said | With the engine |
+|---|---|---|---|---|
+${engine.played.byLoss.map((b, i) => `| ${b.lossBelow === null ? `${(100 * engine.played.byLoss[i - 1].lossBelow).toFixed(0)} % or more` : `under ${(100 * b.lossBelow).toFixed(0)} %`} | ${b.offered} | ${pct(b.playedShare)} | ${pct(b.thirdVersionSaid)} | ${pct(b.fourthVersionSaid)} |`).join('\n')}
+
+The rule is the one used before: lower log loss on January to August 2026 with the interval of the difference below zero, and a calibration error that is not higher. **${engine.adopted ? 'Both are met, and the estimate on the page uses the engine\'s lines.' : 'They are not both met.'}**
+
+Limits of this part:
+
+- The page's engine is not the fit's engine at depth ${engine.engine.depth}: the cloud's answers are much deeper, the browser's own start shallower and deepen. The weights are applied to whatever depth is at hand.
+- The estimate now leans on the engine. Where the engine is switched off, or has no answer after a few seconds, the page shows the third version's estimate as it is.
+- It says what these two tend to do with good and bad moves on average. It does not know that a player is in time trouble and about to blunder; the clock enters only through the third version.
+
+`
+    : ''
+}## What can be said
 
 The rule was written down beforehand: the third version replaces the second if its log loss is lower on January to August 2026 with the interval of the difference below zero, and its calibration error is not higher.
 

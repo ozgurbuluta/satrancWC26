@@ -69,14 +69,17 @@ export function StreamPanel({ live = true }: { live?: boolean }) {
               </p>
             </div>
           ) : (
-            <iframe
-              key={embed.src}
-              src={embed.src}
-              title={t.stream}
-              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-            />
+            // The frame keeps the video 16:9 and rounds its corners; the video inside it is a plain rectangle.
+            <div className="player-frame">
+              <iframe
+                key={embed.src}
+                src={embed.src}
+                title={t.stream}
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+              />
+            </div>
           )}
         </div>
       )}

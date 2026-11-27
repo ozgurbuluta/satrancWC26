@@ -279,6 +279,26 @@ export const requestEval = (fen: string, onUpdate: Listener, opts: { useLocal: b
   mine.recheck = window.setTimeout(() => void tryCloud(false), 25000);
 };
 
+/**
+ * Looks a position up in the cloud database only, and keeps what it finds. For a position the board is not on (the
+ * newest position of the game while the viewer is looking at an earlier move): the board's own analysis is left alone.
+ */
+export const lookUpEval = async (fen: string, multiPv?: number): Promise<void> => {
+  const lines = engineLineCount(multiPv);
+  const key = cacheKey(fen, lines);
+  if (cache.has(key)) return;
+  let cloud: EvalResult | undefined;
+  try {
+    cloud = await fetchCloud(fen, lines);
+  } catch {
+    cloud = undefined;
+  }
+  if (!cloud || !cloud.pvs.length || cache.has(key)) return;
+  cache.set(key, { ...cloud, pvs: cloud.pvs.slice(0, lines) });
+  recordFromEval(cloud);
+  bump();
+};
+
 export const cancelEval = () => {
   if (!active) return;
   active.ctrl.abort();
