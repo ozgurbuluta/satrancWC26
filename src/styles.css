@@ -1499,6 +1499,11 @@ button.move:hover {
   color: var(--muted);
 }
 
+.model-wait {
+  margin: 0;
+  font-size: 13.5px;
+}
+
 .model-moves {
   list-style: none;
   margin: 0;

@@ -428,7 +428,7 @@ export default function App() {
           {/* The site's own estimate of the next move of the game, whatever the board is showing. */}
           {!preview && guessFen && (
             <Suspense fallback={null}>
-              <ModelEstimate game={game} fen={guessFen} />
+              <ModelEstimate game={game} fen={guessFen} evaluation={evaluation} />
             </Suspense>
           )}
         </>

@@ -161,6 +161,15 @@ Phase 3 (`scripts/predictor-v3-title.mjs`):
   the one on the page? It is changed only if every left-out choice is on
   the same side of the page's weight.
 
+## Later: the engine
+
+The limits below say "still no engine". On 26 November 2026 Özgür asked for
+the opposite, after the estimate gave a quarter to a move that loses at
+once: the estimate should know how good a move is. The engine's lines for
+the position now go into it (the fourth version; `docs/PREDICTOR.md` and
+the report's section on it). Weights fitted on the 2025 games, measured on
+2026, under the same rule as above.
+
 ## Later: the label on the page
 
 The plan says the label stays "Deneysel". On 26 November 2026, after the
